@@ -1,3 +1,8 @@
 <a href = "/">
     <h1>LOGO</h1>
 </a>
+{% if user.is_authenticated %}
+    <a href = "/logout">Logout</a>
+{% else %}
+    <a href = "/login">Login</a>
+{% endif %}
