@@ -17,7 +17,6 @@
 
       <div class="col-md-3 text-end">
         {% if user.is_authenticated %}
-        <li class="px-2"> Hello, {{request.user}} </li>
           <a href="{% url 'logout' %}" class="btn btn-outline-primary me-2">Logout</a>
         {% else %}
           <a href="{% url 'login' %}" class="btn btn-outline-primary me-2">Login</a>

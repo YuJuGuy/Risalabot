@@ -1,26 +1,32 @@
-{% extends 'main.html' %}
+{% extends 'main_nonav.html' %}
 
 {% block content %}
 
     {% if page == 'login'%}
-    <h1> Login </h1>
+    <h1>Login</h1>
     <form method="post" action="">
         {% csrf_token %}
-        <label for="username">Username</label>
-        <input type="text" name="username" id="username">
+        <label for="email">email</label>
+        <input id="username" name="email" type="email">
         <label for="password">Password</label>
         <input type="password" name="password" id="password">
 
         <button type="submit">Login</button>
-        <p> Don't have an account? <a href="{% url 'register' %}">Register</a> </p>
+        <p>Don't have an account? <a href="{% url 'register' %}">Register</a></p>
     </form>
     {% else %}
-    <h1> Register </h1>
+    <h1>Register</h1>
     <form method="post" action="">
         {% csrf_token %}
-        {{form.as_p}}
+        {% for field in form %}
+        <div class="form__group form__group">
+          <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {{ field }}
+        </div>
+        {% endfor %}
         <button type="submit">Register</button>
-        <p> Already have an account? <a href="{% url 'login' %}">Login</a> </p>
+        <p>Already have an account? <a href="{% url 'login' %}">Login</a></p>
+
     </form>
     {% endif %}
 

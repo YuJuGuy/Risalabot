@@ -1,10 +1,11 @@
 from django.shortcuts import render,redirect
-from django.contrib.auth.models import User
 from django.contrib.auth import authenticate
 from django.contrib import messages
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
+from . forms import CreateUserForm
+from . models import User
 
 
 def loginPage(request):
@@ -13,22 +14,21 @@ def loginPage(request):
         return redirect('dashboard')
 
     if request.method == 'POST':
-        username = request.POST.get('username').lower()
+        email = request.POST.get('email').lower()
         password = request.POST.get('password')
 
         try:
-            user = User.objects.get(username=username)
-        except User.DoesNotExist:
+            user = User.objects.get(email=email)
+        except:
             messages.error(request, 'User does not exist')
-            return render(request, 'base/login_register.html', {'page': page})
 
-        user = authenticate(request, username=username, password=password)
+        user = authenticate(request, email=email, password=password)
 
         if user is not None:
             login(request, user)
             return redirect('dashboard')
         else:
-            messages.error(request, 'Username OR password does not exist')
+            messages.error(request, 'Email OR password does not exit')
 
     context = {'page': page}
     return render(request, 'base/login_register.html', context)
@@ -38,20 +38,21 @@ def logoutUser(request):
     return redirect('login')
 
 def registerPage(request):
-    form = UserCreationForm()
-    
+    if request.user.is_authenticated:
+        return redirect('dashboard')
+    form = CreateUserForm()
+
     if request.method == 'POST':
-        form = UserCreationForm(request.POST)
+        form = CreateUserForm(request.POST)
         if form.is_valid():
             user = form.save(commit=False)
-            username = form.cleaned_data.get('username').lower()
-            user.username = username
+            user.username = user.username.lower()
             user.save()
             login(request, user)
             return redirect('dashboard')
         else:
-            messages.error(request, 'An error has occurred during registration')
-            
+            messages.error(request, 'An error occurred during registration')
+
     return render(request, 'base/login_register.html', {'form': form})
 
 
