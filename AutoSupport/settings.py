@@ -25,7 +25,11 @@ SECRET_KEY = 'django-insecure-ik6it2t*c($$@nh!&+3nno-87#xw0r!gg)r((2^bdf#2)oplkj
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['destined-marmot-regular.ngrok-free.app']
+
+CSRF_TRUSTED_ORIGINS = [
+    'https://destined-marmot-regular.ngrok-free.app',
+]
 
 # Application definition
 
