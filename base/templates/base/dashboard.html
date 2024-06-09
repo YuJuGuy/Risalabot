@@ -1,3 +1,11 @@
-<h1>Welcome to the Dashboard</h1>
+{% extends "main.html" %}
 
-<a href="{% url 'authstore' %}" class="btn btn-outline-primary me-2">Connect</a>
+{% block content %}
+{% if user_linked %}
+    <h1>Welcome to the Dashboard</h1>
+    <p>You are already connected.</p>
+{% else %}
+    <h1>Welcome to the Dashboard</h1>
+    <a href="{% url 'authstore' %}" class="btn btn-outline-primary me-2">Connect</a>
+{% endif %}
+{% endblock %}

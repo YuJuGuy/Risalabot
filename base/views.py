@@ -5,7 +5,7 @@ from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
 from . forms import CreateUserForm
-from . models import User
+from . models import User, Store
 
 
 def loginPage(request):
@@ -58,7 +58,15 @@ def registerPage(request):
 
 @login_required(login_url='login')
 def dashboard(request):
-    return render(request, 'base/dashboard.html')
+    user_linked = Store.objects.filter(user=request.user).exists()
+
+    # Retrieve linkage status from session data
+
+    context = {
+        'user_linked': user_linked
+    }
+    
+    return render(request, 'base/dashboard.html', context)
 
 def home(request):
     return render(request, 'base/home.html')
