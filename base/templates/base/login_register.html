@@ -3,31 +3,45 @@
 {% block content %}
 
     {% if page == 'login'%}
-    <h1>Login</h1>
-    <form method="post" action="">
-        {% csrf_token %}
-        <label for="email">email</label>
-        <input id="username" name="email" type="email">
-        <label for="password">Password</label>
-        <input type="password" name="password" id="password">
-
-        <button type="submit">Login</button>
-        <p>Don't have an account? <a href="{% url 'register' %}">Register</a></p>
-    </form>
-    {% else %}
-    <h1>Register</h1>
-    <form method="post" action="">
-        {% csrf_token %}
-        {% for field in form %}
-        <div class="form__group form__group">
-          <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-          {{ field }}
+    <div class="login-container">
+        <div class="titles">
+            <div class="login-text">Login</div>
+            <div class="login-text-small">Login to access your account and enjoy our services!</div>
         </div>
-        {% endfor %}
-        <button type="submit">Register</button>
-        <p>Already have an account? <a href="{% url 'login' %}">Login</a></p>
+        <form class="login-form" method="post" action="">
+            {% csrf_token %}
+            <label for="email">Email</label>
+            <input class="input-field" id="username" name="email" type="email">
+            <label for="password">Password</label>
+            <input class="input-field" type="password" name="password" id="password">
 
-    </form>
+            <button type="submit" class="submit-button">Login</button>
+            <div class="titles">
+                <div class="login-text-small">Don't have an account? <a href="{% url 'register' %}" class="register-link">Register</a></div>
+              </div>
+        </form>
+    </div>
+    {% else %}
+    <div class="login-container">
+        <div class="titles">
+          <div class="login-text">Register</div>
+          <div class="login-text-small">Create an account to enjoy our services!</div>
+        </div>
+        <form class="login-form" method="post" action="">
+          {% csrf_token %}
+          {% for field in form %}
+          <div class="input-field-wrapper">
+            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+          </div>
+          {% endfor %}
+          <button type="submit" class="submit-button">Register</button>
+          <div class="titles">
+            <div class="login-text-small">Already have an account? <a href="{% url 'login' %}" class="register-link">Login</a></div>
+          </div>
+        </form>
+
+      </div>
     {% endif %}
 
 {% endblock content %}

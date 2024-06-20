@@ -1,0 +1,65 @@
+{% extends "main.html" %}
+
+{% block content %}
+
+<h1>Abandon Cart</h1>
+<div class="container mt-5" style="max-width: 600px;">
+    <form method="POST">
+        {% csrf_token %}
+        <div class="mb-3">
+            <label for="abandoned_cart" class="form-label">Abandoned Cart:</label>
+            <textarea class="form-control" id="abandoned_cart" name="abandoned_cart" rows="3">{{ abandoned_cart|default_if_none:"" }}</textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">Submit</button>
+    </form>
+</div>
+
+<h1>Order Confirmation</h1>
+<div class="container mt-5" style="max-width: 600px;">
+    <form method="POST">
+        {% csrf_token %}
+        <div class="mb-3">
+            <label for="order_received" class="form-label">Order Received:</label>
+            <textarea class="form-control" id="order_received" name="order_received" rows="3">{{ order_received|default_if_none:"" }}</textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">Submit</button>
+    </form>
+</div>
+
+<h1>Order Cancelled</h1>
+<div class="container mt-5" style="max-width: 600px;">
+    <form method="POST">
+        {% csrf_token %}
+        <div class="mb-3">
+            <label for="order_cancelled" class="form-label">Order Cancelled:</label>
+            <textarea class="form-control" id="order_cancelled" name="order_cancelled" rows="3">{{ order_cancelled|default_if_none:"" }}</textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">Submit</button>
+    </form>
+</div>
+
+<h1>Order Updated</h1>
+<div class="container mt-5" style="max-width: 600px;">
+    <form method="POST">
+        {% csrf_token %}
+        <div class="mb-3">
+            <label for="order_updated" class="form-label">Order Updated:</label>
+            <textarea class="form-control" id="order_updated" name="order_updated" rows="3">{{ order_updated|default_if_none:"" }}</textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">Submit</button>
+    </form>
+</div>
+
+<h1>Shipment Updated</h1>
+<div class="container mt-5" style="max-width: 600px;">
+    <form method="POST">
+        {% csrf_token %}
+        <div class="mb-3">
+            <label for="shipment_updated" class="form-label">Shipment Updated:</label>
+            <textarea class="form-control" id="shipment_updated" name="shipment_updated" rows="3">{{ shipment_updated|default_if_none:"" }}</textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">Submit</button>
+    </form>
+</div>
+
+{% endblock %}

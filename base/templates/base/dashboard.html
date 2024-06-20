@@ -4,8 +4,13 @@
 {% if user_linked %}
     <h1>Welcome to the Dashboard</h1>
     <p>You are already connected.</p>
+    <p> Your Message Count: {{ message_count }}</p>
+    <p> Your cart msg count: {{ cart_msg }}</p>
+    <a href="{% url 'unlinkstore' store.store_id %}" class="btn btn-outline-danger">Disconnect</a>
 {% else %}
     <h1>Welcome to the Dashboard</h1>
-    <a href="{% url 'authstore' %}" class="btn btn-outline-primary me-2">Connect</a>
+    <a href="{% url 'authstore' %}" class="btn btn-outline-primary">Connect</a>
 {% endif %}
+
+
 {% endblock %}
