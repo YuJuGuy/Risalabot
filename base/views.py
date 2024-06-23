@@ -80,40 +80,7 @@ def home(request):
     return render(request, 'base/home.html')
 
 
-@login_required(login_url='login')
-def automations(request):
-    # Ensure the user is linked to at least one store
-    user_store_link = UserStoreLink.objects.filter(user=request.user).first()
-    if not user_store_link:
-        messages.error(request, "You are not connected to any store.")
-        return redirect('dashboard')
 
-    store = user_store_link.store
-
-    # Fetch or create the UserEvent for the store
-    user_event, created = UserEvent.objects.get_or_create(store=store)
-
-    if request.method == 'POST':
-        user_event.abandoned_cart = request.POST.get('abandoned_cart', user_event.abandoned_cart)
-        user_event.order_received = request.POST.get('order_received', user_event.order_received)
-        user_event.order_cancelled = request.POST.get('order_cancelled', user_event.order_cancelled)
-        user_event.order_updated = request.POST.get('order_updated', user_event.order_updated)
-        user_event.shipment_updated = request.POST.get('shipment_updated', user_event.shipment_updated)
-        user_event.save()
-        
-        messages.success(request, 'Automations updated successfully')
-        return redirect('automations')  # Redirect to avoid re-submitting the form on refresh
-
-    context = {
-        'store': store,
-        'abandoned_cart': user_event.abandoned_cart,
-        'order_received': user_event.order_received,
-        'order_cancelled': user_event.order_cancelled,
-        'order_updated': user_event.order_updated,
-        'shipment_updated': user_event.shipment_updated
-    }
-    
-    return render(request, 'base/automations.html', context)
 
 def email(request):
     send_email_task.delay()

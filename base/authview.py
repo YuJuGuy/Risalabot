@@ -86,8 +86,8 @@ def callback(request):
                     store.token_valid = True
                     store.save()
                 else:
-                    # Create a UserEvent entry for the new store
-                    UserEvent.objects.create(store=store)
+                    # Removed code that creates a UserEvent entry for the new store
+                    pass
 
                 if UserStoreLink.objects.filter(store=store).exists():
                     messages.error(request, 'This store is already connected to another user.')
@@ -122,12 +122,7 @@ def unlinkstore(request, store_id):
         store.token_valid = False
         store.save()
 
-        try:
-            user_event = UserEvent.objects.get(store=store)
-            user_event.delete()
-        except UserEvent.DoesNotExist:
-            messages.warning(request, 'UserEvent entry not found for this store.')
-
+        # Removed code that deletes the UserEvent entry
         messages.success(request, 'You have been disconnected from the store.')
     except UserStoreLink.DoesNotExist:
         messages.error(request, 'You are not connected to this store.')

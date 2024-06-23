@@ -1,12 +1,19 @@
+@font-face {
+    font-family: 'CoconNextArabic-Light';
+    src: url("fonts/cocon-next-arabic.ttf") format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
 body {
-    font-family: 'Karla', sans-serif;
+    font-family: 'CoconNextArabic-Light';
     background-color: #a7d7c5;
     display: flex;
     justify-content: center;
     align-items: center;
     height: 100vh;
     margin: 0;
-  }
+}
   
   .login-container {
     display: flex;
@@ -38,6 +45,7 @@ body {
   }
   
   form {
+    text-align: right;
     width: 100%; /* Full width of the container */
     display: flex;
     flex-direction: column;

@@ -5,27 +5,27 @@
     {% if page == 'login'%}
     <div class="login-container">
         <div class="titles">
-            <div class="login-text">Login</div>
-            <div class="login-text-small">Login to access your account and enjoy our services!</div>
+            <div class="login-text">تسجيل الدخول</div>
+            <div class="login-text-small">سجل دخولك للتمكن من الوصول الى خدماتنا</div>
         </div>
         <form class="login-form" method="post" action="">
             {% csrf_token %}
-            <label for="email">Email</label>
+            <label for="email">البريد الإلكتروني</label>
             <input class="input-field" id="username" name="email" type="email">
-            <label for="password">Password</label>
+            <label for="password">كلمة المرور </label>
             <input class="input-field" type="password" name="password" id="password">
 
-            <button type="submit" class="submit-button">Login</button>
+            <button type="submit" class="submit-button">تسجيل الدخول</button>
             <div class="titles">
-                <div class="login-text-small">Don't have an account? <a href="{% url 'register' %}" class="register-link">Register</a></div>
+                <div class="login-text-small">ليس لديك حساب؟ <a href="{% url 'register' %}" class="register-link">إنشاء حساب جديد</a></div>
               </div>
         </form>
     </div>
     {% else %}
     <div class="login-container">
         <div class="titles">
-          <div class="login-text">Register</div>
-          <div class="login-text-small">Create an account to enjoy our services!</div>
+          <div class="login-text">إنشاء حساب جديد</div>
+          <div class="login-text-small">انشئ حساب جديد للتمكن من الوصول الى خدماتنا</div>
         </div>
         <form class="login-form" method="post" action="">
           {% csrf_token %}
@@ -35,9 +35,9 @@
             {{ field }}
           </div>
           {% endfor %}
-          <button type="submit" class="submit-button">Register</button>
+          <button type="submit" class="submit-button">إنشاء حساب جديد</button>
           <div class="titles">
-            <div class="login-text-small">Already have an account? <a href="{% url 'login' %}" class="register-link">Login</a></div>
+            <div class="login-text-small">لديك حساب؟ <a href="{% url 'login' %}" class="register-link">تسجيل الدخول</a></div>
           </div>
         </form>
 

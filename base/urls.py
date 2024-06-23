@@ -14,7 +14,6 @@ urlpatterns = [
     
     
     path('dashboard/', views.dashboard, name="dashboard"),
-    path('automations/', views.automations, name="automations"),
     
     path('authstore/', authview.authstore, name="authstore"),
     path('callback/', authview.callback, name="callback"),

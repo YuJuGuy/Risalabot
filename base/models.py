@@ -42,14 +42,22 @@ class UserStoreLink(models.Model):
     def __str__(self):
         return f'{self.user.email} : {self.store.store_name} : {self.store.store_id}'
     
-class UserEvent(models.Model):
-    store = models.OneToOneField(Store, on_delete=models.CASCADE)
-    abandoned_cart = models.TextField(blank=True, null=True)
-    order_received = models.TextField(blank=True, null=True)
-    order_cancelled = models.TextField(blank=True, null=True)
-    order_updated = models.TextField(blank=True, null=True)
-    shipment_updated = models.TextField(blank=True, null=True)
+class EventType(models.Model):
+    name = models.CharField(max_length=255, unique=True)
+    label = models.CharField(max_length=255, unique=True)
+    description = models.TextField(blank=True, null=True)
 
     def __str__(self):
-        return f"{self.store.store_name} - {self.store.store_id}"
+        return self.name
+
+class UserEvent(models.Model):
+    store = models.ForeignKey(Store, on_delete=models.CASCADE)
+    event_type = models.ForeignKey(EventType, on_delete=models.CASCADE, default=1)  # Temporarily set a default
+    message_template = models.TextField(blank=True, null=True)
+
+    class Meta:
+        unique_together = ('store', 'event_type')
+
+    def __str__(self):
+        return f"{self.store.store_name} - {self.event_type.name}"
 
