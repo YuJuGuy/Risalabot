@@ -1,0 +1,31 @@
+{% extends 'main.html' %}
+
+{% block content %}
+<h2>Edit Event</h2>
+
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Update</button>
+</form>
+
+<script>
+function updateSubcategoryVisibility(selectElement) {
+    var subcategoryField = document.getElementById('id_subcategory').parentElement;
+    if (selectElement.value === '{{ order_updated_event_type_id }}') {
+        subcategoryField.style.display = 'block';
+    } else {
+        subcategoryField.style.display = 'none';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    var eventTypeField = document.getElementById('id_event_type');
+    eventTypeField.addEventListener('change', function() {
+        updateSubcategoryVisibility(this);
+    });
+
+    updateSubcategoryVisibility(eventTypeField);  // Initialize visibility on page load
+});
+</script>
+{% endblock %}

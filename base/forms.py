@@ -1,6 +1,6 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
-from . models import User
+from . models import User , UserEvent
 
 class CreateUserForm(UserCreationForm):
     username = forms.CharField(label='اسم المستخدم', max_length=150)
@@ -11,3 +11,24 @@ class CreateUserForm(UserCreationForm):
     class Meta:
         model = User
         fields = ['username', 'email', 'password1', 'password2']
+
+class UserEventForm(forms.ModelForm):
+    class Meta:
+        model = UserEvent
+        fields = ['event_type', 'subcategory', 'message_template']
+
+    def __init__(self, *args, **kwargs):
+        super(UserEventForm, self).__init__(*args, **kwargs)
+
+        if 'instance' in kwargs:
+            instance = kwargs['instance']
+            if instance.event_type.name == 'order.updated':
+                self.fields['subcategory'].widget = forms.Select(choices=UserEvent.ORDER_UPDATED_SUBCATEGORIES)
+
+        self.fields['event_type'].widget.attrs.update({
+            'onchange': 'updateSubcategoryVisibility(this.value);'
+        })
+
+        self.fields['message_template'].widget.attrs.update({
+            'placeholder': 'Enter your message here...'
+        })

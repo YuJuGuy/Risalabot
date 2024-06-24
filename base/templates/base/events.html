@@ -1,0 +1,56 @@
+{% extends 'main.html' %}
+
+{% block content %}
+<h2>My Events</h2>
+
+{% if events %}
+    <ul>
+    {% for event in events %}
+        <li>
+            {{ event.event_type.name }}{% if event.subcategory %} - {{ event.get_subcategory_display }}{% endif %}: {{ event.message_template }}
+            <a href="{% url 'edit_event' event.id %}">Edit</a> | 
+            <a href="{% url 'delete_event' event.id %}" onclick="return confirm('Are you sure you want to delete this event?');">Delete</a>
+        </li>
+    {% endfor %}
+    </ul>
+{% else %}
+    <p>You have no events.</p>
+{% endif %}
+
+<h2>Create New Event</h2>
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Save</button>
+</form>
+
+
+
+<script>
+    var order_updated_event_type_id = '{{ order_updated_event_type_id }}';
+    console.log('Expected value:', order_updated_event_type_id);
+
+    function updateSubcategoryVisibility() {
+        var eventTypeField = document.getElementById('id_event_type');
+        var selectedValue = eventTypeField.value;
+
+        console.log('Selected value:', selectedValue, '| Expected value:', order_updated_event_type_id);
+
+        var subcategoryField = document.getElementById('id_subcategory').parentElement;
+        if (selectedValue === order_updated_event_type_id) {
+            subcategoryField.style.display = 'block';
+        } else {
+            subcategoryField.style.display = 'none';
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        updateSubcategoryVisibility();  // Initialize visibility on page load
+
+        var eventTypeField = document.getElementById('id_event_type');
+        eventTypeField.addEventListener('change', function() {
+            updateSubcategoryVisibility();
+        });
+    });
+</script>
+{% endblock %}

@@ -51,13 +51,30 @@ class EventType(models.Model):
         return self.name
 
 class UserEvent(models.Model):
+    ORDER_UPDATED_SUBCATEGORIES = [
+        ('pending_payment', 'بإنتظار الدفع'),
+        ('pending_review', 'بإنتظار المراجعة'),
+        ('in_progress', 'قيد التنفيذ'),
+        ('completed', 'تم التنفيذ'),
+        ('in_delivery', 'جاري التوصيل'),
+        ('delivered', 'تم التوصيل'),
+        ('shipped', 'تم الشحن'),
+        ('cancelled', 'ملغي'),
+        ('returned', 'مسترجع'),
+        ('in_return', 'قيد الإسترجاع'),
+        ('quotation_requested', 'طلب عرض سعر'),
+    ]
+
     store = models.ForeignKey(Store, on_delete=models.CASCADE)
-    event_type = models.ForeignKey(EventType, on_delete=models.CASCADE, default=1)  # Temporarily set a default
+    event_type = models.ForeignKey(EventType, on_delete=models.CASCADE)
+    subcategory = models.CharField(max_length=50, choices=ORDER_UPDATED_SUBCATEGORIES, blank=True, null=True)
     message_template = models.TextField(blank=True, null=True)
 
     class Meta:
-        unique_together = ('store', 'event_type')
+        unique_together = ('store', 'event_type', 'subcategory')
 
     def __str__(self):
+        if self.subcategory:
+            return f"{self.store.store_name} - {self.event_type.name} - {self.get_subcategory_display()}"
         return f"{self.store.store_name} - {self.event_type.name}"
 
