@@ -1,6 +1,3 @@
-{% extends 'main.html' %}
-
-{% block content %}
 <h2>Edit Event</h2>
 
 <form method="post">
@@ -10,22 +7,29 @@
 </form>
 
 <script>
-function updateSubcategoryVisibility(selectElement) {
-    var subcategoryField = document.getElementById('id_subcategory').parentElement;
-    if (selectElement.value === '{{ order_updated_event_type_id }}') {
-        subcategoryField.style.display = 'block';
-    } else {
-        subcategoryField.style.display = 'none';
+    var order_updated_event_type_id = '{{ order_updated_event_type_id }}';
+    console.log('Expected value:', order_updated_event_type_id);
+
+    function updateSubcategoryVisibility() {
+        var eventTypeField = document.getElementById('id_event_type');
+        var selectedValue = eventTypeField.value;
+
+        console.log('Selected value:', selectedValue, '| Expected value:', order_updated_event_type_id);
+
+        var subcategoryField = document.getElementById('id_subcategory').parentElement;
+        if (selectedValue === order_updated_event_type_id) {
+            subcategoryField.style.display = 'block';
+        } else {
+            subcategoryField.style.display = 'none';
+        }
     }
-}
 
-document.addEventListener('DOMContentLoaded', function() {
-    var eventTypeField = document.getElementById('id_event_type');
-    eventTypeField.addEventListener('change', function() {
-        updateSubcategoryVisibility(this);
+    document.addEventListener('DOMContentLoaded', function() {
+        updateSubcategoryVisibility();  // Initialize visibility on page load
+
+        var eventTypeField = document.getElementById('id_event_type');
+        eventTypeField.addEventListener('change', function() {
+            updateSubcategoryVisibility();
+        });
     });
-
-    updateSubcategoryVisibility(eventTypeField);  // Initialize visibility on page load
-});
 </script>
-{% endblock %}

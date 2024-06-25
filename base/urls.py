@@ -15,8 +15,8 @@ urlpatterns = [
     
     path('dashboard/', views.dashboard, name="dashboard"),
     
-    path('events/', views.events, name='events'),
-    path('events/edit/<int:event_id>/', views.edit_event, name='edit_event'),
+    path('events/', views.manage_event, name='events'),
+    path('events/<int:event_id>/', views.manage_event, name='manage_event'),
     path('events/delete/<int:event_id>/', views.delete_event, name='delete_event'),
     
     path('authstore/', authview.authstore, name="authstore"),

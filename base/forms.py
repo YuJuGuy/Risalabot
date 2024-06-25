@@ -20,10 +20,9 @@ class UserEventForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super(UserEventForm, self).__init__(*args, **kwargs)
 
-        if 'instance' in kwargs:
-            instance = kwargs['instance']
-            if instance.event_type.name == 'order.updated':
-                self.fields['subcategory'].widget = forms.Select(choices=UserEvent.ORDER_UPDATED_SUBCATEGORIES)
+        instance = kwargs.get('instance')
+        if instance and instance.event_type.label == 'تحديث حالة الطلب':  # Check with the label instead of name
+            self.fields['subcategory'].widget = forms.Select(choices=UserEvent.ORDER_UPDATED_SUBCATEGORIES)
 
         self.fields['event_type'].widget.attrs.update({
             'onchange': 'updateSubcategoryVisibility(this.value);'

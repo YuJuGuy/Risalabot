@@ -77,7 +77,7 @@ def dashboard(request):
     return render(request, 'base/dashboard.html', context)
 
 @login_required(login_url='login')
-def events(request):
+def manage_event(request, event_id=None):
     try:
         store = UserStoreLink.objects.get(user=request.user).store
         events = UserEvent.objects.filter(store=store)
@@ -85,58 +85,45 @@ def events(request):
         messages.error(request, 'No store linked. Please link a store first.')
         return redirect('dashboard')
     
+    event = None
+    if event_id:
+        event = get_object_or_404(UserEvent, id=event_id, store=store)
+
     if request.method == 'POST':
-        form = UserEventForm(request.POST)
+        form = UserEventForm(request.POST, instance=event)
         if form.is_valid():
             event_type = form.cleaned_data['event_type']
             subcategory = form.cleaned_data['subcategory']
             
-            # Check if an event with the same event_type already exists for the user
-            if UserEvent.objects.filter(store=store, event_type=event_type).exists():
-                messages.error(request, 'You have already created an event for this type.')
+            if UserEvent.objects.filter(store=store, event_type=event_type, subcategory=subcategory).exclude(id=event_id).exists():
+                messages.error(request, 'You have already created an event for this type and subcategory.')
             else:
                 event = form.save(commit=False)
                 event.store = store
                 event.save()
-                messages.success(request, 'Event created successfully.')
+                if event_id:
+                    messages.success(request, 'Event updated successfully.')
+                else:
+                    messages.success(request, 'Event created successfully.')
             return redirect('events')
         else:
-            messages.error(request, 'Error creating event. Please correct the form errors.')
+            messages.error(request, 'Error saving event. Please correct the form errors.')
     else:
-        form = UserEventForm()
+        form = UserEventForm(instance=event)
 
     try:
         order_updated_event_type = EventType.objects.get(name='order.updated')
         order_updated_event_type_id = order_updated_event_type.id
     except EventType.DoesNotExist:
-        order_updated_event_type_id = None  # Handle if event type doesn't exist
+        order_updated_event_type_id = None
 
     context = {
         'events': events,
         'form': form,
+        'event': event,
         'order_updated_event_type_id': order_updated_event_type_id,
     }
     return render(request, 'base/events.html', context)
-
-@login_required(login_url='login')
-def edit_event(request, event_id):
-    event = get_object_or_404(UserEvent, id=event_id, store__userstorelink__user=request.user)
-    if request.method == 'POST':
-        form = UserEventForm(request.POST, instance=event)
-        if form.is_valid():
-            form.save()
-            messages.success(request, 'Event updated successfully.')
-            return redirect('events')
-        else:
-            messages.error(request, 'Error updating event. Please correct the form errors.')
-    else:
-        form = UserEventForm(instance=event)  # Pass the instance of UserEvent to prepopulate the form
-
-    context = {
-        'form': form,
-        'event': event
-    }
-    return render(request, 'base/edit_event.html', context)
 
 @login_required(login_url='login')
 def delete_event(request, event_id):
