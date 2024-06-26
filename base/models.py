@@ -1,6 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.utils import timezone
+import json
+
 
 # Create your models here.
 
@@ -78,3 +80,22 @@ class UserEvent(models.Model):
             return f"{self.store.store_name} - {self.event_type.name} - {self.get_subcategory_display()}"
         return f"{self.store.store_name} - {self.event_type.name}"
 
+class Campaign(models.Model):
+    store = models.ForeignKey(Store, on_delete=models.CASCADE)
+    name = models.CharField(max_length=255)
+    description = models.TextField()
+    scheduled_time = models.DateTimeField()
+    status = models.CharField(max_length=20, default='draft')  # 'draft', 'scheduled', 'sent', 'cancelled', etc.
+    clicks = models.IntegerField(default=0)
+    purchases = models.IntegerField(default=0)
+    msg = models.TextField()  # Assuming msg is text content
+    customers_dict_json = models.TextField(default='{}')  # Serialized JSON string for customers_dict
+
+    def customers_dict(self):
+        return json.loads(self.customers_dict_json)
+
+    def set_customers_dict(self, value):
+        self.customers_dict_json = json.dumps(value)
+
+    def __str__(self):
+        return self.name
