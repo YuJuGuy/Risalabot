@@ -4,10 +4,11 @@ from django.contrib import messages
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
-from . forms import CreateUserForm, UserEventForm
-from . models import User, Store, UserStoreLink, UserEvent, EventType
+from . forms import CreateUserForm, UserEventForm, CampaignForm
+from . models import User, Store, UserStoreLink, UserEvent, EventType, Campaign
 from django.http import HttpResponse
 from automations.tasks import sleepy, send_email_task
+from . apis import customer_list
 
 def loginPage(request):
     page = 'login'
@@ -137,7 +138,48 @@ def home(request):
     return render(request, 'base/home.html')
 
 
+@login_required
+def campaign(request):
+    try:
+        store = UserStoreLink.objects.get(user=request.user).store
+        campaigns = Campaign.objects.filter(store=store)
+        store_groups_response = customer_list(request.user)
+        
+        if not store_groups_response.get('success'):
+            messages.error(request, 'Failed to fetch store groups.')
+            return redirect('dashboard')
+        
+        store_groups = store_groups_response.get('data', [])
 
+    except UserStoreLink.DoesNotExist:
+        messages.error(request, 'No store linked. Please link a store first.')
+        return redirect('dashboard')
+    
+    if request.method == 'POST':
+        form = CampaignForm(request.POST, store_groups=store_groups)
+        if form.is_valid():
+            campaign = form.save(commit=False)
+            campaign.store = store
+            if 'save_draft' in request.POST:
+                campaign.status = 'draft'
+            elif 'cancel' in request.POST:
+                campaign.status = 'cancelled'
+            campaign.save()
+            return redirect('dashboard')  # Adjust the redirect as needed
+    else:
+        form = CampaignForm(store_groups=store_groups)
+    
+    context = {
+        'campaigns': campaigns,
+        'form': form,
+    }
+    
+    return render(request, 'base/campaigns.html', context)
+
+    
+    
+    
+    
 
 def email(request):
     send_email_task.delay()

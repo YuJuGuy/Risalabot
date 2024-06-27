@@ -83,19 +83,12 @@ class UserEvent(models.Model):
 class Campaign(models.Model):
     store = models.ForeignKey(Store, on_delete=models.CASCADE)
     name = models.CharField(max_length=255)
-    description = models.TextField()
     scheduled_time = models.DateTimeField()
     status = models.CharField(max_length=20, default='draft')  # 'draft', 'scheduled', 'sent', 'cancelled', etc.
     clicks = models.IntegerField(default=0)
     purchases = models.IntegerField(default=0)
     msg = models.TextField()  # Assuming msg is text content
-    customers_dict_json = models.TextField(default='{}')  # Serialized JSON string for customers_dict
-
-    def customers_dict(self):
-        return json.loads(self.customers_dict_json)
-
-    def set_customers_dict(self, value):
-        self.customers_dict_json = json.dumps(value)
+    customers_group = models.CharField(max_length=255)  # Changed field to store the selected group
 
     def __str__(self):
         return self.name

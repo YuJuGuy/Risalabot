@@ -1,0 +1,11 @@
+{% extends 'main.html' %}
+
+{% block content %}
+  <h2>Create Campaign</h2>
+  <form method="POST">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" name="save_draft">Save as Draft</button>
+    <button type="submit" name="cancel">Cancel</button>
+  </form>
+{% endblock %}

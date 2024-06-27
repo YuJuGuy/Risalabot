@@ -19,6 +19,8 @@ urlpatterns = [
     path('events/<int:event_id>/', views.manage_event, name='manage_event'),
     path('events/delete/<int:event_id>/', views.delete_event, name='delete_event'),
     
+    path('campaigns/', views.campaign, name='campaigns'),
+    
     path('authstore/', authview.authstore, name="authstore"),
     path('callback/', authview.callback, name="callback"),
     path('unlinkstore/<str:store_id>/', authview.unlinkstore, name="unlinkstore"),

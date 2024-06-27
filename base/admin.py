@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import User, Subscription, Store, UserStoreLink, UserEvent, EventType
+from .models import User, Subscription, Store, UserStoreLink, UserEvent, EventType, Campaign
 # Register your models here.
 
 admin.site.register(User)
@@ -8,3 +8,4 @@ admin.site.register(Store)
 admin.site.register(UserStoreLink)
 admin.site.register(UserEvent)
 admin.site.register(EventType)
+admin.site.register(Campaign)
