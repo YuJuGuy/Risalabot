@@ -11,7 +11,6 @@ def sleepy(duration):
 
 @shared_task(acks_late=True)
 def send_email_task():
-    sleep(20)
     print('Mail Sent')
 
     return None

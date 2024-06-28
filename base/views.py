@@ -3,7 +3,8 @@ from django.contrib.auth import authenticate
 from django.contrib import messages
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.forms import UserCreationForm
+from django.utils import timezone
+from django.utils.timezone import make_aware
 from . forms import CreateUserForm, UserEventForm, CampaignForm
 from . models import User, Store, UserStoreLink, UserEvent, EventType, Campaign
 from django.http import HttpResponse
@@ -158,6 +159,13 @@ def campaign(request):
     if request.method == 'POST':
         form = CampaignForm(request.POST, store_groups=store_groups)
         if form.is_valid():
+            scheduled_time = form.cleaned_data['scheduled_time']
+            if scheduled_time.tzinfo is None or scheduled_time.tzinfo.utcoffset(scheduled_time) is None:
+                scheduled_time = make_aware(scheduled_time)
+            
+            send_email_task.apply_async(eta=scheduled_time)
+            print(scheduled_time)
+            
             campaign = form.save(commit=False)
             campaign.store = store
             if 'save_draft' in request.POST:

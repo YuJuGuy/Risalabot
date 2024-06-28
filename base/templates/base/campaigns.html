@@ -1,6 +1,16 @@
 {% extends 'main.html' %}
 
 {% block content %}
+    <h2>Campaigns</h2>
+    {% if campaigns %}
+        <ul>
+            {% for campaign in campaigns %}
+                <li>{{ campaign.name }}</li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>No campaigns found.</p>
+    {% endif %}
   <h2>Create Campaign</h2>
   <form method="POST">
     {% csrf_token %}
