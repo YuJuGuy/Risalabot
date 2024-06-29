@@ -52,5 +52,12 @@
         }
 
         linkColor.forEach(l => l.addEventListener('click', colorLink));
+
+        document.querySelectorAll('.nav__dropdown').forEach(item => {
+            item.addEventListener('click', function() {
+              this.classList.toggle('active');
+            });
+          });
+          
     </script>
 </html>

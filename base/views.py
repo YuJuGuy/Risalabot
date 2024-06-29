@@ -139,7 +139,7 @@ def home(request):
     return render(request, 'base/home.html')
 
 
-@login_required
+@login_required(login_url='login')
 def campaign(request):
     try:
         store = UserStoreLink.objects.get(user=request.user).store

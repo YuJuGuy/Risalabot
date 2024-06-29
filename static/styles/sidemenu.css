@@ -1,13 +1,14 @@
 /*========== GOOGLE FONTS ==========*/
 @import url("https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap");
+@import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100..900&display=swap');
+
 
 /*========== VARIABLES CSS ==========*/
 :root {
   --header-height: 3.5rem;
-  --nav-width: 219px;
 
   /*========== Colors ==========*/
-  --first-color: #6923D0;
+  --first-color: #a7d7c5;
   --first-color-light: #F4F0FA;
   --title-color: #19181B;
   --text-color: #58555E;
@@ -16,7 +17,7 @@
   --container-color: #FFFFFF;
 
   /*========== Font and typography ==========*/
-  --body-font: 'Poppins', sans-serif;
+  --body-font: "Vazirmatn", sans-serif;
   --normal-font-size: .938rem;
   --small-font-size: .75rem;
   --smaller-font-size: .75rem;
@@ -26,13 +27,13 @@
   --font-semi-bold: 600;
 
   /*========== z index ==========*/
-  --z-fixed: 100;
+  --z-fixed: 0;
 }
 
 @media screen and (min-width: 1024px) {
   :root {
     --normal-font-size: 1rem;
-    --small-font-size: .875rem;
+    --small-font-size: .775rem;
     --smaller-font-size: .813rem;
   }
 }
@@ -132,9 +133,7 @@ img {
   color: var(--text-color);
 }
 
-.nav__link:hover {
-  color: var(--first-color);
-}
+
 
 .nav__icon {
   font-size: 1.2rem;
@@ -145,6 +144,7 @@ img {
   font-size: var(--small-font-size);
   font-weight: var(--font-medium);
   white-space: nowrap;
+  margin-right: .5rem;
 }
 
 .nav__logout {
@@ -167,7 +167,7 @@ img {
 .nav__dropdown-content {
   display: grid;
   row-gap: .5rem;
-  padding: .75rem 2.5rem .75rem 1.8rem;
+  padding: .75rem 1.5rem .75rem 1.8rem;
 }
 
 .nav__dropdown-item {
@@ -176,9 +176,7 @@ img {
   color: var(--text-color);
 }
 
-.nav__dropdown-item:hover {
-  color: var(--first-color);
-}
+
 
 .nav__dropdown-icon {
   margin-left: auto;
@@ -186,14 +184,14 @@ img {
 }
 
 /* Show dropdown collapse */
-.nav__dropdown:hover {
-  max-height: 100rem;
-}
-
-/* Rotate icon arrow */
-.nav__dropdown:hover .nav__dropdown-icon {
-  transform: rotate(180deg);
-}
+.nav__dropdown.active {
+    max-height: 100rem;
+  }
+  
+  /* Rotate icon arrow on click */
+  .nav__dropdown.active .nav__dropdown-icon {
+    transform: rotate(180deg);
+  }
 
 /*===== Show menu =====*/
 .show-menu {
@@ -202,7 +200,7 @@ img {
 
 /*===== Active link =====*/
 .active {
-  color: var(--first-color);
+  color: #00ffa2;
 }
 
 /* ========== MEDIA QUERIES ==========*/

@@ -5,11 +5,9 @@
 
             <div class="nav__list">
                 <div class="nav__items">
-                    <h3 class="nav__subtitle">Profile</h3>
-
-                    <a href="#" class="nav__link active">
+                    <a href="{% url 'home' %}" class="nav__link active">
                         <i class='bx bx-home nav__icon' ></i>
-                        <span class="nav__name">Home</span>
+                        <span class="nav__name">الصفحة الرئيسية</span>
                     </a>
                     
                     <div class="nav__dropdown">
@@ -28,14 +26,10 @@
                         </div>
                     </div>
 
-                    <a href="#" class="nav__link">
+                    <a href="{% url 'dashboard' %}" class="nav__link">
                         <i class='bx bx-message-rounded nav__icon' ></i>
-                        <span class="nav__name">Messages</span>
+                        <span class="nav__name">الداشبورد</span>
                     </a>
-                </div>
-
-                <div class="nav__items">
-                    <h3 class="nav__subtitle">Menu</h3>
 
                     <div class="nav__dropdown">
                         <a href="#" class="nav__link">
@@ -67,7 +61,7 @@
             </div>
         </div>
 
-        <a href="#" class="nav__link nav__logout">
+        <a href="{% url 'logout' %}" class="nav__link nav__logout">
             <i class='bx bx-log-out nav__icon' ></i>
             <span class="nav__name">Log Out</span>
         </a>
