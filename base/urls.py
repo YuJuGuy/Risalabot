@@ -21,6 +21,8 @@ urlpatterns = [
     
     path('campaigns/', views.campaign, name='campaigns'),
     
+    path('customers/', views.customer_list_view, name='customers'),
+    
     path('authstore/', authview.authstore, name="authstore"),
     path('callback/', authview.callback, name="callback"),
     path('unlinkstore/<str:store_id>/', authview.unlinkstore, name="unlinkstore"),

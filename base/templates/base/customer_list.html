@@ -1,0 +1,11 @@
+{% extends 'main.html' %}
+{% block content %}
+    {% if store_groups%}
+    {% for store_group in store_groups %}
+    <div class="content-body">
+        <h2>{{ store_group.name }}</h2>
+        <h2>{{ store_group.id }}</h2>
+
+    {% endfor %}
+    {% endif %}
+{% endblock %}

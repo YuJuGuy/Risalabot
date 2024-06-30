@@ -159,7 +159,6 @@ img {
 }
 
 .nav__dropdown-collapse {
-  background-color: var(--first-color-light);
   border-radius: .25rem;
   margin-top: 1rem;
 }

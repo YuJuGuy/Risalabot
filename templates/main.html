@@ -46,18 +46,24 @@
 
         const linkColor = document.querySelectorAll('.nav__link');
 
-        function colorLink(){
+        function colorLink(event) {
+            // Prevents the link from toggling the dropdown if it has one
+            if (this.nextElementSibling && this.nextElementSibling.classList.contains('nav__dropdown-collapse')) {
+                event.preventDefault();
+            }
+            // Remove active class from all links
             linkColor.forEach(l => l.classList.remove('active'));
+            // Add active class to the clicked link
             this.classList.add('active');
         }
-
+        
         linkColor.forEach(l => l.addEventListener('click', colorLink));
-
+        
         document.querySelectorAll('.nav__dropdown').forEach(item => {
             item.addEventListener('click', function() {
-              this.classList.toggle('active');
+                this.classList.toggle('active');
             });
-          });
+        });
           
     </script>
 </html>

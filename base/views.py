@@ -185,6 +185,28 @@ def campaign(request):
     return render(request, 'base/campaigns.html', context)
 
     
+
+@login_required(login_url='login')
+def customer_list_view(request):
+    try:
+        store_groups_response = customer_list(request.user)
+        
+        if not store_groups_response.get('success'):
+            messages.error(request, 'Failed to fetch store groups.')
+            return redirect('dashboard')
+        
+        store_groups = store_groups_response.get('data', [])
+
+    except UserStoreLink.DoesNotExist:
+        messages.error(request, 'No store linked. Please link a store first.')
+        return redirect('dashboard')
+    
+    context = {
+        'store_groups': store_groups,
+    }
+
+    
+    return render(request, 'base/customer_list.html', context)
     
     
     

@@ -5,14 +5,11 @@
 
             <div class="nav__list">
                 <div class="nav__items">
-                    <a href="{% url 'home' %}" class="nav__link active">
-                        <i class='bx bx-home nav__icon' ></i>
-                        <span class="nav__name">الصفحة الرئيسية</span>
-                    </a>
+
                     
-                    <div class="nav__dropdown">
+                    {% comment %} <div class="nav__dropdown">
                         <a href="#" class="nav__link">
-                            <i class='bx bx-user nav__icon' ></i>
+                            <i class='bx bx-user nav__icon'></i>
                             <span class="nav__name">Profile</span>
                             <i class='bx bx-chevron-down nav__icon nav__dropdown-icon'></i>
                         </a>
@@ -24,37 +21,26 @@
                                 <a href="#" class="nav__dropdown-item">Accounts</a>
                             </div>
                         </div>
-                    </div>
+                   </div> {% endcomment %}
 
-                    <a href="{% url 'dashboard' %}" class="nav__link">
-                        <i class='bx bx-message-rounded nav__icon' ></i>
+                    <a href="{% url 'dashboard' %}" class="nav__link {% if request.path == '/dashboard/' %}active{% endif %}">
+                        <i class='bx bxs-dashboard nav__icon'></i>
                         <span class="nav__name">الداشبورد</span>
                     </a>
-
-                    <div class="nav__dropdown">
-                        <a href="#" class="nav__link">
-                            <i class='bx bx-bell nav__icon' ></i>
-                            <span class="nav__name">Notifications</span>
-                            <i class='bx bx-chevron-down nav__icon nav__dropdown-icon'></i>
-                        </a>
-
-                        <div class="nav__dropdown-collapse">
-                            <div class="nav__dropdown-content">
-                                <a href="#" class="nav__dropdown-item">Blocked</a>
-                                <a href="#" class="nav__dropdown-item">Silenced</a>
-                                <a href="#" class="nav__dropdown-item">Publish</a>
-                                <a href="#" class="nav__dropdown-item">Program</a>
-                            </div>
-                        </div>
-
-                    </div>
-
-                    <a href="#" class="nav__link">
-                        <i class='bx bx-compass nav__icon' ></i>
-                        <span class="nav__name">Explore</span>
+                    <a href="{% url 'events' %}" class="nav__link {% if request.path == '/events/' %}active{% endif %}">
+                        <i class='bx bxs-message-alt-check nav__icon'></i>
+                        <span class="nav__name">الرسائل التلقائية</span>
                     </a>
+                    <a href="{% url 'campaigns' %}" class="nav__link {% if request.path == '/campaigns/' %}active{% endif %}">
+                        <i class='bx bxs-megaphone nav__icon'></i>
+                        <span class="nav__name">الحملات الترويجية</span>
+                    </a>
+                    <a href="{% url 'customers' %}" class="nav__link {% if request.path == '/customers/' %}active{% endif %}">
+                        <i class='bx bxs-user-detail nav__icon'></i>
+                        <span class="nav__name">العملاء</span>
+
                     <a href="#" class="nav__link">
-                        <i class='bx bx-bookmark nav__icon' ></i>
+                        <i class='bx bx-bookmark nav__icon'></i>
                         <span class="nav__name">Saved</span>
                     </a>
                 </div>
@@ -62,7 +48,7 @@
         </div>
 
         <a href="{% url 'logout' %}" class="nav__link nav__logout">
-            <i class='bx bx-log-out nav__icon' ></i>
+            <i class='bx bx-log-out nav__icon'></i>
             <span class="nav__name">Log Out</span>
         </a>
     </nav>
