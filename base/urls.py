@@ -22,6 +22,8 @@ urlpatterns = [
     path('campaigns/', views.campaign, name='campaigns'),
     
     path('customers/', views.customer_list_view, name='customers'),
+    path('get-customers/', views.get_customers, name='get_customers'),
+
     
     path('authstore/', authview.authstore, name="authstore"),
     path('callback/', authview.callback, name="callback"),

@@ -7,9 +7,9 @@ from django.utils import timezone
 from django.utils.timezone import make_aware
 from . forms import CreateUserForm, UserEventForm, CampaignForm
 from . models import User, Store, UserStoreLink, UserEvent, EventType, Campaign
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from automations.tasks import sleepy, send_email_task
-from . apis import customer_list
+from . apis import customer_list, customers
 
 def loginPage(request):
     page = 'login'
@@ -196,7 +196,7 @@ def customer_list_view(request):
             return redirect('dashboard')
         
         store_groups = store_groups_response.get('data', [])
-
+        
     except UserStoreLink.DoesNotExist:
         messages.error(request, 'No store linked. Please link a store first.')
         return redirect('dashboard')
@@ -204,9 +204,16 @@ def customer_list_view(request):
     context = {
         'store_groups': store_groups,
     }
-
     
     return render(request, 'base/customer_list.html', context)
+
+@login_required(login_url='login')
+def get_customers(request):
+    try:
+        customer_list_response = customers(request.user)
+        return JsonResponse({'customers': customer_list_response}, status=200)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
     
     
     
