@@ -38,7 +38,6 @@ def authstore(request):
     )
 
     # Print debug information for URL
-    print(f"Auth URL: {auth_url}")
 
     return redirect(auth_url)
 

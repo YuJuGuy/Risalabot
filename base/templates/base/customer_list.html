@@ -1,15 +1,27 @@
 {% extends 'main.html' %}
 
 {% block content %}
-    {% if store_groups %}
-    {% for store_group in store_groups %}
-    <div class="content-body">
-        <h2>{{ store_group.name }}</h2>
-        <h2>{{ store_group.id }}</h2>
+<h1>Create a New Customer</h1>
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Create Customer</button>
+</form>
+
+<div class="cards-container" id = "group-cards-container">
+    <div class="customers-card-container">
+        <div class="all-customers">
+            <i class="fa-solid fa-user"></i>
+        </div>
+        <div class="customers-count">
+            <span class="customers-count-title">عدد العملاء</span>
+            <span class="customers-count-number">Loading</span>
+        </div>
     </div>
-    {% endfor %}
-    {% endif %}
-    <div class="table container">
+</div>
+
+
+<div class="table-container">
     <div class="table-header">
         <div class="table-search">
             <input type="text" id="search" placeholder="Search customers...">
@@ -23,106 +35,22 @@
     <table id="customers-table" style="display: none;">
         <thead>
             <tr>
-                <th>Name</th>
-                <th>ID</th>
-                <th>Email</th>
-                <th>Phone</th>
-                <th>Groups</th>
+                <th>الأسم</th>
+                <th>البريد الالكتروني</th>
+                <th>رقم الهاتف</th>
+                <th>الموقع</th>
+                <th>المجموعات</th>
+                <th>تاريخ المزامنة</th>
             </tr>
         </thead>
         <tbody id="customers-body">
             <!-- Customer data will be injected here by JavaScript -->
         </tbody>
     </table>
-    </div>
+</div>
 
-    <meta name="csrf-token" content="{{ csrf_token }}">
+<meta name="csrf-token" content="{{ csrf_token }}">
 
-    <script>
-    document.addEventListener("DOMContentLoaded", function() {
-        fetchCustomers();
-    });
+<div id="data-urls" data-customers-url="{% url 'get_customers' %}"></div>
 
-    function getCSRFToken() {
-        return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-    }
-
-    function fetchCustomers() {
-        const csrftoken = getCSRFToken();
-        fetch("{% url 'get_customers' %}", {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrftoken
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            const customersTable = document.getElementById('customers-table');
-            const customersBody = document.getElementById('customers-body');
-            const loadingDiv = document.getElementById('customers-loading');
-
-            // Remove loading indicator
-            loadingDiv.style.display = 'none';
-
-            // Populate the table
-            if (data.customers) {
-                data.customers.forEach(customer => {
-                    const row = document.createElement('tr');
-
-                    row.innerHTML = `
-                        <td>${customer.name}</td>
-                        <td>${customer.customer_id}</td>
-                        <td>${customer.email}</td>
-                        <td>${customer.phone}</td>
-                        <td>${customer.groups.length ? customer.groups.join(', ') : 'No groups'}</td>
-                    `;
-
-                    customersBody.appendChild(row);
-                });
-
-                // Show the table
-                customersTable.style.display = 'table';
-            } else {
-                loadingDiv.innerHTML = 'Failed to load customers.';
-            }
-        })
-        .catch(error => {
-            console.error('Error fetching customers:', error);
-            document.getElementById('customers-loading').innerHTML = 'Failed to load customers.';
-        });
-    }
-    </script>
-    <style>
-        .table-header {
-            display: flex;
-            margin-bottom: 1rem;
-            flex-direction: row;
-        }
-        table{
-            border-spacing: 1;
-            border-collapse: collapse;
-            background: #fff;
-            overflow: hidden;
-            width: 100%;
-            margin: 0 auto;
-            position: relative;
-        }
-        table thead tr {
-            height: 60px;
-        }
-        table tbody tr {
-            height: 50px;
-        }
-
-    table tbody tr td{
-        padding: 0.5rem 0.75rem;
-
-    }
-    table thead tr th{
-        text-align: right;
-        padding: 0.5rem 0.75rem;
-
-    }
-    </style>
 {% endblock %}

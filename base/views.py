@@ -5,11 +5,11 @@ from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
 from django.utils.timezone import make_aware
-from . forms import CreateUserForm, UserEventForm, CampaignForm
+from . forms import CreateUserForm, UserEventForm, CampaignForm, GroupCreationForm
 from . models import User, Store, UserStoreLink, UserEvent, EventType, Campaign
 from django.http import HttpResponse, JsonResponse
 from automations.tasks import sleepy, send_email_task
-from . apis import customer_list, customers
+from . apis import get_customer_data, create_customer_group, delete_customer_group
 
 def loginPage(request):
     page = 'login'
@@ -144,7 +144,7 @@ def campaign(request):
     try:
         store = UserStoreLink.objects.get(user=request.user).store
         campaigns = Campaign.objects.filter(store=store)
-        store_groups_response = customer_list(request.user)
+        store_groups_response = get_customer_data(request.user)
         
         if not store_groups_response.get('success'):
             messages.error(request, 'Failed to fetch store groups.')
@@ -187,36 +187,56 @@ def campaign(request):
     
 
 @login_required(login_url='login')
-def customer_list_view(request):
+def customers_view(request):
     try:
-        store_groups_response = customer_list(request.user)
-        
-        if not store_groups_response.get('success'):
-            messages.error(request, 'Failed to fetch store groups.')
-            return redirect('dashboard')
-        
-        store_groups = store_groups_response.get('data', [])
+        store = UserStoreLink.objects.get(user=request.user).store
         
     except UserStoreLink.DoesNotExist:
         messages.error(request, 'No store linked. Please link a store first.')
         return redirect('dashboard')
     
+    form = GroupCreationForm()
+    if request.method == 'POST':
+        form = GroupCreationForm(request.POST)
+        
+        if form.is_valid():
+            group_name = form.cleaned_data['name']
+            response = create_customer_group(request.user, group_name)
+            print(response)
+            if response.get('success') == True:
+                messages.success(request, 'Group created successfully.')
+            else:
+                messages.error(request, 'Error creating group. Please correct the form errors 1.')
+        else:
+            messages.error(request, 'Error creating group. Please correct the form errors 2.')
+    
     context = {
-        'store_groups': store_groups,
+        'form': form,
     }
     
-    return render(request, 'base/customer_list.html', context)
+    return render(request, 'base/customer_list.html',context)
 
 @login_required(login_url='login')
 def get_customers(request):
     try:
-        customer_list_response = customers(request.user)
-        return JsonResponse({'customers': customer_list_response}, status=200)
+        customer_data = get_customer_data(request.user)
+        return JsonResponse({
+            'customers': customer_data.get('customers', []), 
+            'group_counts': customer_data.get('group_counts', {}), 
+            'group_id_to_name': customer_data.get('group_id_to_name', {})
+        }, status=200)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
     
-    
-    
+@login_required(login_url='login')
+def delete_customer_list(request, group_id):
+    response = delete_customer_group(request.user, group_id)
+    if response.get('success'):
+        messages.success(request, 'Group deleted successfully.')
+        return redirect('customers')
+    else:
+        messages.error(request, 'Error deleting group.')
+        return redirect('customers')
 
 def email(request):
     send_email_task.delay()

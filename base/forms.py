@@ -47,3 +47,6 @@ class CampaignForm(forms.ModelForm):
         self.fields['customers_group'].widget = forms.Select(
             choices=[(group['id'], group['name']) for group in store_groups]
         )
+        
+class GroupCreationForm(forms.Form):
+    name = forms.CharField(max_length=100)

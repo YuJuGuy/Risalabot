@@ -8,8 +8,10 @@
         <meta name="description" content="">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <link rel="stylesheet" href="{% static 'styles/main.css' %}" />
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/boxicons@latest/css/boxicons.min.css">
         <link rel="stylesheet" href="{% static 'styles/sidemenu.css' %}">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/boxicons@latest/css/boxicons.min.css">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+        
 
     </head>
     <body>
@@ -32,37 +34,7 @@
         </div>
 
     </body>
+    <script src="https://kit.fontawesome.com/985ffc9040.js" crossorigin="anonymous"></script>
+    <script src="{% static 'js/main.js' %}"></script>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            const messages = document.querySelectorAll('.message');
-            setTimeout(() => {
-                messages.forEach(message => {
-                    message.classList.add('hidden');
-                });
-            }, 3000); // Change 3000 to the number of milliseconds you want the message to display
-        });
-
-        const linkColor = document.querySelectorAll('.nav__link');
-
-        function colorLink(event) {
-            // Prevents the link from toggling the dropdown if it has one
-            if (this.nextElementSibling && this.nextElementSibling.classList.contains('nav__dropdown-collapse')) {
-                event.preventDefault();
-            }
-            // Remove active class from all links
-            linkColor.forEach(l => l.classList.remove('active'));
-            // Add active class to the clicked link
-            this.classList.add('active');
-        }
-        
-        linkColor.forEach(l => l.addEventListener('click', colorLink));
-        
-        document.querySelectorAll('.nav__dropdown').forEach(item => {
-            item.addEventListener('click', function() {
-                this.classList.toggle('active');
-            });
-        });
-          
-    </script>
 </html>
