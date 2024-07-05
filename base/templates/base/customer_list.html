@@ -1,12 +1,34 @@
 {% extends 'main.html' %}
 
 {% block content %}
-<h1>Create a New Customer</h1>
-<form method="post">
+<h1>Create a New Group</h1>
+<form method="post" id="group-creation-form">
     {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit">Create Customer</button>
+    {{ form.name.label_tag }} {{ form.name }}
+    <div id="conditions-container"></div>
+    <button type="button" id="add-condition-button">Add Condition</button>
+    <br>
+    <button type="submit">Create Group</button>
 </form>
+
+<template id="condition-template">
+    <div class="condition">
+        <select name="condition_field">
+            <option value="total_sales">Total Sales</option>
+            <option value="total_orders">Total Orders</option>
+            <option value="store_rating">Store Rating</option>
+        </select>
+        <select name="symbol_field">
+            <option value="<"><</option>
+            <option value=">">></option>
+            <option value="between">between</option>
+        </select>
+        <div class="value-container">
+            <input type="number" name="value_field" class="value-field" />
+        </div>
+        <button type="button" class="remove-condition">Remove</button>
+    </div>
+</template>
 
 <div class="cards-container" id = "group-cards-container">
     <div class="customers-card-container">

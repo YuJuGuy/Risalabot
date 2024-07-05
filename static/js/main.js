@@ -61,7 +61,9 @@ function fetchCustomers() {
                 const groupCard = document.createElement('div');
                 groupCard.classList.add('customers-card-container');
                 groupCard.innerHTML = `
-                    <a href="/delete-group/${group_id}/" onclick="return confirm('Are you sure you want to delete this group?');">Delete</a>
+                    <a href="/delete-group/${group_id}/" onclick="return confirm('Are you sure you want to delete this group?');">
+                        <i class="fa-solid fa-trash"></i>
+                    </a>
                     <div class="all-customers">
                         <i class="fa-solid fa-user"></i>
                     </div>
@@ -108,5 +110,45 @@ linkColor.forEach(l => l.addEventListener('click', colorLink));
 document.querySelectorAll('.nav__dropdown').forEach(item => {
     item.addEventListener('click', function() {
         this.classList.toggle('active');
+    });
+});
+document.addEventListener('DOMContentLoaded', function() {
+    const addConditionButton = document.getElementById('add-condition-button');
+    const conditionsContainer = document.getElementById('conditions-container');
+    const conditionTemplate = document.getElementById('condition-template').content;
+
+    addConditionButton.addEventListener('click', function() {
+        const newCondition = document.importNode(conditionTemplate, true);
+        const index = conditionsContainer.children.length;
+        const conditionElement = newCondition.querySelector('.condition');
+        conditionElement.dataset.index = index;
+        conditionElement.querySelector('select[name="condition_field"]').name = `condition_field-${index}`;
+        conditionElement.querySelector('select[name="symbol_field"]').name = `symbol_field-${index}`;
+        conditionElement.querySelector('input[name="value_field"]').name = `value_field-${index}`;
+        conditionsContainer.appendChild(newCondition);
+    });
+
+    conditionsContainer.addEventListener('click', function(event) {
+        if (event.target.classList.contains('remove-condition')) {
+            event.target.parentElement.remove();
+        }
+    });
+
+    conditionsContainer.addEventListener('change', function(event) {
+        if (event.target.name.startsWith('symbol_field')) {
+            const conditionDiv = event.target.closest('.condition');
+            const valueContainer = conditionDiv.querySelector('.value-container');
+            const index = conditionDiv.dataset.index;
+            if (event.target.value === 'between') {
+                valueContainer.innerHTML = `
+                    <input type="number" name="min_value_field-${index}" class="min-value-field" placeholder="Min value" />
+                    <input type="number" name="max_value_field-${index}" class="max-value-field" placeholder="Max value" />
+                `;
+            } else {
+                valueContainer.innerHTML = `
+                    <input type="number" name="value_field-${index}" class="value-field" />
+                `;
+            }
+        }
     });
 });

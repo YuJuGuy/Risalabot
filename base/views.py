@@ -9,7 +9,7 @@ from . forms import CreateUserForm, UserEventForm, CampaignForm, GroupCreationFo
 from . models import User, Store, UserStoreLink, UserEvent, EventType, Campaign
 from django.http import HttpResponse, JsonResponse
 from automations.tasks import sleepy, send_email_task
-from . apis import get_customer_data, create_customer_group, delete_customer_group
+from . apis import get_customer_data, create_customer_group, delete_customer_group,group_campaign, get_customers_from_group
 
 def loginPage(request):
     page = 'login'
@@ -144,7 +144,7 @@ def campaign(request):
     try:
         store = UserStoreLink.objects.get(user=request.user).store
         campaigns = Campaign.objects.filter(store=store)
-        store_groups_response = get_customer_data(request.user)
+        store_groups_response = group_campaign(request.user)
         
         if not store_groups_response.get('success'):
             messages.error(request, 'Failed to fetch store groups.')
@@ -159,12 +159,14 @@ def campaign(request):
     if request.method == 'POST':
         form = CampaignForm(request.POST, store_groups=store_groups)
         if form.is_valid():
+            msg = form.cleaned_data['msg']
+            group_id = form.cleaned_data['customers_group']
             scheduled_time = form.cleaned_data['scheduled_time']
             if scheduled_time.tzinfo is None or scheduled_time.tzinfo.utcoffset(scheduled_time) is None:
                 scheduled_time = make_aware(scheduled_time)
             
-            send_email_task.apply_async(eta=scheduled_time)
-            print(scheduled_time)
+            customers_numbers = get_customers_from_group(request.user, group_id)
+            send_email_task.apply_async(eta=scheduled_time, args=[customers_numbers, msg])
             
             campaign = form.save(commit=False)
             campaign.store = store
@@ -201,7 +203,8 @@ def customers_view(request):
         
         if form.is_valid():
             group_name = form.cleaned_data['name']
-            response = create_customer_group(request.user, group_name)
+            conditions = form.cleaned_data['conditions']
+            response = create_customer_group(request.user, group_name, conditions)
             print(response)
             if response.get('success') == True:
                 messages.success(request, 'Group created successfully.')

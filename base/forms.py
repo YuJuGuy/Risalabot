@@ -1,6 +1,7 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from . models import User , UserEvent, Campaign
+from django.core.exceptions import ValidationError
 
 class CreateUserForm(UserCreationForm):
     username = forms.CharField(label='اسم المستخدم', max_length=150)
@@ -50,3 +51,55 @@ class CampaignForm(forms.ModelForm):
         
 class GroupCreationForm(forms.Form):
     name = forms.CharField(max_length=100)
+
+    def clean(self):
+        cleaned_data = super().clean()
+        conditions = []
+        condition_fields = [key for key in self.data.keys() if key.startswith('condition_field')]
+
+        for field in condition_fields:
+            index = field.split('-')[-1]
+            condition_field = self.data.get(f'condition_field-{index}')
+            symbol_field = self.data.get(f'symbol_field-{index}')
+
+            if symbol_field == 'between':
+                min_value_field = self.data.get(f'min_value_field-{index}')
+                max_value_field = self.data.get(f'max_value_field-{index}')
+                if min_value_field is None or max_value_field is None:
+                    raise ValidationError('Both min and max values are required for "between" symbol.')
+                # Validate min_value and max_value fields
+                try:
+                    min_value_field = int(min_value_field)
+                    max_value_field = int(max_value_field)
+                    if min_value_field < 0 or max_value_field < 0:
+                        raise ValidationError('Values must be non-negative integers.')
+                    if min_value_field >= max_value_field:
+                        raise ValidationError('Min value must be less than max value.')
+                except ValueError:
+                    raise ValidationError('Invalid min or max value.')
+                conditions.append({
+                    'type': condition_field,
+                    'symbol': symbol_field,
+                    'min_value': min_value_field,
+                    'max_value': max_value_field
+                })
+            else:
+                value_field = self.data.get(f'value_field-{index}')
+                if value_field is None:
+                    raise ValidationError('Value is required.')
+                # Validate value field
+                try:
+                    value_field = int(value_field)
+                    if value_field < 0:
+                        raise ValidationError(f'Value must be a non-negative integer: {value_field}')
+                except ValueError:
+                    raise ValidationError(f'Invalid value: {value_field}')
+                conditions.append({
+                    'type': condition_field,
+                    'symbol': symbol_field,
+                    'value': value_field
+                })
+
+        # You can add any additional validation logic here
+        cleaned_data['conditions'] = conditions
+        return cleaned_data

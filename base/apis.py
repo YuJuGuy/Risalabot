@@ -4,12 +4,49 @@ from .models import UserStoreLink
 
 
 
+
+def group_campaign(user):
+    store = UserStoreLink.objects.get(user=user).store
+    access_token = store.access_token
+    
+    headers = {
+        'Authorization': f'Bearer {access_token}'
+    }
+    
+    group_url = "https://api.salla.dev/admin/v2/customers/groups"
+    group_response = requests.get(group_url, headers=headers)
+    group_data = group_response.json()
+    
+    return group_data
+
+def get_customers_from_group(user, group_id):
+    store = UserStoreLink.objects.get(user=user).store
+    access_token = store.access_token
+    
+    headers = {
+        'Authorization': f'Bearer {access_token}'
+    }
+    
+    customers_url = f"https://api.salla.dev/admin/v2/customers/"
+    
+    response = requests.get(customers_url, headers=headers)
+    customers_data = response.json()
+    customers = []
+    
+    for customer in customers_data.get('data', []):
+        customer_groups = customer.get('groups', [])
+        
+        if int(group_id) in [int(group) for group in customer_groups]:
+            customer_number = str(customer.get('mobile_code')) + str(customer.get('mobile'))
+            customers.append(customer_number)
+            
+    return customers
+
 def get_customer_data(user):
     store = UserStoreLink.objects.get(user=user).store
     access_token = store.access_token
     
     headers = {
-        'User-Agent': 'Apidog/1.0.0 (https://apidog.com)',
         'Authorization': f'Bearer {access_token}'
     }
     
@@ -72,7 +109,7 @@ def get_customer_data(user):
     return {'success': True, 'customers': customers, 'group_counts': group_counts, 'group_id_to_name': group_id_to_name}
 
 
-def create_customer_group(user, group_name):
+def create_customer_group(user, group_name, condtion=None):
     store = UserStoreLink.objects.get(user=user).store
     access_token = store.access_token
     
@@ -82,9 +119,17 @@ def create_customer_group(user, group_name):
         'Content-Type': 'application/json'
     }
     
-    data = {
-        'name': group_name
-    }
+    if condtion:
+        data = {
+            'name': group_name,
+            'conditions': condtion
+        }
+    else:
+        data = {
+            'name': group_name
+        }
+        
+    print(data)
     
     groups_url = "https://api.salla.dev/admin/v2/customers/groups"
     response = requests.post(groups_url, headers=headers, json=data)
