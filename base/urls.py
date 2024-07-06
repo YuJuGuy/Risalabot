@@ -29,7 +29,6 @@ urlpatterns = [
     path('callback/', authview.callback, name="callback"),
     path('unlinkstore/<str:store_id>/', authview.unlinkstore, name="unlinkstore"),
     
-    path('email/', views.email, name="email"),
     
 
     path('', views.home, name="home"),

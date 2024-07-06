@@ -91,6 +91,11 @@ def callback(request):
                 if UserStoreLink.objects.filter(store=store).exists():
                     messages.error(request, 'This store is already connected to another user.')
                     return redirect('dashboard')
+                
+                if UserStoreLink.objects.filter(user=request.user).exists():
+                    messages.error(request, 'You are already connected to a store.')
+                    return redirect('dashboard')  # Redirect to the dashboard
+
 
                 UserStoreLink.objects.create(user=request.user, store=store)
                 return redirect('dashboard')

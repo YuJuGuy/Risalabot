@@ -1,4 +1,4 @@
-from django.shortcuts import render,redirect, get_object_or_404
+from django.shortcuts import render,redirect
 from django.contrib.auth import authenticate
 from django.contrib import messages
 from django.contrib.auth import login, logout
@@ -89,7 +89,7 @@ def manage_event(request, event_id=None):
     
     event = None
     if event_id:
-        event = get_object_or_404(UserEvent, id=event_id, store=store)
+        event = UserEvent.objects.get(id=event_id, store=UserStoreLink.objects.get(user=request.user).store)
 
     if request.method == 'POST':
         form = UserEventForm(request.POST, instance=event)
@@ -129,7 +129,7 @@ def manage_event(request, event_id=None):
 
 @login_required(login_url='login')
 def delete_event(request, event_id):
-    event = get_object_or_404(UserEvent, id=event_id, store__userstorelink__user=request.user)
+    event = UserEvent.objects.get(id=event_id, store=UserStoreLink.objects.get(user=request.user).store)
     event.delete()
     messages.success(request, 'Event deleted successfully.')
     return redirect('events')
@@ -188,6 +188,8 @@ def campaign(request):
 
     
 
+
+#Customer Views
 @login_required(login_url='login')
 def customers_view(request):
     try:
@@ -219,6 +221,8 @@ def customers_view(request):
     
     return render(request, 'base/customer_list.html',context)
 
+
+
 @login_required(login_url='login')
 def get_customers(request):
     try:
@@ -231,6 +235,8 @@ def get_customers(request):
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
     
+    
+    
 @login_required(login_url='login')
 def delete_customer_list(request, group_id):
     response = delete_customer_group(request.user, group_id)
@@ -241,7 +247,3 @@ def delete_customer_list(request, group_id):
         messages.error(request, 'Error deleting group.')
         return redirect('customers')
 
-def email(request):
-    send_email_task.delay()
-    return HttpResponse('<h1>Email Sent</h1>')
-    

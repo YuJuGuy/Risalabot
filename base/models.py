@@ -35,7 +35,7 @@ class Store(models.Model):
     last_reset = models.DateTimeField(default=timezone.now)
 
     def __str__(self):
-        return self.store_name
+        return self.store_name + ' - ' + self.store_id
     
 class UserStoreLink(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -77,8 +77,8 @@ class UserEvent(models.Model):
 
     def __str__(self):
         if self.subcategory:
-            return f"{self.store.store_name} - {self.event_type.name} - {self.get_subcategory_display()}"
-        return f"{self.store.store_name} - {self.event_type.name}"
+            return f"{self.store.store_name} - {self.store.store_id} - {self.event_type.name} - {self.get_subcategory_display()}"
+        return f"{self.store.store_name} - {self.store.store_id} - {self.event_type.name}"
 
 class Campaign(models.Model):
     store = models.ForeignKey(Store, on_delete=models.CASCADE)
