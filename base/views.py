@@ -166,7 +166,12 @@ def campaign(request):
                 scheduled_time = make_aware(scheduled_time)
             
             customers_numbers = get_customers_from_group(request.user, group_id)
-            send_email_task.apply_async(eta=scheduled_time, args=[customers_numbers, msg])
+            
+            if len(customers_numbers) > store.subscription.messages_limit - store.message_count:
+                messages.error(request, 'Insufficient message balance.')
+                return redirect('dashboard')
+            
+            send_email_task.apply_async(eta=scheduled_time, args=[customers_numbers, msg, store.id])
             
             campaign = form.save(commit=False)
             campaign.store = store
