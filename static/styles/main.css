@@ -62,11 +62,19 @@ html, body {
   justify-content: space-between;
   align-items: center;
   padding: 0 1rem;
-  background-color: var(--first-color);
+  background-color: #19181B;
   height: var(--header-height);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
+.logo-container{
+  width: 35px;
+  height: 25px;
+}
+.logo{
+  color : #fff;
+  font-weight: 800;
+}
 .right-container{
   display: flex;
   align-items: center;
@@ -75,10 +83,12 @@ html, body {
 
 .support{
   font-weight: 800;
+  color: #fff;
   
 }
 .fa-bell{
   font-size: 20px !important;
+  color: #fff;
 }
 
 /* Divider container */

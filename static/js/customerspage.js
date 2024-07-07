@@ -1,32 +1,5 @@
 document.addEventListener('DOMContentLoaded', function () {
-    const messages = document.querySelectorAll('.message');
-    setTimeout(() => {
-        messages.forEach(message => {
-            message.classList.add('hidden');
-        });
-    }, 3000); // Change 3000 to the number of milliseconds you want the message to display
-
-    const linkColor = document.querySelectorAll('.nav__link');
-
-    function colorLink(event) {
-        // Prevents the link from toggling the dropdown if it has one
-        if (this.nextElementSibling && this.nextElementSibling.classList.contains('nav__dropdown-collapse')) {
-            event.preventDefault();
-        }
-        // Remove active class from all links
-        linkColor.forEach(l => l.classList.remove('active'));
-        // Add active class to the clicked link
-        this.classList.add('active');
-    }
-
-    linkColor.forEach(l => l.addEventListener('click', colorLink));
-
-    document.querySelectorAll('.nav__dropdown').forEach(item => {
-        item.addEventListener('click', function() {
-            this.classList.toggle('active');
-        });
-    });
-
+    // Function definitions
     function updateSubcategoryVisibility() {
         var eventTypeField = document.getElementById('id_event_type');
         var selectedValue = eventTypeField.value;
@@ -56,6 +29,35 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById("myPopup").classList.add("show");
     }
 
+    // Event listeners
+    const messages = document.querySelectorAll('.message');
+    setTimeout(() => {
+        messages.forEach(message => {
+            message.classList.add('hidden');
+        });
+    }, 3000); // Change 3000 to the number of milliseconds you want the message to display
+
+    const linkColor = document.querySelectorAll('.nav__link');
+
+    function colorLink(event) {
+        // Prevents the link from toggling the dropdown if it has one
+        if (this.nextElementSibling && this.nextElementSibling.classList.contains('nav__dropdown-collapse')) {
+            event.preventDefault();
+        }
+        // Remove active class from all links
+        linkColor.forEach(l => l.classList.remove('active'));
+        // Add active class to the clicked link
+        this.classList.add('active');
+    }
+
+    linkColor.forEach(l => l.addEventListener('click', colorLink));
+
+    document.querySelectorAll('.nav__dropdown').forEach(item => {
+        item.addEventListener('click', function() {
+            this.classList.toggle('active');
+        });
+    });
+
     document.getElementById("myButton").addEventListener("click", openAddPopup);
 
     document.getElementById("closePopup").addEventListener("click", function() {
@@ -78,10 +80,9 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    updateSubcategoryVisibility();  // Initialize visibility on page load
-
     var eventTypeField = document.getElementById('id_event_type');
-    eventTypeField.addEventListener('change', function() {
-        updateSubcategoryVisibility();
-    });
+    eventTypeField.addEventListener('change', updateSubcategoryVisibility);
+
+    // Initialize visibility on page load
+    updateSubcategoryVisibility(); 
 });

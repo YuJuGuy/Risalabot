@@ -25,9 +25,10 @@ class UserEventForm(forms.ModelForm):
         if instance and instance.event_type.label == 'تحديث حالة الطلب':  # Check with the label instead of name
             self.fields['subcategory'].widget = forms.Select(choices=UserEvent.ORDER_UPDATED_SUBCATEGORIES)
 
-        self.fields['event_type'].widget.attrs.update({
-            'onchange': 'updateSubcategoryVisibility(this.value);'
-        })
+        # No need to add onchange here since it's handled in JavaScript
+        # self.fields['event_type'].widget.attrs.update({
+        #     'onchange': 'updateSubcategoryVisibility(this.value);'
+        # })
 
         self.fields['message_template'].widget.attrs.update({
             'placeholder': 'Enter your message here...'

@@ -1,5 +1,5 @@
 {% extends 'main.html' %}
-
+{% load static %}
 {% block content %}
 <h1>Create a New Group</h1>
 <form method="post" id="group-creation-form">
@@ -74,5 +74,7 @@
 <meta name="csrf-token" content="{{ csrf_token }}">
 
 <div id="data-urls" data-customers-url="{% url 'get_customers' %}"></div>
+
+<script src="{% static 'js/customerspage.js' %}"></script>
 
 {% endblock %}
