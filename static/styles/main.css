@@ -51,6 +51,36 @@ html, body {
     font-family: var(--body-font);
 }
 
+/*========== Header ==========*/
+
+.container-nav{
+  height: var(--header-height);
+}
+
+.header{
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 1rem;
+  background-color: var(--first-color);
+  height: var(--header-height);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.right-container{
+  display: flex;
+  align-items: center;
+  gap : 1.5rem;
+}
+
+.support{
+  font-weight: 800;
+  
+}
+.fa-bell{
+  font-size: 20px !important;
+}
+
 /* Divider container */
 .divider {
     display: flex;
