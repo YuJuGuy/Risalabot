@@ -2,19 +2,14 @@ document.addEventListener("DOMContentLoaded", function() {
     fetchCustomers();
 });
 
-function getCSRFToken() {
-    return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-}
 
 function fetchCustomers() {
-    const csrftoken = getCSRFToken();
     const customersUrl = document.getElementById('data-urls').dataset.customersUrl;
 
     fetch(customersUrl, {
         method: 'GET',
         headers: {
             'Content-Type': 'application/json',
-            'X-CSRFToken': csrftoken
         }
     })
     .then(response => response.json())

@@ -3,12 +3,11 @@ from django.contrib.auth import authenticate
 from django.contrib import messages
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
-from django.utils import timezone
 from django.utils.timezone import make_aware
 from . forms import CreateUserForm, UserEventForm, CampaignForm, GroupCreationForm
 from . models import User, Store, UserStoreLink, UserEvent, EventType, Campaign
-from django.http import HttpResponse, JsonResponse
-from automations.tasks import sleepy, send_email_task
+from django.http import JsonResponse
+from automations.tasks import send_email_task
 from . apis import get_customer_data, create_customer_group, delete_customer_group,group_campaign, get_customers_from_group
 
 def loginPage(request):
@@ -167,6 +166,10 @@ def campaign(request):
             
             customers_numbers = get_customers_from_group(request.user, group_id)
             
+            if len(customers_numbers) == 0:
+                messages.error(request, 'No customers in the selected group.')
+                return redirect('campaigns')
+            
             if len(customers_numbers) > store.subscription.messages_limit - store.message_count:
                 messages.error(request, 'Insufficient message balance.')
                 return redirect('dashboard')
@@ -212,7 +215,6 @@ def customers_view(request):
             group_name = form.cleaned_data['name']
             conditions = form.cleaned_data['conditions']
             response = create_customer_group(request.user, group_name, conditions)
-            print(response)
             if response.get('success') == True:
                 messages.success(request, 'Group created successfully.')
             else:

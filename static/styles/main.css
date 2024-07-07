@@ -62,7 +62,7 @@ html, body {
     flex: 1; /* Take the remaining space */
     padding: 25px;
     overflow-y: auto;
-    background-color: #f1f1f1;
+    background-color: #fbfbfb;
 }
 
 h3 {
@@ -77,12 +77,21 @@ img {
   max-width: 100%;
   height: auto;
 }
-.message {
+.msg-error {
     background-color: #f8d7da;
     color: #721c24;
     padding: 10px;
     margin-bottom: 10px;
     border: 1px solid #f5c6cb;
+    border-radius: 5px;
+}
+
+.msg-success {
+    background-color: #d4edda;
+    color: #155724;
+    padding: 10px;
+    margin-bottom: 10px;
+    border: 1px solid #c3e6cb;
     border-radius: 5px;
 }
 
