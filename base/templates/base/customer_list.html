@@ -86,7 +86,17 @@
             <!-- Customer data will be injected here by JavaScript -->
         </tbody>
     </table>
+    <div class="pagination-controls">
+        <select id="rows-per-page">
+            <option value="25">25</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+        </select>
+        <button id="prev-page">Previous</button>
+        <button id="next-page">Next</button>
+    </div>
 </div>
+
 
 <meta name="csrf-token" content="{{ csrf_token }}">
 

@@ -9,6 +9,8 @@ from . models import User, Store, UserStoreLink, UserEvent, EventType, Campaign
 from django.http import JsonResponse
 from automations.tasks import send_email_task
 from . apis import get_customer_data, create_customer_group, delete_customer_group,group_campaign, get_customers_from_group
+from django.core.paginator import Paginator
+
 
 def loginPage(request):
     page = 'login'
@@ -236,15 +238,35 @@ def customers_view(request):
 @login_required(login_url='login')
 def get_customers(request):
     try:
+        page = int(request.GET.get('page', 1))
+        rows_per_page = int(request.GET.get('rows', 25))
+        
         customer_data = get_customer_data(request.user)
+        
+        if not customer_data['success']:
+            return JsonResponse({'error': 'Failed to fetch customer data from API'}, status=500)
+
+        customers_list = customer_data['customers']
+        paginator = Paginator(customers_list, rows_per_page)
+        customers_page = paginator.get_page(page)
+
+        customers_data = [{
+            'name': customer['name'],
+            'email': customer['email'],
+            'phone': customer['phone'],
+            'location': customer['location'],
+            'groups': customer['groups'],
+            'updated_at': customer['updated_at'],
+        } for customer in customers_page]
+
         return JsonResponse({
-            'customers': customer_data.get('customers', []), 
-            'group_counts': customer_data.get('group_counts', {}), 
-            'group_id_to_name': customer_data.get('group_id_to_name', {})
+            'customers': customers_data,
+            'group_counts': customer_data.get('group_counts', {}),
+            'group_id_to_name': customer_data.get('group_id_to_name', {}),
+            'total_count': paginator.count,
         }, status=200)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
-    
     
     
 @login_required(login_url='login')
