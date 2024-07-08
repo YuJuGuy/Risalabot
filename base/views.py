@@ -217,10 +217,13 @@ def customers_view(request):
             response = create_customer_group(request.user, group_name, conditions)
             if response.get('success') == True:
                 messages.success(request, 'Group created successfully.')
+                return redirect('customers')
             else:
                 messages.error(request, 'Error creating group. Please correct the form errors 1.')
+                return redirect('customers')
         else:
             messages.error(request, 'Error creating group. Please correct the form errors 2.')
+            return redirect('customers')
     
     context = {
         'form': form,

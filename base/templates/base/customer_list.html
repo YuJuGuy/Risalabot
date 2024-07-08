@@ -1,15 +1,21 @@
 {% extends 'main.html' %}
 {% load static %}
 {% block content %}
-<h1>Create a New Group</h1>
-<form method="post" id="group-creation-form">
-    {% csrf_token %}
-    {{ form.name.label_tag }} {{ form.name }}
-    <div id="conditions-container"></div>
-    <button type="button" id="add-condition-button">Add Condition</button>
-    <br>
-    <button type="submit">Create Group</button>
-</form>
+
+<div class="popup-group2" id="popup-group">
+    <div class="popup-content2">
+        <form method="post" id="group-creation-form2">
+            {% csrf_token %}
+            {{ form.name.label_tag }} {{ form.name }}
+            <div id="conditions-container"></div>
+            <button type="button" id="add-condition-button">Add Condition</button>
+            <br>
+            <button type="submit">Create Group</button>
+        </form>
+        <button type="button" id="close-popup-button">Close</button>
+    </div>
+</div>
+
 
 <template id="condition-template">
     <div class="condition">
@@ -40,6 +46,17 @@
             <span class="customers-count-number">Loading</span>
         </div>
     </div>
+
+    <div class="group-card-container" id="group-card">
+        <div class="all-customers">
+            <i class="fa-solid fa-user"></i>
+        </div>
+        <div class="customers-count">
+            <span class="customers-new-group">مجموعة جديدة</span>
+            <span class="customers-group-title">انشئ مجموعة جديدة</span>
+        </div>
+    </div>
+    
 </div>
 
 

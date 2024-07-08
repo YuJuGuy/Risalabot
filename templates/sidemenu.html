@@ -38,6 +38,12 @@
                     <a href="{% url 'customers' %}" class="nav__link {% if request.path == '/customers/' %}active{% endif %}">
                         <i class='bx bxs-user-detail nav__icon'></i>
                         <span class="nav__name">العملاء</span>
+                    </a>
+
+                    <a href="{% url 'customers' %}" class="nav__link {% if request.path == '/customers/' %}active{% endif %}">
+                        <i class='bx bxl-whatsapp-square nav__icon'></i>
+                        <span class="nav__name">ربط الواتساب</span>
+                    </a>
 
                    
                 </div>

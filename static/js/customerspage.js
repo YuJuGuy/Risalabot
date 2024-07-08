@@ -1,5 +1,29 @@
 document.addEventListener("DOMContentLoaded", function() {
     fetchCustomers();
+    const popup = document.getElementById('popup-group');
+    const customersCard = document.getElementById('group-card');
+    const popupClose = document.getElementById('close-popup-button');
+
+    if (!popup) {
+        console.error('Popup element not found.');
+        return;
+    }
+
+    if (customersCard) {
+        customersCard.addEventListener('click', function() {
+            popup.classList.add('show'); // Show the popup
+        });
+    } else {
+        console.error('Customers card container element not found.');
+    }
+
+    if (popupClose) {
+        popupClose.addEventListener('click', function() {
+            popup.classList.remove('show'); // Hide the popup
+        });
+    } else {
+        console.error('Close button element not found.');
+    }
 });
 
 
