@@ -1,0 +1,15 @@
+{% extends 'main.html' %}
+{% load static %}
+{% block content %}
+    <div id="content">
+        {% if success %}
+            <p>{{ message }}</p>
+            <img src="data:image/png;base64,{{ qr }}" alt="QR Code">
+        {% else %}
+            <p>{{ message }}</p>
+            {% if error %}
+                <p>Error: {{ error }}</p>
+            {% endif %}
+        {% endif %}
+    </div>
+{% endblock %}

@@ -30,6 +30,8 @@ urlpatterns = [
     path('unlinkstore/<str:store_id>/', authview.unlinkstore, name="unlinkstore"),
     
     
+    path('link-channel/', views.create_whatsapp_session, name="whatsapp_session"),
+    
 
     path('', views.home, name="home"),
 ]

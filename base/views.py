@@ -8,7 +8,7 @@ from . forms import CreateUserForm, UserEventForm, CampaignForm, GroupCreationFo
 from . models import User, Store, UserStoreLink, UserEvent, EventType, Campaign
 from django.http import JsonResponse
 from automations.tasks import send_email_task
-from . apis import get_customer_data, create_customer_group, delete_customer_group,group_campaign, get_customers_from_group
+from . apis import get_customer_data, create_customer_group, delete_customer_group,group_campaign, get_customers_from_group, whatsapp_create_session
 from django.core.paginator import Paginator
 
 
@@ -279,3 +279,25 @@ def delete_customer_list(request, group_id):
         messages.error(request, 'Error deleting group.')
         return redirect('customers')
 
+
+@login_required(login_url='login')
+def create_whatsapp_session(request):
+    try:
+        result = whatsapp_create_session(request.user)
+        if result['success']:
+            return render(request, 'base/whatsapp_session.html', {
+                'success': True,
+                'message': result['message'],
+                'qr': result['qr']
+            })
+        else:
+            return render(request, 'base/whatsapp_session.html', {
+                'success': False,
+                'message': result['message']
+            })
+    except Exception as e:
+        return render(request, 'base/whatsapp_session.html', {
+            'success': False,
+            'message': 'An error occurred',
+            'error': str(e)
+        })

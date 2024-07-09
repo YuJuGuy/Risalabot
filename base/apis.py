@@ -1,7 +1,7 @@
 import requests
 from datetime import datetime
 from .models import UserStoreLink
-
+import base64
 
 
 
@@ -150,3 +150,33 @@ def delete_customer_group(user,group_id):
     response = requests.delete(groups_url, headers=headers)
     
     return response.json()
+
+
+
+def whatsapp_create_session(user):
+    url = "http://localhost:3000/api/sessions/start"
+    qr_url = "http://localhost:3000/api/default/auth/qr?format=image"
+    headers = {
+        'Content-Type': 'application/json',
+        'accept': 'application/json'}
+    
+    data = {
+        "name": "default",
+    }
+    
+    response = requests.post(url, headers=headers, json=data)
+    if response.status_code == 200 or response.status_code == 201 or response.status_code == 422:
+        headers = {
+            'accept': 'image/png'
+        }
+        qr = requests.get(qr_url, headers=headers)
+        if qr.status_code == 200 or qr.status_code == 201:
+            # Encode QR code image to base64
+            qr_base64 = base64.b64encode(qr.content).decode('utf-8')
+            return {'success': True, 'message': 'Session created successfully', 'qr': qr_base64}
+        else:
+            print(qr.json())
+            return {'success': False, 'message': 'Failed to retrieve QR code'}
+    else:
+        print(response.json())
+        return {'success': False, 'message': 'Failed to create session'}
