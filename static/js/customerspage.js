@@ -1,39 +1,144 @@
+let allCustomers = [];
+let currentPage = 1;
+let rowsPerPage = 25;
+let totalCustomers = 0;
+
 document.addEventListener("DOMContentLoaded", function() {
     setupPopup();
     setupPagination();
-    fetchCustomers();
+    setupSearch();
+    setupConditions();
+    setupDeleteGroupPopup();
+    fetchAllCustomers();
 });
+
+function setupDeleteGroupPopup() {
+    const deleteGroupPopup = document.getElementById('delete-group-popup');
+    const confirmDeleteButton = document.getElementById('confirm-delete-button');
+    const cancelDeleteButton = document.getElementById('cancel-delete-button');
+    let groupIdToDelete = null;
+
+    // Use event delegation to handle delete link clicks
+    document.body.addEventListener('click', function(event) {
+        if (event.target.closest('.delete-group-link')) {
+            event.preventDefault();
+            groupIdToDelete = event.target.closest('.delete-group-link').dataset.groupId;
+            deleteGroupPopup.style.display = 'flex';
+        }
+    });
+
+    confirmDeleteButton.addEventListener('click', function() {
+        if (groupIdToDelete) {
+            window.location.href = `/delete-group/${groupIdToDelete}/`;
+        }
+    });
+
+    cancelDeleteButton.addEventListener('click', function() {
+        groupIdToDelete = null;
+        deleteGroupPopup.style.display = 'none';
+    });
+
+    // Close the popup when clicking outside of it
+    window.addEventListener('click', function(event) {
+        if (event.target === deleteGroupPopup) {
+            deleteGroupPopup.style.display = 'none';
+        }
+    });
+}
 
 function setupPopup() {
     const popup = document.getElementById('popup-group');
     const customersCard = document.getElementById('group-card');
     const popupClose = document.getElementById('close-popup-button');
 
-    if (!popup) {
-        console.error('Popup element not found.');
+    if (!popup || !customersCard || !popupClose) {
+        console.error('Popup or necessary elements not found.');
         return;
     }
 
-    if (customersCard) {
-        customersCard.addEventListener('click', function() {
-            popup.classList.add('show'); // Show the popup
-        });
-    } else {
-        console.error('Customers card container element not found.');
-    }
-
-    if (popupClose) {
-        popupClose.addEventListener('click', function() {
-            popup.classList.remove('show'); // Hide the popup
-        });
-    } else {
-        console.error('Close button element not found.');
-    }
+    customersCard.addEventListener('click', () => popup.classList.add('show'));
+    popupClose.addEventListener('click', () => popup.classList.remove('show'));
 }
 
-let currentPage = 1;
-let rowsPerPage = 25;
-let totalCustomers = 0;
+function setupSearch() {
+    const searchInput = document.getElementById('search');
+    searchInput.addEventListener('keypress', function(event) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            currentPage = 1;
+            filterCustomers();
+        }
+    });
+}
+
+function fetchAllCustomers() {
+    const customersUrl = document.getElementById('data-urls').dataset.customersUrl;
+
+    fetch(customersUrl, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.customers) {
+            allCustomers = data.customers;
+            totalCustomers = allCustomers.length;
+            displayCustomers(allCustomers.slice(0, rowsPerPage));
+            updateGroupCounts(data.group_counts, data.group_id_to_name);
+            updatePaginationControls();
+        } else {
+            showError('Failed to load customers.');
+        }
+
+        document.querySelector('.customers-count-number').innerHTML = totalCustomers;
+    })
+    .catch(error => showError('Error fetching customers: ' + error));
+}
+
+function showError(message) {
+    document.getElementById('customers-loading').innerHTML = message;
+}
+
+function filterCustomers() {
+    const searchInput = document.getElementById('search').value.toLowerCase();
+    const filteredCustomers = allCustomers.filter(customer =>
+        customer.name.toLowerCase().includes(searchInput) ||
+        customer.email.toLowerCase().includes(searchInput) ||
+        customer.phone.toLowerCase().includes(searchInput) ||
+        customer.location.toLowerCase().includes(searchInput) ||
+        (customer.groups && customer.groups.some(group => group.toLowerCase().includes(searchInput)))
+    );
+    totalCustomers = filteredCustomers.length;
+    displayCustomers(filteredCustomers.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage));
+    updatePaginationControls();
+}
+
+function displayCustomers(customers) {
+    const customersBody = document.getElementById('customers-body');
+    const customersTable = document.getElementById('customers-table');
+    const loadingDiv = document.getElementById('customers-loading');
+
+    customersBody.innerHTML = '';
+    loadingDiv.style.display = 'none';
+
+    if (customers.length > 0) {
+        customers.forEach(customer => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${customer.name}</td>
+                <td>${customer.email}</td>
+                <td>${customer.phone}</td>
+                <td>${customer.location}</td>
+                <td>${customer.groups.length ? customer.groups.join(', ') : 'No groups'}</td>
+                <td>${customer.updated_at}</td>
+            `;
+            customersBody.appendChild(row);
+        });
+        customersTable.style.display = 'table';
+    } else {
+        showError('No customers found.');
+    }
+}
 
 function setupPagination() {
     const rowsPerPageSelect = document.getElementById('rows-per-page');
@@ -42,121 +147,20 @@ function setupPagination() {
 
     rowsPerPageSelect.addEventListener('change', function() {
         rowsPerPage = parseInt(this.value);
-        currentPage = 1; // Reset to first page
-        fetchCustomers();
+        currentPage = 1;
+        filterCustomers();
     });
 
-    prevPageButton.addEventListener('click', function() {
-        if (currentPage > 1) {
-            currentPage--;
-            fetchCustomers();
-        }
-    });
-
-    nextPageButton.addEventListener('click', function() {
-        if (currentPage < Math.ceil(totalCustomers / rowsPerPage)) {
-            currentPage++;
-            fetchCustomers();
-        }
-    });
+    prevPageButton.addEventListener('click', () => changePage(-1));
+    nextPageButton.addEventListener('click', () => changePage(1));
 }
 
-function fetchCustomers() {
-    const customersUrl = document.getElementById('data-urls').dataset.customersUrl;
-
-    fetch(`${customersUrl}?page=${currentPage}&rows=${rowsPerPage}`, {
-        method: 'GET',
-        headers: {
-            'Content-Type': 'application/json',
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        const customersTable = document.getElementById('customers-table');
-        const customersBody = document.getElementById('customers-body');
-        const loadingDiv = document.getElementById('customers-loading');
-        const customerNumber = document.querySelector('.customers-count-number');
-        const groupCardsContainer = document.getElementById('group-cards-container');
-
-        // Clear existing rows
-        customersBody.innerHTML = '';
-
-        // Remove loading indicator
-        loadingDiv.style.display = 'none';
-
-        // Populate the table
-        if (data.customers) {
-            data.customers.forEach(customer => {
-                const row = document.createElement('tr');
-
-                row.innerHTML = `
-                    <td>${customer.name}</td>
-                    <td>${customer.email}</td>
-                    <td>${customer.phone}</td>
-                    <td>${customer.location}</td>
-                    <td>${customer.groups.length ? customer.groups.join(', ') : 'No groups'}</td>
-                    <td>${customer.updated_at}</td>
-                `;
-
-                customersBody.appendChild(row);
-            });
-
-            // Show the table
-            customersTable.style.display = 'table';
-        } else {
-            loadingDiv.innerHTML = 'Failed to load customers.';
-        }
-
-        // Update total customer count and pagination
-        totalCustomers = data.total_count;
-        customerNumber.innerHTML = totalCustomers;
-        updatePaginationControls();
-
-        // Update group counts and names
-        if (data.group_counts && data.group_id_to_name) {
-            // Get existing group cards
-            const existingCards = Array.from(groupCardsContainer.children);
-
-            // Update existing cards with new counts
-            existingCards.forEach(card => {
-                const groupId = card.getAttribute('data-group-id');
-                if (data.group_counts[groupId] !== undefined) {
-                    const groupCount = data.group_counts[groupId];
-                    const countElement = card.querySelector(`#group-${groupId}`);
-                    if (countElement) {
-                        countElement.textContent = groupCount;
-                    }
-                }
-            });
-
-            // Add new groups if they don't already exist
-            for (const [group_id, group_count] of Object.entries(data.group_counts)) {
-                if (!existingCards.some(card => card.getAttribute('data-group-id') === group_id)) {
-                    const group_name = data.group_id_to_name[group_id];
-                    const groupCard = document.createElement('div');
-                    groupCard.classList.add('customers-card-container');
-                    groupCard.setAttribute('data-group-id', group_id);
-                    groupCard.innerHTML = `
-                        <a href="/delete-group/${group_id}/" onclick="return confirm('Are you sure you want to delete this group?');">
-                            <i class="fa-solid fa-trash"></i>
-                        </a>
-                        <div class="all-customers">
-                            <i class="fa-solid fa-user"></i>
-                        </div>
-                        <div class="customers-count">
-                            <span class="customers-list-title">${group_name}</span>
-                            <span class="customers-list-number" id="group-${group_id}">${group_count}</span>
-                        </div>
-                    `;
-                    groupCardsContainer.appendChild(groupCard);
-                }
-            }
-        }
-    })
-    .catch(error => {
-        console.error('Error fetching customers:', error);
-        document.getElementById('customers-loading').innerHTML = 'Failed to load customers.';
-    });
+function changePage(delta) {
+    const newPage = currentPage + delta;
+    if (newPage > 0 && newPage <= Math.ceil(totalCustomers / rowsPerPage)) {
+        currentPage = newPage;
+        filterCustomers();
+    }
 }
 
 function updatePaginationControls() {
@@ -167,7 +171,47 @@ function updatePaginationControls() {
     nextPageButton.disabled = currentPage >= Math.ceil(totalCustomers / rowsPerPage);
 }
 
-document.addEventListener('DOMContentLoaded', function() {
+function updateGroupCounts(groupCounts, groupIdToName) {
+    const groupCardsContainer = document.getElementById('group-cards-container');
+    const existingCards = Array.from(groupCardsContainer.children);
+
+    existingCards.forEach(card => {
+        const groupId = card.getAttribute('data-group-id');
+        if (groupCounts[groupId] !== undefined) {
+            card.querySelector(`#group-${groupId}`).textContent = groupCounts[groupId];
+        }
+    });
+
+    for (const [group_id, group_count] of Object.entries(groupCounts)) {
+        if (!existingCards.some(card => card.getAttribute('data-group-id') === group_id)) {
+            const groupCard = createGroupCard(group_id, groupIdToName[group_id], group_count);
+            groupCardsContainer.appendChild(groupCard);
+        }
+    }
+}
+
+function createGroupCard(groupId, groupName, groupCount) {
+    const groupCard = document.createElement('div');
+    groupCard.classList.add('customers-card-container');
+    groupCard.setAttribute('data-group-id', groupId);
+    groupCard.innerHTML = `
+        <div class="space">
+            <a href="#" class="delete-group-link" data-group-id="${groupId}">
+                <i class="fa-solid fa-xmark"></i>
+            </a>
+        </div>
+        <div class="all-customers">
+            <i class="fa-solid fa-user-group"></i>
+        </div>
+        <div class="customers-count">
+            <span class="customers-count-title">${groupName}</span>
+            <span class="customers-count-number" id="group-${groupId}">${groupCount}</span>
+        </div>
+    `;
+    return groupCard;
+}
+
+function setupConditions() {
     const addConditionButton = document.getElementById('add-condition-button');
     const conditionsContainer = document.getElementById('conditions-container');
     const conditionTemplate = document.getElementById('condition-template').content;
@@ -194,16 +238,12 @@ document.addEventListener('DOMContentLoaded', function() {
             const conditionDiv = event.target.closest('.condition');
             const valueContainer = conditionDiv.querySelector('.value-container');
             const index = conditionDiv.dataset.index;
-            if (event.target.value === 'between') {
-                valueContainer.innerHTML = `
-                    <input type="number" name="min_value_field-${index}" class="min-value-field" placeholder="Min value" />
-                    <input type="number" name="max_value_field-${index}" class="max-value-field" placeholder="Max value" />
-                `;
-            } else {
-                valueContainer.innerHTML = `
-                    <input type="number" name="value_field-${index}" class="value-field" />
-                `;
-            }
+            valueContainer.innerHTML = event.target.value === 'between' ? `
+                <input type="number" name="min_value_field-${index}" class="min-value-field" placeholder="Min value" />
+                <input type="number" name="max_value_field-${index}" class="max-value-field" placeholder="Max value" />
+            ` : `
+                <input type="number" name="value_field-${index}" class="value-field" />
+            `;
         }
     });
-});
+}

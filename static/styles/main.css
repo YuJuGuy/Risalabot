@@ -177,6 +177,18 @@ img {
   color: #000; /* Change this value to change the icon color */
   padding-top: 10px;
 }
+
+.fa-user-group {
+  font-size: 30px; /* Change this value to resize the icon */
+  color: #000; /* Change this value to change the icon color */
+  padding-top: 10px;
+}
+
+.fa-user-plus {
+  font-size: 30px; /* Change this value to resize the icon */
+  color: #21aa78; /* Change this value to change the icon color */
+  padding-top: 10px;
+}
 .table-container{
   margin-top: 1rem;
   margin: 2rem;
@@ -189,6 +201,7 @@ img {
 .table-header {
   display: flex;
   margin-bottom: 1rem;
+  padding: 0.75rem;
   flex-direction: row;
 }
 table{
@@ -224,16 +237,18 @@ font-size: 0.875rem;
 
 }
 .customers-card-container {
-width: 150px;
-height: 120px;
+padding: 0.5rem;
+width: 175px;
+height: auto;
 border-radius: 4px;
 box-shadow: rgba(55, 63, 71, 5%) 0px 0px 0px 1px, rgba(55, 63, 71, 16%) 0px 1px 4px;
 background-color: #fff;
 }
 
 .group-card-container{
-  width: 150px;
-  height: 120px;
+  padding: 0.5rem;
+  width: 175px;
+  height: auto;
   border-radius: 4px;
   box-shadow: rgba(55, 63, 71, 5%) 0px 0px 0px 1px, rgba(55, 63, 71, 16%) 0px 1px 4px;
   background-color: #fff;
@@ -241,12 +256,13 @@ background-color: #fff;
 }
 
 
-.customers-count-title, .customers-list-title .customers-new-group{
-font-size: 1.1rem !important;
-font-weight: 500;
-color: #333;
+.customers-count-title, .customers-list-title, .customers-new-group{
+  font-weight: 500 !important;
+  color: #333;
+  text-align: center !important;
 
 }
+
 
 .customers-group-title{
 font-size: 0.9rem !important;
@@ -275,13 +291,95 @@ color: #333;
 .cards-container{
 display: flex;
 margin: 2rem;
-gap: 1rem;
+flex-wrap: wrap; /* This allows cards to wrap to the next line */
+gap: 15px; /* Adjust the gap between cards as needed */
+max-width: 100%;
+}
+
+.space{
+  height: 20px;
+  direction: ltr;
+}
+
+.fa-xmark{
+  color: #be1d1d;
+}
+
+.pagination-controls{
+display: flex;
+flex-direction: row;
+align-items: center;
+padding:0.75rem;
+}
+
+.view-per-page{
+  flex: 1 1 auto;
+}
+
+/* Remove default button styling */
+button.square-button {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  width: 30px;  /* Adjust the size as needed */
+  height: 30px; /* Adjust the size as needed */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;  /* Optional: for rounded corners */
+  transition: background-color 0.3s;
+}
+
+/* Add hover effect if desired */
+button.square-button:hover {
+  background-color: rgba(0, 0, 0, 0.1);  /* Light grey background on hover */
+}
+
+/* Style the icons */
+button.square-button i {
+  font-size: 20px; /* Adjust the size as needed */
+  color: #000;    /* Adjust the color as needed */
+}
+
+.page-buttons{
+  display: flex;
+  flex-direction: row;
+  gap: 0.5rem;
+
+}
+
+button.square-button:disabled {
+  cursor: not-allowed;
+  background-color: rgba(0, 0, 0, 0.05);  /* Light grey background */
+  color: rgba(0, 0, 0, 0.3);  /* Grey color for icon */
+}
+
+button.square-button:disabled i {
+  color: rgba(0, 0, 0, 0.3);  /* Grey color for icon */
+}
+
+select{
+  direction: ltr;
+  padding: 0.5rem;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  font-size: 0.875rem;
 }
 
 
 
+input{
+  padding: 0.5rem;
+  width: 400px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  font-size: 0.775rem !important;
+  font: inherit;
 
-/*========== MEDIA QUERIES ==========*/
+}
+/*========== Popup ==========*/
 
 .popup-group2 {
   display: none;
@@ -336,4 +434,53 @@ gap: 1rem;
 #close-popup-button {
   margin-top: 10px; /* Add margin above the close button */
 }
-  
+
+
+
+.popup-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+/* Popup content */
+.delete-popup-content {
+  background: #fff;
+  padding: 20px;
+  border-radius: 5px;
+  text-align: center;
+  max-width: 300px;
+  width: 80%;
+}
+
+.delete-popup-content h2 {
+  margin-top: 0;
+}
+
+.delete-popup-content button {
+  margin: 5px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+#confirm-delete-button {
+  background-color: #d9534f;
+  color: white;
+  font: inherit;
+}
+
+#cancel-delete-button {
+  background-color: #333;
+  color: white;
+  font: inherit;
+
+}

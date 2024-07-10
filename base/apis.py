@@ -129,7 +129,6 @@ def create_customer_group(user, group_name, condtion=None):
             'name': group_name
         }
         
-    print(data)
     
     groups_url = "https://api.salla.dev/admin/v2/customers/groups"
     response = requests.post(groups_url, headers=headers, json=data)

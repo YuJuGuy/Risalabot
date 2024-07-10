@@ -9,6 +9,7 @@ import json
 class User(AbstractUser):
     name = models.CharField(max_length=200, null=True)
     email = models.EmailField(max_length=200, unique=True)
+    session_id = models.CharField(max_length=200, null=True)
     
     
     USERNAME_FIELD = 'email'

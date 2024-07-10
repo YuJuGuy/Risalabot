@@ -38,6 +38,7 @@
 
 <div class="cards-container" id = "group-cards-container">
     <div class="customers-card-container">
+        <div class="space"></div>
         <div class="all-customers">
             <i class="fa-solid fa-user"></i>
         </div>
@@ -48,8 +49,9 @@
     </div>
 
     <div class="group-card-container" id="group-card">
-        <div class="all-customers">
-            <i class="fa-solid fa-user"></i>
+        <div class="space"></div>
+        <div class="all-customers"> 
+            <i class="fa-solid fa-user-plus"></i>
         </div>
         <div class="customers-count">
             <span class="customers-new-group">مجموعة جديدة</span>
@@ -62,13 +64,11 @@
 
 <div class="table-container">
     <div class="table-header">
+        <div class="search-container">
         <div class="table-search">
-            <input type="text" id="search" placeholder="Search customers...">
+            <input type="text" id="search" placeholder="بحث عن طريق الاسم, البريد, الهاتف, الدولة">
         </div>
-        <div class="table-buttons">
-            To filter profiles, 
-            <a href="#">click here</a>
-        </div>
+    </div>
     </div>
     <div id="customers-loading">Loading customers...</div>
     <table id="customers-table" style="display: none;">
@@ -87,13 +87,31 @@
         </tbody>
     </table>
     <div class="pagination-controls">
-        <select id="rows-per-page">
-            <option value="25">25</option>
-            <option value="50">50</option>
-            <option value="100">100</option>
-        </select>
-        <button id="prev-page">Previous</button>
-        <button id="next-page">Next</button>
+        <div class="view-per-page">
+            <select id="rows-per-page">
+                <option value="25">25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+            </select>
+        </div>
+        <div class="page-buttons">
+            <button id="next-page" class="square-button">
+                <i class="fa-solid fa-angle-right"></i>
+            </button>
+            <button id="prev-page" class="square-button">
+                <i class="fa-solid fa-angle-left"></i>
+            </button>
+        
+        </div>
+    </div>
+</div>
+
+<div id="delete-group-popup" class="popup-overlay">
+    <div class="delete-popup-content">
+        <h2>حذف المجموعة</h2>
+        <p>هل تريد حذف المجموعة؟</p>
+        <button id="confirm-delete-button">حذف</button>
+        <button id="cancel-delete-button">العودة</button>
     </div>
 </div>
 
