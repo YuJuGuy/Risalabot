@@ -153,6 +153,7 @@ def delete_customer_group(user,group_id):
 
 
 def whatsapp_create_session(user):
+    session = ''
     url = "http://localhost:3000/api/sessions/start"
     qr_url = "http://localhost:3000/api/default/auth/qr?format=image"
     headers = {
@@ -160,7 +161,7 @@ def whatsapp_create_session(user):
         'accept': 'application/json'}
     
     data = {
-        "name": "default",
+        "name": {session},
     }
     
     response = requests.post(url, headers=headers, json=data)
