@@ -3,7 +3,7 @@ from django.contrib import messages
 from django.http import JsonResponse,HttpRequest
 from django.contrib.auth.decorators import login_required
 import requests
-from . models import UserStoreLink, Store, UserEvent
+from . models import UserStoreLink, Store, UserEvent, User
 from dotenv import load_dotenv
 import os
 import random

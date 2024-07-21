@@ -12,7 +12,7 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 
 from pathlib import Path
 from datetime import timedelta
-
+    
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -26,10 +26,10 @@ SECRET_KEY = 'django-insecure-ik6it2t*c($$@nh!&+3nno-87#xw0r!gg)r((2^bdf#2)oplkj
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['destined-marmot-regular.ngrok-free.app','127.0.0.1']
+ALLOWED_HOSTS = ['stud-accepted-ghoul.ngrok-free.app','127.0.0.1']
 
 CSRF_TRUSTED_ORIGINS = [
-    'https://destined-marmot-regular.ngrok-free.app',
+    'https://stud-accepted-ghoul.ngrok-free.app ',
 ]
 
 # Application definition

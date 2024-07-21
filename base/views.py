@@ -1,4 +1,6 @@
 from django.shortcuts import render,redirect
+import random
+import string
 from django.contrib.auth import authenticate
 from django.contrib import messages
 from django.contrib.auth import login, logout
@@ -41,9 +43,14 @@ def logoutUser(request):
     logout(request)
     return redirect('login')
 
+def generate_random_string(length):
+    letters_and_digits = string.ascii_letters + string.digits
+    return ''.join(random.choice(letters_and_digits) for i in range(length))
+
 def registerPage(request):
     if request.user.is_authenticated:
         return redirect('dashboard')
+    
     form = CreateUserForm()
 
     if request.method == 'POST':
@@ -51,6 +58,7 @@ def registerPage(request):
         if form.is_valid():
             user = form.save(commit=False)
             user.username = user.username.lower()
+            user.session_id = user.username + generate_random_string(10)
             user.save()
             login(request, user)
             return redirect('dashboard')
@@ -281,11 +289,17 @@ def create_whatsapp_session(request):
     try:
         result = whatsapp_create_session(request.user)
         if result['success']:
-            return render(request, 'base/whatsapp_session.html', {
-                'success': True,
-                'message': result['message'],
-                'qr': result['qr']
-            })
+            if 'qr' in result:
+                return render(request, 'base/whatsapp_session.html', {
+                    'success': True,
+                    'message': result['message'],
+                    'qr': result['qr']
+                })
+            else:
+                return render(request, 'base/whatsapp_session.html', {
+                    'success': True,
+                    'message': result['message']
+                })
         else:
             return render(request, 'base/whatsapp_session.html', {
                 'success': False,

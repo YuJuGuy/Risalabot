@@ -2,6 +2,7 @@ import requests
 from datetime import datetime
 from .models import UserStoreLink
 import base64
+import time
 
 
 
@@ -152,31 +153,71 @@ def delete_customer_group(user,group_id):
 
 
 
+def get_session_status(session, headers):
+    status_url = f"http://localhost:3000/api/sessions/{session}"
+    response = requests.get(status_url, headers=headers)
+    
+    # Check if the response is valid and contains JSON data
+    try:
+        response_data = response.json()
+    except ValueError:
+        return None
+
+    # Check for the presence of the session status
+    if response.status_code == 200 and "status" in response_data:
+        return response_data["status"]
+    return None
+
+def get_qr_code(session):
+    qr_url = f"http://localhost:3000/api/{session}/auth/qr"
+    qr_response = requests.get(qr_url, headers={'accept': 'image/png'})
+    if qr_response.status_code in [200, 201]:
+        qr_base64 = base64.b64encode(qr_response.content).decode('utf-8')
+        return {'success': True, 'message': 'Session created successfully', 'qr': qr_base64}
+    return {'success': False, 'message': 'Failed to retrieve QR code'}
+
 def whatsapp_create_session(user):
-    session = ''
-    url = "http://localhost:3000/api/sessions/start"
-    qr_url = "http://localhost:3000/api/default/auth/qr?format=image"
-    headers = {
-        'Content-Type': 'application/json',
-        'accept': 'application/json'}
+    session = user.session_id
+    headers = {'accept': 'application/json', 'Content-Type': 'application/json'}
+
+    # Check if session already exists and its status
+    status = get_session_status(session, headers)
+    if status == "WORKING":
+        return {'success': True, 'message': 'Session is already working'}
+    elif status == "SCAN_QR_CODE":
+        return get_qr_code(session)
+    elif status == "STARTING":
+        # Wait for session to start
+        while status == "STARTING":
+            time.sleep(3)
+            status = get_session_status(session, headers)
+        if status == "SCAN_QR_CODE":
+            return get_qr_code(session)
+        elif status == "WORKING":
+            return {'success': True, 'message': 'Session is already working'}
+        elif status == "FAILED":
+            return {'success': False, 'message': 'Session failed to start'}
     
-    data = {
-        "name": {session},
-    }
-    
-    response = requests.post(url, headers=headers, json=data)
-    if response.status_code == 200 or response.status_code == 201 or response.status_code == 422:
-        headers = {
-            'accept': 'image/png'
-        }
-        qr = requests.get(qr_url, headers=headers)
-        if qr.status_code == 200 or qr.status_code == 201:
-            # Encode QR code image to base64
-            qr_base64 = base64.b64encode(qr.content).decode('utf-8')
-            return {'success': True, 'message': 'Session created successfully', 'qr': qr_base64}
+    elif status is None:
+        # No session exists, proceed to create a new session
+        url = "http://localhost:3000/api/sessions/start"
+        data = {"name": session}
+        response = requests.post(url, headers=headers, json=data)
+        
+        if response.status_code in [200, 201]:
+            while True:
+                status = get_session_status(session, headers)
+                if status == "SCAN_QR_CODE":
+                    return get_qr_code(session)
+                elif status == "STARTING":
+                    time.sleep(3)
+                elif status == "WORKING":
+                    return {'success': True, 'message': 'Session is already working'}
+                else:
+                    return {'success': False, 'message': f'Session status: {status}'}
+        elif response.status_code == 422:
+            return {'success': False, 'message': 'Failed to create session: Unprocessable Entity'}
         else:
-            print(qr.json())
-            return {'success': False, 'message': 'Failed to retrieve QR code'}
+            return {'success': False, 'message': 'Failed to create session'}
     else:
-        print(response.json())
-        return {'success': False, 'message': 'Failed to create session'}
+        return {'success': False, 'message': f'Unexpected session status: {status}'}
