@@ -7,6 +7,8 @@ from . models import UserStoreLink, Store, UserEvent, User
 from dotenv import load_dotenv
 import os
 import random
+from django.utils.crypto import get_random_string
+from django.contrib.auth import login
 
 load_dotenv()
 
@@ -18,30 +20,36 @@ SALLA_STORE_INFO_URL = os.getenv('SALLA_STORE_INFO_URL')
 
 
 def authstore(request):
-    # Check if the user is already linked to a store
-    user_linked = UserStoreLink.objects.filter(user=request.user).exists()
+    # If user is authenticated, check if they are already linked to a store
+    if request.user.is_authenticated:
+        user_linked = UserStoreLink.objects.filter(user=request.user).exists()
 
-    if user_linked:
-        # User is already linked, show an error message
-        messages.error(request, 'You are already connected to a store.')
-        return redirect('dashboard')  # Redirect to the dashboard
+        if user_linked:
+            # User is already linked, show an error message
+            messages.error(request, 'You are already connected to a store.')
+            return redirect('dashboard')  # Redirect to the dashboard
 
     # Proceed with authentication process
     state = str(random.randint(1000000000, 9999999999))
-    
+
     # Print debug information for scope
     print(f"SCOPE: {SCOPE}")
-    
+
     auth_url = (
         f"https://accounts.salla.sa/oauth2/auth?client_id={CLIENT_ID}&response_type=code"
         f"&redirect_uri={REDIRECT_URI}&scope={SCOPE}&state={state}"
     )
 
     # Print debug information for URL
-
     return redirect(auth_url)
 
-@login_required(login_url='login')
+def generate_unique_session_id():
+    """Generate a unique session_id for the user."""
+    while True:
+        session_id = get_random_string(length=32)
+        if not User.objects.filter(session_id=session_id).exists():
+            return session_id
+
 def callback(request):
     try:
         code = request.GET.get('code')
@@ -69,6 +77,27 @@ def callback(request):
                 store_info = store_info_response.json()['data']
                 store_name = store_info.get('name')
                 store_id = store_info.get('id')
+                store_email = store_info.get('email')  # Assuming store_info contains email
+
+                # Check if the user is authenticated
+                if not request.user.is_authenticated:
+                    # Generate a random username and session ID
+                    session_id = generate_unique_session_id()
+                    
+                    # Create a new user
+                    user, created = User.objects.get_or_create(email=store_email, defaults={
+                        'username': store_email,
+                        'name': store_name,
+                        'session_id': session_id
+                    })
+
+                    if created:
+                        # Automatically log in the new user
+                        user.set_password(get_random_string(length=32))  # Ensure password is hashed
+                        user.save()
+                        login(request, user)  # Log in the new user
+                else:
+                    user = request.user
 
                 store, created = Store.objects.get_or_create(
                     store_id=store_id,
@@ -84,20 +113,16 @@ def callback(request):
                     store.refresh_token = refresh_token
                     store.token_valid = True
                     store.save()
-                else:
-                    # Removed code that creates a UserEvent entry for the new store
-                    pass
 
                 if UserStoreLink.objects.filter(store=store).exists():
                     messages.error(request, 'This store is already connected to another user.')
                     return redirect('dashboard')
                 
-                if UserStoreLink.objects.filter(user=request.user).exists():
+                if UserStoreLink.objects.filter(user=user).exists():
                     messages.error(request, 'You are already connected to a store.')
                     return redirect('dashboard')  # Redirect to the dashboard
 
-
-                UserStoreLink.objects.create(user=request.user, store=store)
+                UserStoreLink.objects.create(user=user, store=store)
                 return redirect('dashboard')
             else:
                 messages.error(request, 'Failed to fetch store information from Salla')

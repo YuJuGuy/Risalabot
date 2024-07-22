@@ -31,6 +31,9 @@ urlpatterns = [
     
     
     path('link-channel/', views.create_whatsapp_session, name="whatsapp_session"),
+    path('get_whatsapp_qr_code/', views.get_whatsapp_qr_code, name='get_whatsapp_qr_code'),
+    path('whatsapp_details/', views.get_whatsapp_details, name='whatsapp_details'),
+
     
 
     path('', views.home, name="home"),

@@ -1,15 +1,73 @@
 {% extends 'main.html' %}
 {% load static %}
 {% block content %}
-    <div id="content">
-        {% if success %}
-            <p>{{ message }}</p>
-            <img src="data:image/png;base64,{{ qr }}" alt="QR Code">
-        {% else %}
-            <p>{{ message }}</p>
-            {% if error %}
-                <p>Error: {{ error }}</p>
+    <div id="content" class="content-container">
+        <div class="session-container">
+            {% if is_connected %}
+                <div id="whatsapp-details-container" class="details-container">
+                    <!-- WhatsApp details will be inserted here by AJAX -->
+                </div>
+            {% else %}
+                <div id="qr-code-container" class="qr-code-container">
+                    <!-- QR code will be inserted here by AJAX -->
+                </div>
             {% endif %}
-        {% endif %}
+        </div>
     </div>
+
+    {% if is_connected %}
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                fetch("{% url 'whatsapp_details' %}")
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.id && data.name && data.about && data.profile_picture) {
+                            const detailsContainer = document.getElementById('whatsapp-details-container');
+
+                            const profileImage = document.createElement('img');
+                            profileImage.src = data.profile_picture;
+                            profileImage.alt = "Profile Picture";
+                            detailsContainer.appendChild(profileImage);
+
+                            const nameElement = document.createElement('p');
+                            nameElement.innerText = `Name: ${data.name}`;
+                            detailsContainer.appendChild(nameElement);
+
+                            const aboutElement = document.createElement('p');
+                            aboutElement.innerText = `About: ${data.about}`;
+                            detailsContainer.appendChild(aboutElement);
+                        } else {
+                            document.getElementById('whatsapp-details-container').innerText = 'Failed to retrieve WhatsApp details.';
+                        }
+                    })
+                    .catch(error => {
+                        document.getElementById('whatsapp-details-container').innerText = 'An error occurred while fetching the WhatsApp details.';
+                    });
+            });
+        </script>
+    {% else %}
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                fetch("{% url 'get_whatsapp_qr_code' %}")
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            if (data.qr) {
+                                const qrImage = document.createElement('img');
+                                qrImage.src = `data:image/png;base64,${data.qr}`;
+                                qrImage.alt = "QR Code";
+                                document.getElementById('qr-code-container').appendChild(qrImage);
+                            } else {
+                                document.getElementById('qr-code-container').innerText = data.message;
+                            }
+                        } else {
+                            document.getElementById('qr-code-container').innerText = data.message;
+                        }
+                    })
+                    .catch(error => {
+                        document.getElementById('qr-code-container').innerText = 'An error occurred while fetching the QR code.';
+                    });
+            });
+        </script>
+    {% endif %}
 {% endblock %}

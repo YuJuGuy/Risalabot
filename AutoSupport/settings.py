@@ -29,7 +29,7 @@ DEBUG = True
 ALLOWED_HOSTS = ['stud-accepted-ghoul.ngrok-free.app','127.0.0.1']
 
 CSRF_TRUSTED_ORIGINS = [
-    'https://stud-accepted-ghoul.ngrok-free.app ',
+    'https://stud-accepted-ghoul.ngrok-free.app',
 ]
 
 # Application definition

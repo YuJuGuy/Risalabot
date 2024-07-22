@@ -49,6 +49,7 @@ html, body {
     height: 100%;
     margin: 0;
     font-family: var(--body-font);
+    background-color: #f5f6f8;
 }
 
 /*========== Header ==========*/
@@ -482,5 +483,31 @@ input{
   background-color: #333;
   color: white;
   font: inherit;
+}
 
+
+.content-container{
+  height: 100%;
+  direction: ltr;
+}
+
+
+.session-container{
+  height: 100%;
+  min-width: 340px  ;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  width: fit-content;
+  background-color: #fff;
+  box-shadow: rgba(55, 63, 71, 10%) 0px 0px 0px 1px, rgba(55, 63, 71, 16%) 0px 1px 4px;
+
+}
+
+
+.qr-code-container{
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1rem;
 }

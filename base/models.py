@@ -7,9 +7,9 @@ import json
 # Create your models here.
 
 class User(AbstractUser):
-    name = models.CharField(max_length=200, null=True)
     email = models.EmailField(max_length=200, unique=True)
     session_id = models.CharField(max_length=200, unique=True, null=True)
+    connected = models.BooleanField(default=False)
     
     
     USERNAME_FIELD = 'email'

@@ -10,8 +10,10 @@ from . forms import CreateUserForm, UserEventForm, CampaignForm, GroupCreationFo
 from . models import User, Store, UserStoreLink, UserEvent, EventType, Campaign
 from django.http import JsonResponse
 from automations.tasks import send_email_task
-from . apis import get_customer_data, create_customer_group, delete_customer_group,group_campaign, get_customers_from_group, whatsapp_create_session
+from . apis import get_customer_data, create_customer_group, delete_customer_group,group_campaign, get_customers_from_group
+from . whatsapp_api import whatsapp_create_session, whatsapp_details, get_session_status
 from django.core.paginator import Paginator
+from django.utils.crypto import get_random_string
 
 
 def loginPage(request):
@@ -43,9 +45,12 @@ def logoutUser(request):
     logout(request)
     return redirect('login')
 
-def generate_random_string(length):
-    letters_and_digits = string.ascii_letters + string.digits
-    return ''.join(random.choice(letters_and_digits) for i in range(length))
+def generate_unique_session_id():
+    """Generate a unique session_id for the user."""
+    while True:
+        session_id = get_random_string(length=32)
+        if not User.objects.filter(session_id=session_id).exists():
+            return session_id
 
 def registerPage(request):
     if request.user.is_authenticated:
@@ -58,7 +63,7 @@ def registerPage(request):
         if form.is_valid():
             user = form.save(commit=False)
             user.username = user.username.lower()
-            user.session_id = user.username + generate_random_string(10)
+            user.session_id = generate_unique_session_id()
             user.save()
             login(request, user)
             return redirect('dashboard')
@@ -286,28 +291,51 @@ def delete_customer_list(request, group_id):
 
 @login_required(login_url='login')
 def create_whatsapp_session(request):
+    status = get_session_status(request.user.session_id)
+    if status == "WORKING":
+        request.user.connected = True
+        request.user.save()
+    else:
+        request.user.connected = False
+        request.user.save()    
+    
+    print(request.user.connected)
+    context = {
+        'is_connected': request.user.connected,
+    }
+    return render(request, 'base/whatsapp_session.html', context)
+
+@login_required(login_url='login')
+def get_whatsapp_qr_code(request):
     try:
         result = whatsapp_create_session(request.user)
-        if result['success']:
-            if 'qr' in result:
-                return render(request, 'base/whatsapp_session.html', {
-                    'success': True,
-                    'message': result['message'],
-                    'qr': result['qr']
-                })
-            else:
-                return render(request, 'base/whatsapp_session.html', {
-                    'success': True,
-                    'message': result['message']
-                })
-        else:
-            return render(request, 'base/whatsapp_session.html', {
-                'success': False,
-                'message': result['message']
-            })
+        response_data = {
+            'success': result['success'],
+            'message': result.get('message', '')
+        }
+        if 'qr' in result:
+            response_data['qr'] = result['qr']
+        return JsonResponse(response_data)
     except Exception as e:
-        return render(request, 'base/whatsapp_session.html', {
-            'success': False,
-            'message': 'An error occurred',
-            'error': str(e)
-        })
+        return JsonResponse({'success': False, 'message': 'An error occurred', 'error': str(e)})
+    
+
+@login_required(login_url='login')
+def get_whatsapp_details(request):
+    user = request.user
+    try:
+        results = whatsapp_details(user)
+
+        if results:
+
+            return JsonResponse({
+                'id': results.get('id'),
+                'name': results.get('name'),
+                'about': results.get('about'),
+                'profile_picture': results.get('profile_picture')
+
+            })
+        else:
+            return JsonResponse({'error': 'Failed to retrieve WhatsApp details'}, status=500)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
