@@ -12,7 +12,6 @@ from django.http import JsonResponse
 from automations.tasks import send_email_task
 from . apis import get_customer_data, create_customer_group, delete_customer_group,group_campaign, get_customers_from_group
 from . whatsapp_api import whatsapp_create_session, whatsapp_details, get_session_status
-from django.core.paginator import Paginator
 from django.utils.crypto import get_random_string
 
 
@@ -299,7 +298,6 @@ def create_whatsapp_session(request):
         request.user.connected = False
         request.user.save()    
     
-    print(request.user.connected)
     context = {
         'is_connected': request.user.connected,
     }
@@ -339,3 +337,5 @@ def get_whatsapp_details(request):
             return JsonResponse({'error': 'Failed to retrieve WhatsApp details'}, status=500)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+    
+    

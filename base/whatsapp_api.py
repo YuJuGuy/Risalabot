@@ -52,6 +52,7 @@ def whatsapp_create_session(user):
             break
 
     # No session exists, proceed to create a new session
+    print("Creating a new session")
     url = "http://localhost:3000/api/sessions/start"
     data = {"name": session}
     response = requests.post(url, headers=headers, json=data)
