@@ -492,6 +492,8 @@ input{
 }
 
 
+/*========== Whatsapp ==========*/
+
 .session-container{
   height: 100%;
   min-width: 340px  ;
@@ -510,4 +512,17 @@ input{
   justify-content: center;
   align-items: center;
   padding: 1rem;
+}
+
+.image-container{
+  width: 300px;
+}
+.image-container img{
+  width: 100%;
+  height: auto;
+}
+
+.details-container p{
+  direction: rtl;
+  text-align: right;
 }

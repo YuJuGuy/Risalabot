@@ -1,7 +1,7 @@
 import requests
 import base64
 import time
-from . models import User
+from base.models import User
 
 
 def get_session_status(session):
@@ -111,3 +111,35 @@ def whatsapp_details(user):
         user.save()
         return None  # or handle the error accordingly
        
+       
+       
+def logout_user(user):
+    session = user.session_id
+    headers = {'accept': 'application/json', 'Content-Type': 'application/json'}
+    data = {"name": session}
+    # Logout user
+    url = f"http://localhost:3000/api/sessions/logout"
+    response = requests.post(url, headers=headers, json=data)
+    
+    if response.status_code in [200, 201]:
+        return {'success': True}
+    else:
+        return {'success': False}
+    
+    
+def stop_session(user):
+    session = user.session_id
+    headers = {'accept': 'application/json', 'Content-Type': 'application/json'}
+    data = {
+        "logout": True,
+        "name": session
+    }
+    
+    # Stop the session
+    url = "http://localhost:3000/api/sessions/stop"
+    response = requests.post(url, headers=headers, json=data)
+    
+    if response.status_code in [200, 201]:
+        return {'success': True}
+    else:
+        return {'success': False}
