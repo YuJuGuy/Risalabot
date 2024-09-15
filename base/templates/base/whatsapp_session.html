@@ -1,28 +1,131 @@
 {% extends 'main.html' %}
 {% load static %}
 {% block content %}
-    <div id="content" class="content-container">
-        <div class="session-container">
-            {% if is_connected %}
-                <div id="whatsapp-details-container" class="details-container">
-                    <!-- WhatsApp details will be inserted here by AJAX -->
-                </div>
-            {% else %}
-                <div id="qr-code-container" class="qr-code-container">
-                    <!-- QR code will be inserted here by AJAX -->
-                </div>
-            {% endif %}
+<div id="content" class="content-container">
+    <div class="session-container">
+        {% if is_connected %}
+        <div id="whatsapp-details-container" class="details-container">
+            <div id="loading-spinner" class="spinner-container">
+                <div class="spinner"></div>
+            </div>
+            <!-- WhatsApp details will be inserted here by AJAX -->
         </div>
+        {% else %}
+        <div id="qr-code-container" class="qr-code-container">
+            <div id="loading-spinner" class="spinner-container">
+                <div class="spinner"></div>
+            </div>
+            <!-- QR code will be inserted here by AJAX -->
+        </div>
+        {% endif %}
     </div>
+</div>
+
     <script>
-        document.addEventListener('click', function (event) {
-            if (event.target.id === 'logout-button') {
-                fetch("{% url 'whatsapp_stop' %}", {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRFToken': '{{ csrf_token }}'
-                    }
-                })
+        document.addEventListener('DOMContentLoaded', function () {
+            function fetchWhatsAppDetails() {
+                const detailsContainer = document.getElementById('whatsapp-details-container');
+                const loadingSpinner = document.getElementById('loading-spinner');
+                
+                detailsContainer.innerHTML = ''; // Clear existing details
+                detailsContainer.appendChild(loadingSpinner); // Show spinner
+                loadingSpinner.style.display = 'block';
+        
+                fetch("{% url 'whatsapp_details' %}")
+                    .then(response => response.json())
+                    .then(data => {
+                        loadingSpinner.style.display = 'none'; // Hide spinner
+        
+                        if (data.id && data.name && data.about && data.profile_picture) {
+                            const imgDiv = document.createElement('div');
+                            imgDiv.classList.add('image-container');
+                            const profileImage = document.createElement('img');
+                            profileImage.src = data.profile_picture;
+                            profileImage.alt = "Profile Picture";
+                            imgDiv.appendChild(profileImage);
+                            detailsContainer.appendChild(imgDiv);
+        
+                            const nameElement = document.createElement('p');
+                            nameElement.classList.add('nameElement');
+                            nameElement.innerText = `${data.name}`;
+                            detailsContainer.appendChild(nameElement);
+        
+                            const aboutElement = document.createElement('p');
+                            aboutElement.classList.add('aboutElement');
+                            aboutElement.innerText = `الحالة: ${data.about}`;
+                            detailsContainer.appendChild(aboutElement);
+        
+                            const logoutButton = document.createElement('button');
+                            logoutButton.classList.add('logout-button');
+                            logoutButton.id = 'logout-button';
+                            logoutButton.innerText = 'تسجيل الخروج';
+                            detailsContainer.appendChild(logoutButton);
+                        } else {
+                            detailsContainer.innerText = 'Failed to retrieve WhatsApp details.';
+                        }
+                    })
+                    .catch(error => {
+                        loadingSpinner.style.display = 'none'; // Hide spinner
+                        detailsContainer.innerText = 'An error occurred while fetching the WhatsApp details.';
+                    });
+            }
+        
+            function fetchQRCode() {
+                const qrCodeContainer = document.getElementById('qr-code-container');
+                const loadingSpinner = document.getElementById('loading-spinner');
+                
+                qrCodeContainer.innerHTML = ''; // Clear existing QR code
+                qrCodeContainer.appendChild(loadingSpinner); // Show spinner
+                loadingSpinner.style.display = 'block';
+        
+                fetch("{% url 'get_whatsapp_qr_code' %}")
+                    .then(response => response.json())
+                    .then(data => {
+                        loadingSpinner.style.display = 'none'; // Hide spinner
+                        
+                        if (data.success) {
+                            if (data.qr) {
+                                const imgDiv = document.createElement('div');
+                                imgDiv.classList.add('image-container');
+                                const qrImage = document.createElement('img');
+                                qrImage.src = `data:image/png;base64,${data.qr}`;
+                                qrImage.alt = "QR Code";
+                                imgDiv.appendChild(qrImage);
+                                qrCodeContainer.appendChild(imgDiv);
+        
+                                const reloadButton = document.createElement('button');
+                                reloadButton.classList.add('reload-button');
+                                reloadButton.id = 'reload-button';
+                                reloadButton.innerText = 'Reload';
+                                qrCodeContainer.appendChild(reloadButton);
+                            } else {
+                                qrCodeContainer.innerText = data.message;
+                            }
+                        } else {
+                            qrCodeContainer.innerText = data.message;
+                        }
+                    })
+                    .catch(error => {
+                        loadingSpinner.style.display = 'none'; // Hide spinner
+                        qrCodeContainer.innerText = 'An error occurred while fetching the QR code.';
+                    });
+            }
+        
+            if ({{ is_connected|lower }}) {
+                fetchWhatsAppDetails();
+            } else {
+                fetchQRCode();
+            }
+        
+            // Event delegation for dynamically created buttons
+            document.addEventListener('click', function (event) {
+                if (event.target.id === 'logout-button' || event.target.id === 'reload-button') {
+                    fetch("{% url 'whatsapp_stop' %}", {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        }
+                    })
                     .then(response => response.json())
                     .then(data => {
                         if (data.success) {
@@ -34,82 +137,9 @@
                     .catch(error => {
                         alert('An error occurred while logging out from WhatsApp.');
                     });
-            }
-        });
-    </script>
-    {% if is_connected %}
-        <script>
-            document.addEventListener('DOMContentLoaded', function () {
-                fetch("{% url 'whatsapp_details' %}")
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.id && data.name && data.about && data.profile_picture) {
-                            const detailsContainer = document.getElementById('whatsapp-details-container');
-                            
-                            const imgDiv = document.createElement('div');
-                            imgDiv.classList.add('image-container');
-                            const profileImage = document.createElement('img');
-                            profileImage.src = data.profile_picture;
-                            profileImage.alt = "Profile Picture";
-                            imgDiv.appendChild(profileImage);
-                            detailsContainer.appendChild(imgDiv);
-
-                            const nameElement = document.createElement('p');
-                            nameElement.innerText = `الاسم: ${data.name}`;
-                            detailsContainer.appendChild(nameElement);
-
-                            const aboutElement = document.createElement('p');
-                            aboutElement.innerText = `الحالة: ${data.about}`;
-                            detailsContainer.appendChild(aboutElement);
-
-                            const logoutButton = document.createElement('button');
-                            logoutButton.classList.add('logout-button');
-                            logoutButton.id = 'logout-button';
-                            logoutButton.innerText = 'تسجيل الخروج';
-                            detailsContainer.appendChild(logoutButton);
-                        } else {
-                            document.getElementById('whatsapp-details-container').innerText = 'Failed to retrieve WhatsApp details.';
-                        }
-                    })
-                    .catch(error => {
-                        document.getElementById('whatsapp-details-container').innerText = 'An error occurred while fetching the WhatsApp details.';
-                    });
+                }
             });
-        </script>
-    {% else %}
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            fetch("{% url 'get_whatsapp_qr_code' %}")
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        if (data.qr) {
-                            const imgDiv = document.createElement('div');
-                            imgDiv.classList.add('image-container');
-                            const qrImage = document.createElement('img');
-                            qrImage.src = `data:image/png;base64,${data.qr}`;
-                            qrImage.alt = "QR Code";
-                            imgDiv.appendChild(qrImage);
-    
-                            document.getElementById('qr-code-container').appendChild(imgDiv);
-    
-                            // Add logout button
-                            const logoutButton = document.createElement('button');
-                            logoutButton.classList.add('logout-button');
-                            logoutButton.id = 'logout-button';
-                            logoutButton.innerText = 'reload';
-                            document.getElementById('qr-code-container').appendChild(logoutButton);
-                        } else {
-                            document.getElementById('qr-code-container').innerText = data.message;
-                        }
-                    } else {
-                        document.getElementById('qr-code-container').innerText = data.message;
-                    }
-                })
-                .catch(error => {
-                    document.getElementById('qr-code-container').innerText = 'An error occurred while fetching the QR code.';
-                });
         });
-    </script>
-    {% endif %}
+        
+</script>
 {% endblock %}

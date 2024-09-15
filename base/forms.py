@@ -31,15 +31,26 @@ class CampaignForm(forms.ModelForm):
         model = Campaign
         fields = ['name', 'scheduled_time', 'msg', 'customers_group']
         widgets = {
-            'scheduled_time': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
+            'name': forms.TextInput(attrs={'placeholder': 'أدخل اسم الحملة'}),
+            'scheduled_time': forms.DateTimeInput(
+                attrs={
+                    'type': 'datetime-local',
+                    'placeholder': 'Scheduled Time'
+                }
+            ),
+            'msg': forms.Textarea(attrs={'placeholder': 'أدخل نص الرسالة هنا'}),
+            # 'customers_group' is a Select widget; placeholders don't apply directly
         }
 
     def __init__(self, *args, **kwargs):
         store_groups = kwargs.pop('store_groups', [])
         super(CampaignForm, self).__init__(*args, **kwargs)
         self.fields['customers_group'].widget = forms.Select(
-            choices=[(group['id'], group['name']) for group in store_groups]
+            choices=[('', 'Select Customer Group')] + [(group['id'], group['name']) for group in store_groups]
         )
+        # Optional: Set HTML attributes for 'customers_group'
+        self.fields['customers_group'].widget.attrs.update({'class': 'custom-select'})
+        
         
 class GroupCreationForm(forms.Form):
     name = forms.CharField(max_length=100)

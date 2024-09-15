@@ -185,18 +185,16 @@ def campaign(request):
             
             if len(customers_numbers) > store.subscription.messages_limit - store.message_count:
                 messages.error(request, 'Insufficient message balance.')
-                return redirect('dashboard')
+                return redirect('campaigns')
             
             send_email_task.apply_async(eta=scheduled_time, args=[customers_numbers, msg, store.id])
             
             campaign = form.save(commit=False)
             campaign.store = store
-            if 'save_draft' in request.POST:
-                campaign.status = 'draft'
-            elif 'cancel' in request.POST:
-                campaign.status = 'cancelled'
+            if 'schedule' in request.POST:
+                campaign.status = 'Scheduled'
             campaign.save()
-            return redirect('dashboard')  # Adjust the redirect as needed
+            return redirect('campaigns')  # Adjust the redirect as needed
     else:
         form = CampaignForm(store_groups=store_groups)
     
@@ -208,6 +206,24 @@ def campaign(request):
     return render(request, 'base/campaigns.html', context)
 
     
+@login_required(login_url='login')
+def campaign_delete(request, campaign_id):
+    try:
+        # Get the store linked to the logged-in user
+        user_store = UserStoreLink.objects.get(user=request.user).store
+        # Get the campaign belonging to the user's store
+        campaign = Campaign.objects.get(id=campaign_id, store=user_store)
+        # Delete the campaign
+        campaign.delete()
+        messages.success(request, 'Campaign deleted successfully.')
+    except (Campaign.DoesNotExist, UserStoreLink.DoesNotExist):
+        # If either the campaign or the user-store link does not exist
+        messages.error(request, 'Campaign not found or you do not have permission to delete it.')
+    
+    # Redirect to the campaigns page after the operation
+    return redirect('campaigns')
+        
+
 
 
 #Customer Views

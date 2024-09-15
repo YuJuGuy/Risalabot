@@ -100,3 +100,15 @@ body {
     margin: 0; /* Remove default margin for p inside titles */
   }
   
+  .trcontainer{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+  }
+
+  .trcontainer ul{
+    list-style-type: none;
+    padding: 0;
+    text-align: center;
+  }

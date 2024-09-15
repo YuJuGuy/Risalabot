@@ -1,21 +1,152 @@
 {% extends 'main.html' %}
 
 {% block content %}
-    <h2>Campaigns</h2>
-    {% if campaigns %}
-        <ul>
-            {% for campaign in campaigns %}
-                <li>{{ campaign.name }}</li>
-            {% endfor %}
-        </ul>
-    {% else %}
-        <p>No campaigns found.</p>
-    {% endif %}
   <h2>Create Campaign</h2>
-  <form method="POST">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit" name="save_draft">Save as Draft</button>
-    <button type="submit" name="cancel">Cancel</button>
-  </form>
+
+
+  <div class="popup" id="myPopup">
+    <div class="popup-content">
+      <form method="POST">
+        {% csrf_token %}
+        {{ form.non_field_errors }}
+  
+        <!-- Manually render each form field -->
+        <div class="form-group">
+          {{ form.name.errors }}
+          {{ form.name }}
+        </div>
+  
+        <div class="form-group">
+          {{ form.scheduled_time.errors }}
+          {{ form.scheduled_time }}
+        </div>
+        
+        <div class="form-group">
+            {{ form.customers_group.errors }}
+            {{ form.customers_group }}
+          </div>
+    
+        <div class="form-group">
+          {{ form.msg.errors }}
+          {{ form.msg }}
+        </div>
+  
+
+        <div class="button-row">
+            <button class="create-button" id="showPopupButton">جدولة</button>
+            <button type="button" id="closePopupButton">الغاء</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+    <div class="campaign-actions">
+        <button class="create-button" onclick=showPopup()>
+            <i class="fa-solid fa-plus"></i>
+            <span>إنشاء حملة</span>
+        </button>
+        <button class="import-button">
+            <i class="fa-solid fa-download"></i>
+            <span>تصدير</span>
+        </button>
+    </div>
+    <div class="table-container">
+        <div class="table-header">
+            <div class="search-container">
+            <div class="table-search">
+                <input type="text" id="search" placeholder="بحث عن طريق الاسم, البريد, الهاتف, الدولة">
+            </div>
+        </div>
+        </div>
+        <table id="customers-table">
+            <thead>
+                <tr>
+                    <th>الحملة</th>
+                    <th>الوقت المجدول</th>
+                    <th>الحالة</th>
+                    <th>المتجر</th>
+                  </tr>
+            </thead>
+            <tbody id="customers-body">
+                {% for campaign in campaigns %}
+                <tr>
+                  <td>{{ campaign.name }}</td>
+                  <td>{{ campaign.scheduled_time }}</td>
+                  <td>{{ campaign.status }}</td>
+                  <td> {{ campaign.store }}</td>
+                  <td>
+                    <i class="fa-solid fa-ellipsis-vertical" onclick="toggleDropdown(this)">
+                        <div class="dropdown-content">
+                            <a href="">تعديل</a>
+                            <a href="{% url 'delete_campaign' campaign.id %}">حذف</a>
+                        </div>
+                    </i>
+                </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <div class="pagination-controls">
+            <div class="view-per-page">
+                <select id="rows-per-page">
+                    <option value="25">25</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                </select>
+            </div>
+            <div class="page-buttons">
+                <button id="next-page" class="square-button">
+                    <i class="fa-solid fa-angle-right"></i>
+                </button>
+                <button id="prev-page" class="square-button">
+                    <i class="fa-solid fa-angle-left"></i>
+                </button>
+            
+            </div>
+        </div>
+    </div>
+    <script>
+        // Wait for the DOM to load
+        document.addEventListener('DOMContentLoaded', function() {
+          // Attach event listeners
+      
+          // Show popup
+          const showPopupButton = document.getElementById('showPopupButton');
+          showPopupButton.addEventListener('click', showPopup);
+      
+          // Close popup
+          const closePopupButton = document.getElementById('closePopupButton');
+          closePopupButton.addEventListener('click', closePopup);
+      
+          // Toggle dropdowns
+          const dropdownIcons = document.querySelectorAll('.dropdown-icon');
+          dropdownIcons.forEach(function(icon) {
+            icon.addEventListener('click', function(event) {
+              event.stopPropagation(); // Prevent the event from bubbling up
+              toggleDropdown(icon);
+            });
+          });
+      
+          // Close dropdowns when clicking outside
+          document.addEventListener('click', function() {
+            const dropdowns = document.querySelectorAll('.dropdown-content');
+            dropdowns.forEach(function(dropdown) {
+              dropdown.classList.remove('show');
+            });
+          });
+        });
+      
+        function showPopup() {
+          document.getElementById("myPopup").style.display = "block";
+        }
+      
+        function closePopup() {
+          document.getElementById('myPopup').style.display = 'none';
+        }
+      
+        function toggleDropdown(icon) {
+          const dropdown = icon.querySelector('.dropdown-content');
+          dropdown.classList.toggle('show');
+        }
+      </script>
 {% endblock %}

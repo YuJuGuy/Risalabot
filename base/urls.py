@@ -20,6 +20,7 @@ urlpatterns = [
     path('events/delete/<int:event_id>/', views.delete_event, name='delete_event'),
     
     path('campaigns/', views.campaign, name='campaigns'),
+    path('delete-campaign/<int:campaign_id>/', views.campaign_delete, name='delete_campaign'),
     
     path('customers/', views.customers_view, name='customers'),
     path('get-customers/', views.get_customers, name='get_customers'),

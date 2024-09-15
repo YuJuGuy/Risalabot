@@ -77,17 +77,25 @@ def callback(request):
                 store_info = store_info_response.json()['data']
                 store_name = store_info.get('name')
                 store_id = store_info.get('id')
-                store_email = store_info.get('email')  # Assuming store_info contains email
-
+                # check if the store has an email and not null
+                store_email = store_info.get('email')
+                
+                
                 # Check if the user is authenticated
                 if not request.user.is_authenticated:
                     # Generate a random username and session ID
+                    print("Generating a new session ID")
                     session_id = generate_unique_session_id()
                     
+                    
+                    # Check if the store has an email and not null
+                    
+                    if not store_email or store_email == '':
+                        messages.error(request, 'The store does not have an email address.')
+                        return redirect('dashboard')
                     # Create a new user
                     user, created = User.objects.get_or_create(email=store_email, defaults={
                         'username': store_email,
-                        'name': store_name,
                         'session_id': session_id
                     })
 
