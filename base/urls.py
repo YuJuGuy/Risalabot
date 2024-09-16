@@ -20,7 +20,11 @@ urlpatterns = [
     path('events/delete/<int:event_id>/', views.delete_event, name='delete_event'),
     
     path('campaigns/', views.campaign, name='campaigns'),
-    path('delete-campaign/<int:campaign_id>/', views.campaign_delete, name='delete_campaign'),
+    path('cancel-campaign/<int:campaign_id>/', views.campaign_cancel, name='campaign_cancel'),
+    path('delete-campaign/<int:campaign_id>/', views.delete_campaign, name='campaign_delete'),
+    path('edit_campaign/<int:campaign_id>/', views.edit_campaign, name='edit_campaign'),
+    path('get_campaign_data/<int:campaign_id>/', views.get_campaign_data, name='get_campaign_data'),
+    
     
     path('customers/', views.customers_view, name='customers'),
     path('get-customers/', views.get_customers, name='get_customers'),

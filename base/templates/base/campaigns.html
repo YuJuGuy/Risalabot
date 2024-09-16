@@ -6,7 +6,7 @@
 
   <div class="popup" id="myPopup">
     <div class="popup-content">
-      <form method="POST">
+      <form method="POST" id="campaign-form">
         {% csrf_token %}
         {{ form.non_field_errors }}
   
@@ -33,28 +33,25 @@
   
 
         <div class="button-row">
-            <button class="create-button" id="showPopupButton">جدولة</button>
-            <button type="button" id="closePopupButton">الغاء</button>
+          <button type="submit" class="create-button">جدولة</button>
+          <button type="button" id="closePopupButton">الغاء</button>
         </div>
       </form>
     </div>
   </div>
+  
 
     <div class="campaign-actions">
         <button class="create-button" onclick=showPopup()>
             <i class="fa-solid fa-plus"></i>
             <span>إنشاء حملة</span>
         </button>
-        <button class="import-button">
-            <i class="fa-solid fa-download"></i>
-            <span>تصدير</span>
-        </button>
     </div>
     <div class="table-container">
         <div class="table-header">
             <div class="search-container">
             <div class="table-search">
-                <input type="text" id="search" placeholder="بحث عن طريق الاسم, البريد, الهاتف, الدولة">
+                <input type="text" id="search" placeholder="بحث عن طريق اسم الحملة, الحالة, الوقت">
             </div>
         </div>
         </div>
@@ -75,13 +72,21 @@
                   <td>{{ campaign.status }}</td>
                   <td> {{ campaign.store }}</td>
                   <td>
-                    <i class="fa-solid fa-ellipsis-vertical" onclick="toggleDropdown(this)">
-                        <div class="dropdown-content">
-                            <a href="">تعديل</a>
-                            <a href="{% url 'delete_campaign' campaign.id %}">حذف</a>
-                        </div>
-                    </i>
-                </td>
+                    <div class="dropdown-icon">
+                      <i class="fa-solid fa-ellipsis-vertical"></i>
+                      {%if campaign.status == "scheduled"%}
+                      <div class="dropdown-content">
+                        <a href="javascript:void(0);" onclick="showPopup({{ campaign.id }});">تعديل</a>
+                        <a href="{% url 'campaign_cancel' campaign.id %}">الغاء</a>
+                      </div>
+                      {%else%}
+                      <div class="dropdown-content">
+                        <a href="{% url 'campaign_delete' campaign.id %}">حذف</a>
+                      </div>
+                      {% endif %}
+
+                    </div>
+                  </td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -106,47 +111,142 @@
         </div>
     </div>
     <script>
-        // Wait for the DOM to load
-        document.addEventListener('DOMContentLoaded', function() {
-          // Attach event listeners
+      document.addEventListener('DOMContentLoaded', function() {
+        // Attach event listeners
       
-          // Show popup
-          const showPopupButton = document.getElementById('showPopupButton');
-          showPopupButton.addEventListener('click', showPopup);
+        setupSearch();
       
-          // Close popup
-          const closePopupButton = document.getElementById('closePopupButton');
-          closePopupButton.addEventListener('click', closePopup);
-      
-          // Toggle dropdowns
-          const dropdownIcons = document.querySelectorAll('.dropdown-icon');
-          dropdownIcons.forEach(function(icon) {
-            icon.addEventListener('click', function(event) {
-              event.stopPropagation(); // Prevent the event from bubbling up
-              toggleDropdown(icon);
-            });
+        // Show popup
+        const showPopupButton = document.getElementById('showPopupButton');
+        if (showPopupButton) {
+          showPopupButton.addEventListener('click', function(event) {
+            event.preventDefault();
+            showPopup();
           });
+        }
       
-          // Close dropdowns when clicking outside
-          document.addEventListener('click', function() {
-            const dropdowns = document.querySelectorAll('.dropdown-content');
-            dropdowns.forEach(function(dropdown) {
-              dropdown.classList.remove('show');
-            });
+        // Close popup
+        const closePopupButton = document.getElementById('closePopupButton');
+        if (closePopupButton) {
+          closePopupButton.addEventListener('click', function(event) {
+            event.preventDefault();
+            closePopup();
+          });
+        }
+      
+        // Toggle dropdowns
+        const dropdownIcons = document.querySelectorAll('.dropdown-icon');
+        dropdownIcons.forEach(function(icon) {
+          icon.addEventListener('click', function(event) {
+            event.stopPropagation(); // Prevent the event from bubbling up to the document
+            closeAllDropdowns(); // Close all open dropdowns first
+            const dropdown = icon.querySelector('.dropdown-content');
+            dropdown.classList.toggle('show'); // Toggle the dropdown for the clicked icon
           });
         });
       
-        function showPopup() {
-          document.getElementById("myPopup").style.display = "block";
-        }
+        // Close dropdowns when clicking outside
+        document.addEventListener('click', function(event) {
+          closeAllDropdowns(); // Close all dropdowns when clicking outside
+        });
       
-        function closePopup() {
-          document.getElementById('myPopup').style.display = 'none';
-        }
+        // Prevent dropdown click from closing when clicking inside the dropdown itself
+        const dropdownContents = document.querySelectorAll('.dropdown-content');
+        dropdownContents.forEach(function(dropdown) {
+          dropdown.addEventListener('click', function(event) {
+            event.stopPropagation();
+          });
+        });
+      });
       
-        function toggleDropdown(icon) {
-          const dropdown = icon.querySelector('.dropdown-content');
-          dropdown.classList.toggle('show');
+      // Function to close all dropdowns
+      function closeAllDropdowns() {
+        const dropdowns = document.querySelectorAll('.dropdown-content');
+        dropdowns.forEach(function(dropdown) {
+          dropdown.classList.remove('show');
+        });
+      }
+      
+      // Function to show the popup and close all dropdowns
+      function showPopup(campaignId) {
+        document.getElementById("myPopup").style.display = "block";
+        closeAllDropdowns(); // Close dropdowns when popup is shown
+    
+        const form = document.getElementById('campaign-form');
+        const submitButton = document.querySelector('.create-button');
+    
+        if (campaignId) {
+            // Editing mode
+            // Set the form action to the edit_campaign URL
+            form.action = '/edit_campaign/' + campaignId + '/';
+            // Change the submit button text to 'تحديث' (Update)
+            submitButton.innerText = 'تحديث';
+    
+            // Fetch campaign data via AJAX
+            fetch('/get_campaign_data/' + campaignId + '/')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Populate form fields
+                        document.getElementById('id_name').value = data.data.name;
+                        document.getElementById('id_scheduled_time').value = data.data.scheduled_time;
+                        document.getElementById('id_customers_group').value = data.data.customers_group;
+                        document.getElementById('id_msg').value = data.data.msg;
+                    } else {
+                        alert('Failed to load campaign data');
+                    }
+                });
+        } else {
+            // Creating mode
+            // Set the form action to the create campaign URL
+            form.action = '{% url "campaigns" %}';
+            // Change the submit button text to 'جدولة' (Schedule)
+            submitButton.innerText = 'جدولة';
+    
+            // Clear form fields
+            form.reset();
         }
+    }
+      
+      // Function to close the popup
+      function closePopup() {
+        document.getElementById('myPopup').style.display = 'none';
+      }
+      
+      // Search functionality
+      function setupSearch() {
+        const searchInput = document.getElementById('search');
+        if (searchInput) {
+          searchInput.addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+              event.preventDefault();
+              filterCampaigns(); // Filter campaigns when Enter key is pressed
+            }
+          });
+        }
+      }
+      
+      // Function to filter campaigns based on search input
+      function filterCampaigns() {
+        const searchInput = document.getElementById('search').value.toLowerCase();
+        const rows = document.querySelectorAll('#customers-body tr');
+        rows.forEach(function(row) {
+          const columns = row.querySelectorAll('td');
+          let shouldShow = false;
+          columns.forEach(function(column) {
+            if (column.textContent.toLowerCase().includes(searchInput)) {
+              shouldShow = true;
+            }
+          });
+          row.style.display = shouldShow ? '' : 'none'; // Show or hide rows based on search match
+        });
+      }
+      
+      // Toggle dropdown function for future extension if needed
+      function toggleDropdown(icon) {
+        const dropdown = icon.querySelector('.dropdown-content');
+        dropdown.classList.toggle('show');
+      }
+      
       </script>
 {% endblock %}

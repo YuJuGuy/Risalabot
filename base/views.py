@@ -2,6 +2,8 @@ from django.shortcuts import render,redirect
 import random
 import string
 from django.contrib.auth import authenticate
+from celery.exceptions import CeleryError
+from django.core.exceptions import PermissionDenied
 from django.contrib import messages
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
@@ -12,6 +14,12 @@ from django.http import JsonResponse
 from automations.tasks import send_email_task
 from . apis import get_customer_data, create_customer_group, delete_customer_group,group_campaign, get_customers_from_group
 from django.utils.crypto import get_random_string
+from AutoSupport.celery import app as celery_app
+from datetime import datetime
+
+__all__ = ('celery_app',) 
+
+
 
 
 def loginPage(request):
@@ -155,7 +163,7 @@ def home(request):
 def campaign(request):
     try:
         store = UserStoreLink.objects.get(user=request.user).store
-        campaigns = Campaign.objects.filter(store=store)
+        campaigns = Campaign.objects.filter(store=store, status__in=['scheduled', 'failed', 'completed', 'draft','cancelled']).order_by('-scheduled_time')
         store_groups_response = group_campaign(request.user)
         
         if not store_groups_response.get('success'):
@@ -176,24 +184,33 @@ def campaign(request):
             scheduled_time = form.cleaned_data['scheduled_time']
             if scheduled_time.tzinfo is None or scheduled_time.tzinfo.utcoffset(scheduled_time) is None:
                 scheduled_time = make_aware(scheduled_time)
-            
+            if scheduled_time < make_aware(datetime.now()):
+                messages.error(request, 'Scheduled time cannot be in the past.')
+                return redirect('campaigns')
+
             customers_numbers = get_customers_from_group(request.user, group_id)
-            
+
             if len(customers_numbers) == 0:
                 messages.error(request, 'No customers in the selected group.')
                 return redirect('campaigns')
-            
+
             if len(customers_numbers) > store.subscription.messages_limit - store.message_count:
                 messages.error(request, 'Insufficient message balance.')
                 return redirect('campaigns')
-            
-            send_email_task.apply_async(eta=scheduled_time, args=[customers_numbers, msg, store.id])
-            
+
+            # Save the campaign and get the campaign ID
             campaign = form.save(commit=False)
+            campaign.status = 'scheduled'
             campaign.store = store
-            if 'schedule' in request.POST:
-                campaign.status = 'Scheduled'
             campaign.save()
+
+            # Pass the campaign_id to the task
+            task = send_email_task.apply_async(eta=scheduled_time, args=[customers_numbers, msg, store.id, campaign.id])
+            print(customers_numbers)
+            campaign.task_id = task.id
+            campaign.save()
+            
+            
             return redirect('campaigns')  # Adjust the redirect as needed
     else:
         form = CampaignForm(store_groups=store_groups)
@@ -205,25 +222,127 @@ def campaign(request):
     
     return render(request, 'base/campaigns.html', context)
 
+
+@login_required
+def get_campaign_data(request, campaign_id):
+    try:
+        campaign = Campaign.objects.get(id=campaign_id, store=UserStoreLink.objects.get(user=request.user).store)
+        data = {
+            'name': campaign.name,
+            'scheduled_time': campaign.scheduled_time.strftime('%Y-%m-%dT%H:%M'),  # Adjust format as per input type
+            'customers_group': campaign.customers_group,
+            'msg': campaign.msg,
+        }
+        return JsonResponse({'success': True, 'data': data})
+    except Campaign.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Campaign not found.'})
+
+
+
+@login_required
+def edit_campaign(request, campaign_id):
+    try:
+        store = UserStoreLink.objects.get(user=request.user).store
+        campaign = Campaign.objects.get(id=campaign_id, store=store)
+        
+        if request.method == 'POST':
+            store_groups_response = group_campaign(request.user)
+            store_groups = store_groups_response.get('data', [])
+
+            form = CampaignForm(request.POST, instance=campaign, store_groups=store_groups)
+            if form.is_valid():
+                # Revoke the old task
+                if campaign.task_id:
+                    celery_app.control.revoke(campaign.task_id, terminate=True)
+
+                # Update campaign details
+                form.save()
+
+                # Schedule the new task with updated data
+                msg = form.cleaned_data['msg']
+                group_id = form.cleaned_data['customers_group']
+                scheduled_time = form.cleaned_data['scheduled_time']
+                #check if the scheduled time is timezone aware and not in the past
+                if scheduled_time.tzinfo is None or scheduled_time.tzinfo.utcoffset(scheduled_time) is None:
+                    scheduled_time = make_aware(scheduled_time)
+                if scheduled_time < make_aware(datetime.now()):
+                    messages.error(request, 'Scheduled time cannot be in the past.')
+                    return redirect('campaigns')
+                                    
+                
+                
+                customers_numbers = get_customers_from_group(request.user, group_id)
+
+                if len(customers_numbers) == 0:
+                    messages.error(request, 'No customers in the selected group.')
+                    return redirect('campaigns')
+
+                # Schedule the new task
+                task = send_email_task.apply_async(eta=scheduled_time, args=[customers_numbers, msg, store.id, campaign.id])
+                
+                # Save the new task_id
+                campaign.task_id = task.id
+                campaign.status = 'scheduled'
+                campaign.save(update_fields=['task_id', 'status'])
+
+                messages.success(request, 'Campaign updated and rescheduled successfully.')
+                return redirect('campaigns')
+            else:
+                # Handle form errors
+                messages.error(request, 'Form is invalid.')
+                return redirect('campaigns')
+
+    except Campaign.DoesNotExist:
+        messages.error(request, 'Campaign not found.')
+        return redirect('campaigns')
+
+
     
 @login_required(login_url='login')
-def campaign_delete(request, campaign_id):
+def campaign_cancel(request, campaign_id):
     try:
         # Get the store linked to the logged-in user
         user_store = UserStoreLink.objects.get(user=request.user).store
-        # Get the campaign belonging to the user's store
+        # Fetch the campaign belonging to the user's store
         campaign = Campaign.objects.get(id=campaign_id, store=user_store)
-        # Delete the campaign
-        campaign.delete()
-        messages.success(request, 'Campaign deleted successfully.')
+
+        # Check if the campaign is scheduled
+        if campaign.status != 'scheduled':
+            messages.error(request, 'This campaign is not scheduled, so it cannot be cancelled.')
+            return redirect('campaigns')
+
+        # Check if the campaign has a task ID (Celery task)
+        if campaign.task_id:
+            try:
+                # Try to revoke the task using Celery
+                celery_app.control.revoke(campaign.task_id)
+            except CeleryError as e:
+                # Log the error and display a user-friendly message
+                messages.error(request, f"Failed to revoke the campaign task: {str(e)}")
+            else:
+                # If successfully revoked, update campaign status
+                campaign.task_id = None
+                campaign.status = 'cancelled'
+                campaign.save(update_fields=['task_id', 'status'])
+                messages.success(request, 'Campaign has been successfully cancelled.')
     except (Campaign.DoesNotExist, UserStoreLink.DoesNotExist):
         # If either the campaign or the user-store link does not exist
-        messages.error(request, 'Campaign not found or you do not have permission to delete it.')
-    
-    # Redirect to the campaigns page after the operation
-    return redirect('campaigns')
-        
+        raise PermissionDenied('You do not have permission to cancel this campaign.')
 
+    # Redirect to the campaigns page
+    return redirect('campaigns')
+
+
+@login_required(login_url='login')
+def delete_campaign(request, campaign_id):
+    try:
+        campaign = Campaign.objects.get(id=campaign_id , store=UserStoreLink.objects.get(user=request.user).store)
+        campaign.status = 'deleted'
+        campaign.save(update_fields=['status'])
+        messages.success(request, 'Campaign deleted successfully.')
+    except Campaign.DoesNotExist:
+        messages.error(request, 'Campaign does not exist.')
+    return redirect('campaigns')
 
 
 #Customer Views

@@ -83,6 +83,7 @@ class UserEvent(models.Model):
 class Campaign(models.Model):
     store = models.ForeignKey(Store, on_delete=models.CASCADE)
     name = models.CharField(max_length=255)
+    task_id = models.CharField(max_length=255, blank=True, null=True)
     scheduled_time = models.DateTimeField()
     status = models.CharField(max_length=20, default='draft')  # 'draft', 'scheduled', 'sent', 'cancelled', etc.
     clicks = models.IntegerField(default=0)
