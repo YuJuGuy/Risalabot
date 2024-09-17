@@ -16,6 +16,7 @@ from . apis import get_customer_data, create_customer_group, delete_customer_gro
 from django.utils.crypto import get_random_string
 from AutoSupport.celery import app as celery_app
 from datetime import datetime
+from django.urls import reverse
 
 __all__ = ('celery_app',) 
 
@@ -163,7 +164,6 @@ def home(request):
 def campaign(request):
     try:
         store = UserStoreLink.objects.get(user=request.user).store
-        campaigns = Campaign.objects.filter(store=store, status__in=['scheduled', 'failed', 'completed', 'draft','cancelled']).order_by('-scheduled_time')
         store_groups_response = group_campaign(request.user)
         
         if not store_groups_response.get('success'):
@@ -216,30 +216,12 @@ def campaign(request):
         form = CampaignForm(store_groups=store_groups)
     
     context = {
-        'campaigns': campaigns,
         'form': form,
     }
     
     return render(request, 'base/campaigns.html', context)
 
-
-@login_required
-def get_campaign_data(request, campaign_id):
-    try:
-        campaign = Campaign.objects.get(id=campaign_id, store=UserStoreLink.objects.get(user=request.user).store)
-        data = {
-            'name': campaign.name,
-            'scheduled_time': campaign.scheduled_time.strftime('%Y-%m-%dT%H:%M'),  # Adjust format as per input type
-            'customers_group': campaign.customers_group,
-            'msg': campaign.msg,
-        }
-        return JsonResponse({'success': True, 'data': data})
-    except Campaign.DoesNotExist:
-        return JsonResponse({'success': False, 'error': 'Campaign not found.'})
-
-
-
-@login_required
+        
 def edit_campaign(request, campaign_id):
     try:
         store = UserStoreLink.objects.get(user=request.user).store
@@ -297,6 +279,45 @@ def edit_campaign(request, campaign_id):
         return redirect('campaigns')
 
 
+
+
+@login_required
+def get_campaign_data(request, campaign_id=None):
+    try:
+        # Fetch a specific campaign by ID
+        store = UserStoreLink.objects.get(user=request.user).store
+        if campaign_id:
+            campaign = Campaign.objects.get(id=campaign_id, store=UserStoreLink.objects.get(user=request.user).store)
+            data = {
+                'name': campaign.name,
+                'scheduled_time': campaign.scheduled_time.strftime('%Y-%m-%dT%H:%M'),  # Adjust format as per input type
+                'customers_group': campaign.customers_group,
+                'msg': campaign.msg,
+                'edit_url': reverse('edit_campaign', args=[campaign.id]),  # Add edit URL
+                'delete_url': reverse('campaign_delete', args=[campaign.id])  # Add delete URL
+            }
+            return JsonResponse({'success': True, 'data': data})
+        else:
+            # Fetch all campaigns
+            campaigns = Campaign.objects.filter(store=store, status__in=['scheduled', 'failed', 'completed', 'draft','cancelled']).order_by('-scheduled_time')
+            data = [{
+                'id': campaign.id,
+                'name': campaign.name,
+                'scheduled_time': campaign.scheduled_time.strftime('%Y-%m-%d %H:%M'),  # Adjust format as per input type
+                'store': campaign.store.store_name,
+                'status': campaign.status,
+                'edit_url': reverse('edit_campaign', args=[campaign.id]),  # Add edit URL for each campaign
+                'delete_url': reverse('campaign_delete', args=[campaign.id]),  # Add delete URL for each campaign
+                'cancel_url': reverse('campaign_cancel', args=[campaign.id])
+            } for campaign in campaigns
+                    ]
+            
+            return JsonResponse({'success': True, 'data': data}, status=200)
+    except Campaign.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Campaign not found.'}, status=404)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
     
 @login_required(login_url='login')
 def campaign_cancel(request, campaign_id):
@@ -325,6 +346,12 @@ def campaign_cancel(request, campaign_id):
                 campaign.status = 'cancelled'
                 campaign.save(update_fields=['task_id', 'status'])
                 messages.success(request, 'Campaign has been successfully cancelled.')
+                
+        else:
+            campaign.status = 'cancelled'
+            campaign.save(update_fields=['task_id', 'status'])
+            messages.success(request, 'No task ID found for this campaign. Cancelling the campaign.')
+            
     except (Campaign.DoesNotExist, UserStoreLink.DoesNotExist):
         # If either the campaign or the user-store link does not exist
         raise PermissionDenied('You do not have permission to cancel this campaign.')

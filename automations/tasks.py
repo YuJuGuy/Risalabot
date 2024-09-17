@@ -22,11 +22,10 @@ def send_email_task(numbers, msg, store_id, campaign_id):
     except Campaign.DoesNotExist:
         print(f"Campaign with id {campaign_id} does not exist.")
         return None
-    
+
     messages_limit = store.subscription.messages_limit
     sent_count = 0
-
-    # Simulate the list of numbers
+    failed_count = 0  # Track the number of failed messages
 
     url = 'http://localhost:3000/api/sendText'
     headers = {
@@ -46,19 +45,28 @@ def send_email_task(numbers, msg, store_id, campaign_id):
                 "session": "default"
             }
 
-            response = requests.post(url, headers=headers, json=data)
-            if response.status_code == 200 or response.status_code == 201:
-                sent_count += 1
+            try:
+                response = requests.post(url, headers=headers, json=data)
+                if response.status_code == 200 or response.status_code == 201:
+                    sent_count += 1
 
-                # Update message count atomically
-                with transaction.atomic():
-                    store.message_count += 1
-                    store.save(update_fields=['message_count'])
-            else:
-                print(f"Failed to send message to {number}. Status code: {response.status_code}")
+                    # Update message count atomically
+                    with transaction.atomic():
+                        store.message_count += 1
+                        store.save(update_fields=['message_count'])
+                else:
+                    failed_count += 1  # Track failed messages
+                    print(f"Failed to send message to {number}. Status code: {response.status_code}")
+                    
+            except requests.exceptions.RequestException as e:
+                failed_count += 1
+                print(f"Error occurred when sending message to {number}: {e}")
 
-        # Mark the campaign as successful if all messages are sent
-        campaign.status = 'completed'
+        # Mark the campaign as successful if all messages were sent
+        if failed_count == 0:
+            campaign.status = 'completed'
+        else:
+            campaign.status = 'failed'
         campaign.save(update_fields=['status'])
 
     except requests.exceptions.ConnectionError as e:
@@ -66,5 +74,5 @@ def send_email_task(numbers, msg, store_id, campaign_id):
         campaign.status = 'failed'
         campaign.save(update_fields=['status'])
 
-    print(f"Total messages sent: {sent_count}")
+    print(f"Total messages sent: {sent_count}, failed: {failed_count}")
     return None

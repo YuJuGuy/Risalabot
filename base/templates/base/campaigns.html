@@ -55,7 +55,8 @@
             </div>
         </div>
         </div>
-        <table id="customers-table">
+        <div id="campaigns-loading" style="padding: 1rem;">جاري تحميل الحملات...</div>
+        <table id="campaigns-table">
             <thead>
                 <tr>
                     <th>الحملة</th>
@@ -64,31 +65,8 @@
                     <th>المتجر</th>
                   </tr>
             </thead>
-            <tbody id="customers-body">
-                {% for campaign in campaigns %}
-                <tr>
-                  <td>{{ campaign.name }}</td>
-                  <td>{{ campaign.scheduled_time }}</td>
-                  <td>{{ campaign.status }}</td>
-                  <td> {{ campaign.store }}</td>
-                  <td>
-                    <div class="dropdown-icon">
-                      <i class="fa-solid fa-ellipsis-vertical"></i>
-                      {%if campaign.status == "scheduled"%}
-                      <div class="dropdown-content">
-                        <a href="javascript:void(0);" onclick="showPopup({{ campaign.id }});">تعديل</a>
-                        <a href="{% url 'campaign_cancel' campaign.id %}">الغاء</a>
-                      </div>
-                      {%else%}
-                      <div class="dropdown-content">
-                        <a href="{% url 'campaign_delete' campaign.id %}">حذف</a>
-                      </div>
-                      {% endif %}
-
-                    </div>
-                  </td>
-                </tr>
-                {% endfor %}
+            <tbody id="campaigns-body">
+               
             </tbody>
         </table>
         <div class="pagination-controls">
@@ -113,59 +91,56 @@
     <script>
       document.addEventListener('DOMContentLoaded', function() {
         // Attach event listeners
-      
+        fetchAllCampaigns();
         setupSearch();
-      
+    
         // Show popup
         const showPopupButton = document.getElementById('showPopupButton');
         if (showPopupButton) {
-          showPopupButton.addEventListener('click', function(event) {
-            event.preventDefault();
-            showPopup();
-          });
+            showPopupButton.addEventListener('click', function(event) {
+                event.preventDefault();
+                showPopup();
+            });
         }
-      
+    
         // Close popup
         const closePopupButton = document.getElementById('closePopupButton');
         if (closePopupButton) {
-          closePopupButton.addEventListener('click', function(event) {
-            event.preventDefault();
-            closePopup();
-          });
+            closePopupButton.addEventListener('click', function(event) {
+                event.preventDefault();
+                closePopup();
+            });
         }
-      
-        // Toggle dropdowns
-        const dropdownIcons = document.querySelectorAll('.dropdown-icon');
-        dropdownIcons.forEach(function(icon) {
-          icon.addEventListener('click', function(event) {
-            event.stopPropagation(); // Prevent the event from bubbling up to the document
-            closeAllDropdowns(); // Close all open dropdowns first
-            const dropdown = icon.querySelector('.dropdown-content');
-            dropdown.classList.toggle('show'); // Toggle the dropdown for the clicked icon
-          });
-        });
-      
-        // Close dropdowns when clicking outside
+    
+        // Event delegation for dropdowns
         document.addEventListener('click', function(event) {
-          closeAllDropdowns(); // Close all dropdowns when clicking outside
+            const dropdownIcon = event.target.closest('.dropdown-icon');
+            if (dropdownIcon) {
+                event.stopPropagation(); // Prevent the event from bubbling up
+                closeAllDropdowns(); // Close other open dropdowns
+                const dropdown = dropdownIcon.querySelector('.dropdown-content');
+                dropdown.classList.toggle('show'); // Toggle the dropdown for the clicked icon
+            } else {
+                closeAllDropdowns(); // Close dropdowns if clicked outside
+            }
         });
-      
+    
         // Prevent dropdown click from closing when clicking inside the dropdown itself
-        const dropdownContents = document.querySelectorAll('.dropdown-content');
-        dropdownContents.forEach(function(dropdown) {
-          dropdown.addEventListener('click', function(event) {
-            event.stopPropagation();
-          });
+        document.addEventListener('click', function(event) {
+            const dropdownContent = event.target.closest('.dropdown-content');
+            if (dropdownContent) {
+                event.stopPropagation(); // Prevent closing when clicking inside the dropdown
+            }
         });
-      });
+    });
       
       // Function to close all dropdowns
       function closeAllDropdowns() {
         const dropdowns = document.querySelectorAll('.dropdown-content');
         dropdowns.forEach(function(dropdown) {
-          dropdown.classList.remove('show');
+            dropdown.classList.remove('show');
         });
-      }
+    }
       
       // Function to show the popup and close all dropdowns
       function showPopup(campaignId) {
@@ -183,7 +158,7 @@
             submitButton.innerText = 'تحديث';
     
             // Fetch campaign data via AJAX
-            fetch('/get_campaign_data/' + campaignId + '/')
+            fetch('/get_campaigns/' + campaignId + '/')
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
@@ -229,7 +204,7 @@
       // Function to filter campaigns based on search input
       function filterCampaigns() {
         const searchInput = document.getElementById('search').value.toLowerCase();
-        const rows = document.querySelectorAll('#customers-body tr');
+        const rows = document.querySelectorAll('#campaigns-body tr');
         rows.forEach(function(row) {
           const columns = row.querySelectorAll('td');
           let shouldShow = false;
@@ -247,6 +222,71 @@
         const dropdown = icon.querySelector('.dropdown-content');
         dropdown.classList.toggle('show');
       }
+
+
+
+      // fetching
+      function fetchAllCampaigns() {
+        const campaignsUrl = '/get_campaigns/';
+    
+        fetch(campaignsUrl, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayCampaigns(data.data);
+            } else {
+                showError('Failed to load customers.');
+            }
+        })
+        .catch(error => showError('Error fetching customers: ' + error));
+    }
+
+      function displayCampaigns(campaigns) {
+        const campaignsBody = document.getElementById('campaigns-body');
+        const campaignsTable = document.getElementById('campaigns-table');
+        const loadingDiv = document.getElementById('campaigns-loading');
+    
+        campaignsBody.innerHTML = '';
+        loadingDiv.style.display = 'none';
+    
+        if (campaigns.length > 0) {
+          campaigns.forEach(campaign => {
+              const row = document.createElement('tr');
+              row.innerHTML = `
+                  <td>${campaign.name}</td>
+                  <td>${campaign.scheduled_time}</td>
+                  <td>${campaign.status}</td>
+                  <td>${campaign.store}</td>
+                  <td>
+                      <div class="dropdown-icon">
+                          <i class="fa-solid fa-ellipsis-vertical"></i>
+                              ${campaign.status === "scheduled" ? `
+                                  <div class="dropdown-content">
+                                    <a href="javascript:void(0);" onclick="showPopup('${campaign.id}');">تعديل</a>
+                                    <a href="${campaign.cancel_url}">الغاء</a>
+                                  </div>
+                              ` : `
+                                  <div class="dropdown-content">
+                                    <a href="${campaign.delete_url}">حذف</a>
+                                  </div>
+                              `}
+                      </div>
+                  </td>
+              `;
+              campaignsBody.appendChild(row);
+          });
+          campaignsTable.style.display = 'table';
+      } else {
+          showError('No campaigns found.');
+      }
+    }
       
       </script>
 {% endblock %}
+
+
+
+
