@@ -89,10 +89,17 @@
         </div>
     </div>
     <script>
+      let allCampaigns = [];
+      let currentPage = 1;
+      let rowsPerPage = 25;
+      let totalCampaigns = 0;
+
       document.addEventListener('DOMContentLoaded', function() {
         // Attach event listeners
-        fetchAllCampaigns();
+        setupPagination();
         setupSearch();
+        fetchAllCampaigns();
+
     
         // Show popup
         const showPopupButton = document.getElementById('showPopupButton');
@@ -162,6 +169,7 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
+                        allCampaigns  = data.data;
                         // Populate form fields
                         document.getElementById('id_name').value = data.data.name;
                         document.getElementById('id_scheduled_time').value = data.data.scheduled_time;
@@ -216,12 +224,34 @@
           row.style.display = shouldShow ? '' : 'none'; // Show or hide rows based on search match
         });
       }
-      
-      // Toggle dropdown function for future extension if needed
-      function toggleDropdown(icon) {
-        const dropdown = icon.querySelector('.dropdown-content');
-        dropdown.classList.toggle('show');
-      }
+
+      function filterCampaigns() {
+        const searchInput = document.getElementById('search').value.toLowerCase();
+    
+        // Filter campaigns based on the search input
+        const filteredCampaigns = allCampaigns.filter(campaign => {
+            return campaign.name.toLowerCase().includes(searchInput) ||
+                   campaign.store.toLowerCase().includes(searchInput) ||
+                   campaign.status.toLowerCase().includes(searchInput) ||
+                   campaign.scheduled_time.toLowerCase().includes(searchInput);
+        });
+    
+        totalCampaigns = filteredCampaigns.length;
+    
+        // Ensure currentPage is within valid range
+        const totalPages = Math.ceil(totalCampaigns / rowsPerPage);
+        if (currentPage > totalPages) {
+            currentPage = totalPages || 1;
+        }
+    
+        // Paginate the filtered campaigns
+        const start = (currentPage - 1) * rowsPerPage;
+        const end = start + rowsPerPage;
+        const paginatedCampaigns = filteredCampaigns.slice(start, end);
+    
+        displayCampaigns(paginatedCampaigns);
+        updatePaginationControls();
+    }
 
 
 
@@ -236,13 +266,17 @@
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                displayCampaigns(data.data);
+                allCampaigns = data.data;
+                totalCampaigns = allCampaigns.length;
+                filterCampaigns(allCampaigns.slice(0, rowsPerPage)); // Apply pagination immediately
+                updatePaginationControls();
             } else {
-                showError('Failed to load customers.');
+                showError('Failed to load campaigns.');
             }
         })
-        .catch(error => showError('Error fetching customers: ' + error));
+        .catch(error => showError('Error fetching campaigns: ' + error));
     }
+    
 
       function displayCampaigns(campaigns) {
         const campaignsBody = document.getElementById('campaigns-body');
@@ -283,7 +317,42 @@
           showError('No campaigns found.');
       }
     }
-      
+
+
+    function setupPagination() {
+      const rowsPerPageSelect = document.getElementById('rows-per-page');
+      const prevPageButton = document.getElementById('prev-page');
+      const nextPageButton = document.getElementById('next-page');
+  
+      rowsPerPageSelect.addEventListener('change', function() {
+          rowsPerPage = parseInt(this.value);
+          currentPage = 1;
+          filterCampaigns();
+      });
+  
+      prevPageButton.addEventListener('click', () => changePage(-1));
+      nextPageButton.addEventListener('click', () => changePage(1));
+  }
+
+
+    function changePage(delta) {
+      const newPage = currentPage + delta;
+      if (newPage > 0 && newPage <= Math.ceil(totalCampaigns  / rowsPerPage)) {
+          currentPage = newPage;
+          filterCampaigns();
+      }
+  }
+
+    function updatePaginationControls() {
+      const prevPageButton = document.getElementById('prev-page');
+      const nextPageButton = document.getElementById('next-page');
+  
+      prevPageButton.disabled = currentPage === 1;
+      nextPageButton.disabled = currentPage >= Math.ceil(totalCampaigns  / rowsPerPage);
+    }
+
+
+  
       </script>
 {% endblock %}
 

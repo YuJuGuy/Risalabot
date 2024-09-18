@@ -312,6 +312,7 @@ def get_campaign_data(request, campaign_id=None):
             } for campaign in campaigns
                     ]
             
+            
             return JsonResponse({'success': True, 'data': data}, status=200)
     except Campaign.DoesNotExist:
         return JsonResponse({'success': False, 'error': 'Campaign not found.'}, status=404)

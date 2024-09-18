@@ -113,6 +113,9 @@ function filterCustomers() {
     updatePaginationControls();
 }
 
+
+
+
 function displayCustomers(customers) {
     const customersBody = document.getElementById('customers-body');
     const customersTable = document.getElementById('customers-table');
