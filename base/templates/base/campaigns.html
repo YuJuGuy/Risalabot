@@ -149,47 +149,68 @@
         });
     }
       
-      // Function to show the popup and close all dropdowns
-      function showPopup(campaignId) {
-        document.getElementById("myPopup").style.display = "block";
-        closeAllDropdowns(); // Close dropdowns when popup is shown
-    
-        const form = document.getElementById('campaign-form');
-        const submitButton = document.querySelector('.create-button');
-    
-        if (campaignId) {
-            // Editing mode
-            // Set the form action to the edit_campaign URL
-            form.action = '/edit_campaign/' + campaignId + '/';
-            // Change the submit button text to 'تحديث' (Update)
-            submitButton.innerText = 'تحديث';
-    
-            // Fetch campaign data via AJAX
-            fetch('/get_campaigns/' + campaignId + '/')
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        allCampaigns  = data.data;
-                        // Populate form fields
-                        document.getElementById('id_name').value = data.data.name;
-                        document.getElementById('id_scheduled_time').value = data.data.scheduled_time;
-                        document.getElementById('id_customers_group').value = data.data.customers_group;
-                        document.getElementById('id_msg').value = data.data.msg;
-                    } else {
-                        alert('Failed to load campaign data');
-                    }
-                });
-        } else {
-            // Creating mode
-            // Set the form action to the create campaign URL
-            form.action = '{% url "campaigns" %}';
-            // Change the submit button text to 'جدولة' (Schedule)
-            submitButton.innerText = 'جدولة';
-    
-            // Clear form fields
-            form.reset();
-        }
-    }
+    function showPopup(campaignId) {
+      const form = document.getElementById('campaign-form');
+      const submitButton = document.querySelector('.create-button');
+  
+      if (campaignId) {
+          // Editing mode
+          form.action = '/edit_campaign/' + campaignId + '/';
+  
+          fetch('/get_campaigns/' + campaignId + '/')
+              .then(response => response.json())
+              .then(data => {
+                  if (data.success) {
+                      allCampaigns = data.data;
+                      const campaignData = data.data;
+  
+                      if (campaignData.status === "scheduled") {
+                          submitButton.innerText = 'تحديث';
+                          submitButton.style.display = ''; // Ensure the button is visible
+                          // Make fields editable
+                          document.getElementById('id_name').readOnly = false;
+                          document.getElementById('id_scheduled_time').readOnly = false;
+                          document.getElementById('id_customers_group').readOnly = false;
+                          document.getElementById('id_msg').readOnly = false;
+                      } else {
+                          // Hide the submit button
+                          submitButton.style.display = 'none';
+                          // Make fields read-only
+                          document.getElementById('id_name').readOnly = true;
+                          document.getElementById('id_scheduled_time').readOnly = true;
+                          document.getElementById('id_customers_group').readOnly = true;
+                          document.getElementById('id_msg').readOnly = true;
+                      }
+  
+                      // Populate form fields
+                      document.getElementById('id_name').value = campaignData.name;
+                      document.getElementById('id_scheduled_time').value = campaignData.scheduled_time;
+                      document.getElementById('id_customers_group').value = campaignData.customers_group;
+                      document.getElementById('id_msg').value = campaignData.msg;
+  
+                      // Show the popup
+                      document.getElementById("myPopup").style.display = "block";
+                      closeAllDropdowns();
+                  } else {
+                      alert('Failed to load campaign data');
+                  }
+              });
+      } else {
+          // Creating mode
+          form.action = '{% url "campaigns" %}';
+          submitButton.innerText = 'جدولة';
+          submitButton.style.display = ''; // Ensure the button is visible
+          // Make fields editable
+          document.getElementById('id_name').readOnly = false;
+          document.getElementById('id_scheduled_time').readOnly = false;
+          document.getElementById('id_customers_group').readOnly = false;
+          document.getElementById('id_msg').readOnly = false;
+          form.reset();
+          document.getElementById("myPopup").style.display = "block";
+          closeAllDropdowns();
+      }
+  }
+  
       
       // Function to close the popup
       function closePopup() {
@@ -304,6 +325,7 @@
                                   </div>
                               ` : `
                                   <div class="dropdown-content">
+                                    <a href="javascript:void(0);" onclick="showPopup('${campaign.id}');">اظهار</a>
                                     <a href="${campaign.delete_url}">حذف</a>
                                   </div>
                               `}

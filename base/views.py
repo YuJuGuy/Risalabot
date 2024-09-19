@@ -227,12 +227,17 @@ def edit_campaign(request, campaign_id):
         store = UserStoreLink.objects.get(user=request.user).store
         campaign = Campaign.objects.get(id=campaign_id, store=store)
         
+        if campaign.status != 'scheduled':
+            messages.error(request, 'This campaign is not scheduled, so it cannot be updated.')
+            return redirect('campaigns')
+        
         if request.method == 'POST':
             store_groups_response = group_campaign(request.user)
             store_groups = store_groups_response.get('data', [])
 
             form = CampaignForm(request.POST, instance=campaign, store_groups=store_groups)
             if form.is_valid():
+
                 # Revoke the old task
                 if campaign.task_id:
                     celery_app.control.revoke(campaign.task_id, terminate=True)
@@ -292,6 +297,7 @@ def get_campaign_data(request, campaign_id=None):
                 'name': campaign.name,
                 'scheduled_time': campaign.scheduled_time.strftime('%Y-%m-%dT%H:%M'),  # Adjust format as per input type
                 'customers_group': campaign.customers_group,
+                'status': campaign.status,
                 'msg': campaign.msg,
                 'edit_url': reverse('edit_campaign', args=[campaign.id]),  # Add edit URL
                 'delete_url': reverse('campaign_delete', args=[campaign.id])  # Add delete URL
