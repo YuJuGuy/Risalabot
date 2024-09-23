@@ -257,18 +257,18 @@ font-size: 0.875rem;
 }
 .customers-card-container {
 padding: 0.5rem;
-width: 175px;
+width: 200px;
 height: auto;
-border-radius: 4px;
+border-radius: 8px;
 box-shadow: rgba(55, 63, 71, 5%) 0px 0px 0px 1px, rgba(55, 63, 71, 16%) 0px 1px 4px;
 background-color: #fff;
 }
 
 .group-card-container{
   padding: 0.5rem;
-  width: 175px;
+  width: 200px;
   height: auto;
-  border-radius: 4px;
+  border-radius: 8px;
   box-shadow: rgba(55, 63, 71, 5%) 0px 0px 0px 1px, rgba(55, 63, 71, 16%) 0px 1px 4px;
   background-color: #fff;
   cursor: pointer;
@@ -419,9 +419,13 @@ select{
 }
 
 .popup-content2 {
+  display: flex;
+  flex-direction: column;
+  justify-self: center;
   background-color: #fefefe;
   padding: 20px;
   border: 1px solid #888;
+  border-radius: 4px;
   width: 50%;
   max-width: 600px; /* Adjust maximum width as needed */
   text-align: center; /* Center content horizontally */
@@ -429,21 +433,55 @@ select{
 }
 
 .popup-content2 form {
+  display: flex;
+  flex-direction: column;
+  gap : 1rem;
   margin-bottom: 10px; /* Add margin below the form */
+
+}
+
+.popup-content2 input{ 
+  padding: 0.5rem;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  font-size: 0.875rem !important;
+  font: inherit;
+
 }
 
 .condition {
   margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  justify-content: center;
+}
+.condition select {
+  font-family: inherit;
+  padding: 0.5rem;
+  border-radius: 4px;
 }
 
 .value-container {
   display: flex;
   align-items: center; /* Align items vertically */
+  justify-content: center;
 }
 
 .value-field {
   width: 100px;
   margin-left: 10px; /* Add spacing between input and select */
+}
+
+.remove-button {
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  margin: 0;
+  background-color: #d9534f;
+  color: #fff;
 }
 
 .remove-condition {
@@ -452,6 +490,17 @@ select{
 
 #close-popup-button {
   margin-top: 10px; /* Add margin above the close button */
+}
+
+.rule-button{
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  margin: 0;
+  background-color: #21aa78;
+  color: #fff;
 }
 
 
@@ -688,4 +737,37 @@ td i {
   flex-direction: row;
   gap: 1rem;
   justify-content: center;
+}
+
+
+/*========== Events ==========*/
+
+.events-container{
+  display: flex;
+  flex-direction: row;
+  gap: 1rem;
+  margin: 1rem 2rem;
+}
+
+.event-container{
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1rem;
+  border-radius: 8px;
+  height: 120px;
+  width: 200px;
+  box-shadow: rgba(55, 63, 71, 5%) 0px 0px 0px 1px, rgba(55, 63, 71, 16%) 0px 1px 4px;
+  background-color: #fff;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  font-weight: bold;
+  
+}
+
+
+.event-container:hover{
+  background-color: #f5f5f5;
+  color:#00ffa2;
+  
 }

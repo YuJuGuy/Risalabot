@@ -8,31 +8,37 @@
             {% csrf_token %}
             {{ form.name.label_tag }} {{ form.name }}
             <div id="conditions-container"></div>
-            <button type="button" id="add-condition-button">Add Condition</button>
-            <br>
-            <button type="submit">Create Group</button>
+            <button class="rule-button" type="button" id="add-condition-button">اضافة شرط</button>
+            <div class="button-row">
+                <button type="submit">انشاء مجموعة</button>
+                <button type="button" id="closePopup">الغاء</button>
+            </div>
         </form>
-        <button type="button" id="close-popup-button">Close</button>
+        
     </div>
 </div>
 
 
 <template id="condition-template">
     <div class="condition">
+        <div class="condition-container">
         <select name="condition_field">
-            <option value="total_sales">Total Sales</option>
-            <option value="total_orders">Total Orders</option>
-            <option value="store_rating">Store Rating</option>
+            <option value="total_sales">مجموع المبيعات</option>
+            <option value="total_orders">مجموع الطلبات</option>
+            <option value="store_rating">تقييم المتجر</option>
         </select>
         <select name="symbol_field">
             <option value="<"><</option>
             <option value=">">></option>
-            <option value="between">between</option>
+            <option value="between">ما بين</option>
         </select>
-        <div class="value-container">
-            <input type="number" name="value_field" class="value-field" />
         </div>
-        <button type="button" class="remove-condition">Remove</button>
+        <div class="value-container">
+            <input type="text" name="value_field" class="value-field" />
+        </div>
+        <div class="remove-condition">
+        <button class="remove-button" type="button" id="remove-condition">حذف</button>
+        </div>
     </div>
 </template>
 

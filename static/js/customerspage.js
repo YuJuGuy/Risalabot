@@ -49,7 +49,7 @@ function setupDeleteGroupPopup() {
 function setupPopup() {
     const popup = document.getElementById('popup-group');
     const customersCard = document.getElementById('group-card');
-    const popupClose = document.getElementById('close-popup-button');
+    const popupClose = document.getElementById('closePopup');
 
     if (!popup || !customersCard || !popupClose) {
         console.error('Popup or necessary elements not found.');
@@ -231,8 +231,10 @@ function setupConditions() {
     });
 
     conditionsContainer.addEventListener('click', function(event) {
-        if (event.target.classList.contains('remove-condition')) {
-            event.target.parentElement.remove();
+      // get remove by id
+        if (event.target.id === 'remove-condition') {
+            const conditionDiv = event.target.closest('.condition');
+            conditionsContainer.removeChild(conditionDiv);
         }
     });
 
@@ -242,8 +244,8 @@ function setupConditions() {
             const valueContainer = conditionDiv.querySelector('.value-container');
             const index = conditionDiv.dataset.index;
             valueContainer.innerHTML = event.target.value === 'between' ? `
-                <input type="number" name="min_value_field-${index}" class="min-value-field" placeholder="Min value" />
-                <input type="number" name="max_value_field-${index}" class="max-value-field" placeholder="Max value" />
+                <input type="text" name="min_value_field-${index}" class="min-value-field" placeholder="القيمة الصغرى" />
+                <input type="text" name="max_value_field-${index}" class="max-value-field" placeholder="القيمة الكبرى" />
             ` : `
                 <input type="number" name="value_field-${index}" class="value-field" />
             `;

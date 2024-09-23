@@ -6,15 +6,13 @@
     <h2>My Events</h2>
 
     {% if events %}
-        <ul>
+        <div class='events-container'>
         {% for event in events %}
-            <li>
-                {{ event.event_type.label }}{% if event.subcategory %} - {{ event.get_subcategory_display }}{% endif %}: {{ event.message_template }}
-                <button class="edit-button" data-event-id="{{ event.id }}" data-event-type-id="{{ event.event_type.id }}" data-subcategory="{{ event.subcategory }}" data-message-template="{{ event.message_template|escapejs }}">Edit</button> | 
-                <a href="{% url 'delete_event' event.id %}" onclick="return confirm('Are you sure you want to delete this event?');">Delete</a>
-            </li>
+            <div class="event-container" onclick="openEditPopup('{{ event.id|escapejs }}','{{ event.event_type.id|escapejs }}','{{ event.subcategory|escapejs }}','{{ event.message_template|escapejs }}')">
+                <div class="event-type">{{ event.event_type.label }}</div>
+            </div>
         {% endfor %}
-        </ul>
+        </div>
     {% else %}
         <p>You have no events.</p>
     {% endif %}
@@ -26,9 +24,12 @@
             <form id="eventForm" method="post" action="{% url 'events' %}">
                 {% csrf_token %}
                 {{ form.as_p }}
-                <button type="submit" id="saveButton">Save</button>
+                
+                <div class="button-row">
+                    <button type="submit" id="saveButton">حفظ</button>
+                    <button type="button" id="closePopup">الغاء</button>
+                  </div>
             </form>
-            <button id="closePopup">Close</button>
         </div>
     </div>
 

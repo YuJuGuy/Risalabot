@@ -53,7 +53,7 @@ class CampaignForm(forms.ModelForm):
         
         
 class GroupCreationForm(forms.Form):
-    name = forms.CharField(max_length=100)
+    name = forms.CharField(max_length=100 , label='اسم المجموعة')
 
     def clean(self):
         cleaned_data = super().clean()

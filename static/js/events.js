@@ -13,7 +13,7 @@ function updateSubcategoryVisibility() {
 function openAddPopup() {
     document.getElementById("eventForm").reset();
     document.getElementById("eventForm").action = eventFormActionUrl;
-    document.getElementById("saveButton").innerText = "Save";
+    document.getElementById("saveButton").innerText = "حفظ";
     document.getElementById("myPopup").classList.add("show");
 }
 
@@ -24,9 +24,11 @@ function openEditPopup(eventId, eventType, subcategory, messageTemplate) {
     document.getElementById("id_subcategory").value = subcategory;
     document.getElementById("id_message_template").value = messageTemplate;
     document.getElementById("eventForm").action = eventFormActionUrl.replace('events', `manage_event/${eventId}`);
-    document.getElementById("saveButton").innerText = "Update";
+    document.getElementById("saveButton").innerText = "تحديث";
     updateSubcategoryVisibility();
     document.getElementById("myPopup").classList.add("show");
+    console.log(eventId, eventType, subcategory, messageTemplate);
+
 }
 
 // Event listener for the add button to open add popup
