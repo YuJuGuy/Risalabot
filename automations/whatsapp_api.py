@@ -127,6 +127,19 @@ def logout_user(user):
         return {'success': False}
     
     
+def start_session(user):
+    session = user.session_id
+    headers = {'accept': 'application/json', 'Content-Type': 'application/json'}
+    data = {"name": session}
+    # Start the session
+    url = "http://localhost:3000/api/sessions/start"
+    response = requests.post(url, headers=headers, json=data)
+    
+    if response.status_code in [200, 201]:
+        return {'success': True}
+    else:
+        return {'success': False}
+    
 def stop_session(user):
     session = user.session_id
     headers = {'accept': 'application/json', 'Content-Type': 'application/json'}

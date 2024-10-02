@@ -19,6 +19,9 @@ urlpatterns = [
     path('events/<int:event_id>/', views.manage_event, name='manage_event'),
     path('events/delete/<int:event_id>/', views.delete_event, name='delete_event'),
     
+    
+    path('flows/', views.flows, name='flows'),
+    
     path('campaigns/', views.campaign, name='campaigns'),
     path('cancel-campaign/<int:campaign_id>/', views.campaign_cancel, name='campaign_cancel'),
     path('delete-campaign/<int:campaign_id>/', views.delete_campaign, name='campaign_delete'),

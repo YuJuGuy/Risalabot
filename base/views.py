@@ -8,8 +8,8 @@ from django.contrib import messages
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.utils.timezone import make_aware
-from . forms import CreateUserForm, UserEventForm, CampaignForm, GroupCreationForm
-from . models import User, Store, UserStoreLink, UserEvent, EventType, Campaign
+from . forms import CreateUserForm, UserEventForm, CampaignForm, GroupCreationForm, FlowForm
+from . models import User, Store, UserStoreLink, UserEvent, EventType, Campaign, FlowActionTypes
 from django.http import JsonResponse
 from automations.tasks import send_email_task
 from . apis import get_customer_data, create_customer_group, delete_customer_group,group_campaign, get_customers_from_group
@@ -21,7 +21,8 @@ from django.urls import reverse
 __all__ = ('celery_app',) 
 
 
-
+def home(request):
+    return render(request, 'base/home.html')
 
 def loginPage(request):
     page = 'login'
@@ -154,10 +155,38 @@ def delete_event(request, event_id):
     event.delete()
     messages.success(request, 'Event deleted successfully.')
     return redirect('events')
+
+
+@login_required(login_url='login')
+def flows(request):
+    try:
+        user = request.user
+        flows = user.flows.all()
+    except UserStoreLink.DoesNotExist:
+        messages.error(request, 'No store linked. Please link a store first.')
+        return redirect('dashboard')
+    
+    if request.method == 'POST':
+        form = FlowForm(request.POST)
+        if form.is_valid():
+            # Save the form but don't commit yet, as we need to add the owner
+            new_flow = form.save(commit=False)
+            new_flow.owner = request.user  # Associate the flow with the current user
+            new_flow.save()  # Now save the flow
+            return redirect('flow_builder', flow_id=new_flow.id)  # Redirect to the flow builder
+    else:
+        form = FlowForm()
+    
+    context = {
+        'events': flows,
+        'actions': FlowActionTypes.objects.all(),
+        'form': form
+    }
+    return render(request, 'base/events.html', context)
+
     
 
-def home(request):
-    return render(request, 'base/home.html')
+
 
 
 @login_required(login_url='login')

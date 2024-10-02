@@ -32,7 +32,7 @@ class Store(models.Model):
     subscription = models.ForeignKey(Subscription, on_delete=models.SET_NULL, null=True, blank=True)
     token_valid = models.BooleanField(default=True)
     message_count = models.IntegerField(default=0)
-    last_reset = models.DateTimeField(default=timezone.now)
+    subscription_date = models.DateTimeField(default=timezone.now)
 
     def __str__(self):
         return self.store_name + ' - ' + self.store_id
@@ -43,7 +43,23 @@ class UserStoreLink(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     def __str__(self):
         return f'{self.user.email} : {self.store.store_name} : {self.store.store_id}'
+
+class Campaign(models.Model):
+    store = models.ForeignKey(Store, on_delete=models.CASCADE)
+    name = models.CharField(max_length=255)
+    task_id = models.CharField(max_length=255, blank=True, null=True)
+    scheduled_time = models.DateTimeField()
+    status = models.CharField(max_length=20, default='draft')  # 'draft', 'scheduled', 'sent', 'cancelled', etc.
+    clicks = models.IntegerField(default=0)
+    purchases = models.IntegerField(default=0)
+    msg = models.TextField()  # Assuming msg is text content
+    customers_group = models.CharField(max_length=255)  # Changed field to store the selected group
+
+    def __str__(self):
+        return self.name
     
+    
+        
 class EventType(models.Model):
     name = models.CharField(max_length=255, unique=True)
     label = models.CharField(max_length=255, unique=True)
@@ -80,16 +96,58 @@ class UserEvent(models.Model):
             return f"{self.store.store_name} - {self.store.store_id} - {self.event_type.name} - {self.get_subcategory_display()}"
         return f"{self.store.store_name} - {self.store.store_id} - {self.event_type.name}"
 
-class Campaign(models.Model):
-    store = models.ForeignKey(Store, on_delete=models.CASCADE)
-    name = models.CharField(max_length=255)
-    task_id = models.CharField(max_length=255, blank=True, null=True)
-    scheduled_time = models.DateTimeField()
-    status = models.CharField(max_length=20, default='draft')  # 'draft', 'scheduled', 'sent', 'cancelled', etc.
-    clicks = models.IntegerField(default=0)
-    purchases = models.IntegerField(default=0)
-    msg = models.TextField()  # Assuming msg is text content
-    customers_group = models.CharField(max_length=255)  # Changed field to store the selected group
+
+class Flow(models.Model):
+    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='flows')
+    name = models.CharField(max_length=255)  # Flow name
+    created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.name
+
+
+class FlowActionTypes(models.Model):
+    name = models.CharField(max_length=255)  # Internal name like 'sms', 'email'
+    label = models.CharField(max_length=255)  # Display name like 'Send SMS', 'Send Email'
+    description = models.TextField(blank=True, null=True)  # Optional description
+
+    def __str__(self):
+        return self.label
+
+
+class FlowStep(models.Model):
+    flow = models.ForeignKey(Flow, on_delete=models.CASCADE, related_name='steps')
+    order = models.IntegerField()
+    action_type = models.ForeignKey(FlowActionTypes, on_delete=models.CASCADE)  # Reference to action types
+    next_step = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.action_type.label} Step in {self.flow.name}"
+
+    def get_config(self):
+        if self.action_type.name == 'sms':
+            return self.text_config
+        elif self.action_type.name == 'delay':
+            return self.time_delay_config
+        return None
+
+
+class TextConfig(models.Model):
+    flow_step = models.OneToOneField(FlowStep, on_delete=models.CASCADE, related_name='text_config')
+    message = models.TextField()
+
+    def __str__(self):
+        return f"TextConfig for {self.flow_step.flow.name} - Step {self.flow_step.order}"
+
+
+class TimeDelayConfig(models.Model):
+    flow_step = models.OneToOneField(FlowStep, on_delete=models.CASCADE, related_name='time_delay_config')
+    delay_time = models.PositiveIntegerField()  # Delay in hours or days
+    delay_type = models.CharField(max_length=50, choices=[('hours', 'Hours'), ('days', 'Days')])
+
+    def __str__(self):
+        return f"TimeDelayConfig for {self.flow_step.flow.name} - Step {self.flow_step.order}"
+    
+    
+    
+    

@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drag and Drop Flow Builder</title>
+    <style>
+        .layout {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Style for the step list on the left */
+        .steps-list {
+            width: 30%;
+            padding: 10px;
+            background-color: #f1f1f1;
+            border-right: 1px solid #ccc;
+        }
+
+        .step {
+            padding: 10px;
+            margin-bottom: 10px;
+            background-color: #fff;
+            border: 1px solid #ccc;
+            cursor: grab;
+            position: relative;
+        }
+
+        /* Style for the canvas in the middle */
+        .canvas {
+            width: 65%;
+            min-height: 400px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border: 1px solid #ccc;
+        }
+
+        .placeholder {
+            border: 2px dashed #aaa;
+            background-color: #f0f0f0;
+            height: 50px;
+            margin-bottom: 10px;
+        }
+
+        /* Trigger block at the top of the canvas */
+        .trigger-block {
+            background-color: #dfe7fd;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 2px solid #6574cd;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        /* Close button for the step inside the canvas */
+        .remove-step {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background-color: red;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            font-size: 12px;
+            line-height: 20px;
+            text-align: center;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+<div class="layout">
+    <!-- Steps List on the left -->
+    <div class="steps-list" id="steps-list">
+        <div class="step" data-id="step-1">Action: Send Welcome Email</div>
+        <div class="step" data-id="step-2">Delay: Wait 2 Days</div>
+        <div class="step" data-id="step-3">Action: Send SMS Reminder</div>
+    </div>
+
+    <!-- Canvas with Trigger Block in the middle -->
+    <div class="canvas" id="flow-canvas">
+        <!-- Fixed trigger block -->
+        <div class="trigger-block">
+            Trigger: Purchase Completed
+        </div>
+        <!-- Steps will be dragged here -->
+        <div id="canvas-steps"></div>
+    </div>
+</div>
+
+<!-- Include Sortable.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.14.0/Sortable.min.js"></script>
+<script>
+    // Make the left side steps draggable
+    var stepsList = document.getElementById('steps-list');
+    var canvasSteps = document.getElementById('canvas-steps'); // Steps below the trigger block
+
+    // Initialize Sortable for the steps list (you can't reorder here)
+    new Sortable(stepsList, {
+        group: {
+            name: 'shared', // Same group allows dragging between them
+            pull: 'clone',  // Allows cloning of the element when dragged
+            put: false      // Prevent steps from being dragged back into the list
+        },
+        animation: 150,
+        sort: false // Prevent sorting in the list
+    });
+
+    // Initialize Sortable for the steps below the trigger block
+    new Sortable(canvasSteps, {
+        group: {
+            name: 'shared',
+            pull: false, // Prevent dragging from canvas back to list
+            put: true,   // Allow dropping into the canvas
+        },
+        animation: 150,
+        ghostClass: 'dragging-placeholder',
+        onAdd: function (evt) {
+            // When an item is dropped into the canvas steps
+            var itemEl = evt.item; // The dragged item element
+
+            // Add a remove (X) button to the step
+            appendRemoveButton(itemEl);
+
+            // Optionally, log the addition or handle the new element in the flow
+            console.log(`Added ${itemEl.dataset.id} to flow`);
+        },
+        onEnd: function (evt) {
+            // When reordering happens inside the canvas
+            console.log(`Moved item ${evt.item.dataset.id} from index ${evt.oldIndex} to ${evt.newIndex}`);
+        }
+    });
+
+    // Function to add a remove (X) button to the steps inside the canvas
+    function appendRemoveButton(item) {
+        // Create the button element
+        var removeButton = document.createElement('button');
+        removeButton.innerHTML = 'X';
+        removeButton.classList.add('remove-step');
+
+        // Append the remove button to the step
+        item.appendChild(removeButton);
+
+        // Handle the click event for removing the step
+        removeButton.addEventListener('click', function() {
+            item.remove(); // Remove the step from the canvas
+            console.log(`Removed ${item.dataset.id} from flow`);
+        });
+    }
+</script>
+
+</body>
+</html>

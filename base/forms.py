@@ -1,6 +1,6 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
-from . models import User , UserEvent, Campaign
+from . models import User , UserEvent, Campaign, Flow
 from django.core.exceptions import ValidationError
 
 class CreateUserForm(UserCreationForm):
@@ -106,3 +106,14 @@ class GroupCreationForm(forms.Form):
         # You can add any additional validation logic here
         cleaned_data['conditions'] = conditions
         return cleaned_data
+    
+class FlowForm(forms.ModelForm):
+    class Meta:
+        model = Flow
+        fields = ['name']
+        labels = {
+            'name': 'اسم التدفق',
+        }
+        widgets = {
+            'name': forms.TextInput(attrs={'placeholder': 'Enter flow name...'}),
+        }

@@ -8,7 +8,6 @@ from .whatsapp_api import whatsapp_create_session, whatsapp_details, get_session
 @login_required(login_url='login')
 def create_whatsapp_session(request):
     status = get_session_status(request.user.session_id)
-    print(status)
     if status == "WORKING":
         request.user.connected = True
         request.user.save()
