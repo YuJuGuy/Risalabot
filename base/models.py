@@ -12,7 +12,7 @@ class User(AbstractUser):
     connected = models.BooleanField(default=False)
     
     
-    USERNAME_FIELD = 'email'
+    USERNAME_FIELD = 'email' 
     REQUIRED_FIELDS = []
 class Subscription(models.Model):
     name = models.CharField(max_length=255)
