@@ -5,9 +5,9 @@ from django.conf import settings
 from celery.app.control import Control
 
 # set the default Django settings module for the 'celery' program.
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'AutoSupport.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'Risalabot.settings')
 
-app = Celery('AutoSupport')
+app = Celery('Risalabot')
 
 # Using a string here means the worker doesn't have to serialize
 # the configuration object to child processes.

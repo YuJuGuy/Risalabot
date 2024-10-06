@@ -14,7 +14,7 @@ from django.http import JsonResponse
 from automations.tasks import send_email_task
 from . apis import get_customer_data, create_customer_group, delete_customer_group,group_campaign, get_customers_from_group
 from django.utils.crypto import get_random_string
-from AutoSupport.celery import app as celery_app
+from Risalabot.celery import app as celery_app
 from datetime import datetime
 from django.urls import reverse
 
