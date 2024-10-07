@@ -21,6 +21,11 @@ urlpatterns = [
     
     
     path('flows/', views.flows, name='flows'),
+    path('flow/<int:flow_id>/', views.flow_builder, name='flow'),
+    path('flow/delete/<int:event_id>/', views.delete_flow, name='delete_flow'),
+    path('activate-suggested-flow/<int:suggestion_id>/', views.activate_suggested_flow, name='activate_suggested_flow'),
+
+
     
     path('campaigns/', views.campaign, name='campaigns'),
     path('cancel-campaign/<int:campaign_id>/', views.campaign_cancel, name='campaign_cancel'),

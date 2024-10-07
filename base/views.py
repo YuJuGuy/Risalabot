@@ -9,13 +9,16 @@ from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.utils.timezone import make_aware
 from . forms import CreateUserForm, UserEventForm, CampaignForm, GroupCreationForm, FlowForm
-from . models import User, Store, UserStoreLink, UserEvent, EventType, Campaign, FlowActionTypes
+from . models import User, Store, UserStoreLink, UserEvent, EventType,Trigger, Campaign, FlowActionTypes, Flow, FlowStep, SuggestedFlow, SuggestedFlowStep, TextConfig, TimeDelayConfig,SuggestedTextConfig, SuggestedTimeDelayConfig
 from django.http import JsonResponse
 from automations.tasks import send_email_task
 from . apis import get_customer_data, create_customer_group, delete_customer_group,group_campaign, get_customers_from_group
 from django.utils.crypto import get_random_string
 from Risalabot.celery import app as celery_app
 from datetime import datetime
+from django.db import models
+from django.shortcuts import get_object_or_404
+import json
 from django.urls import reverse
 
 __all__ = ('celery_app',) 
@@ -173,19 +176,106 @@ def flows(request):
             new_flow = form.save(commit=False)
             new_flow.owner = request.user  # Associate the flow with the current user
             new_flow.save()  # Now save the flow
-            return redirect('flow_builder', flow_id=new_flow.id)  # Redirect to the flow builder
+            return redirect('flow', flow_id=new_flow.id)  # Redirect to the flow builder
     else:
         form = FlowForm()
     
     context = {
-        'events': flows,
-        'actions': FlowActionTypes.objects.all(),
+        'flows': flows,
+        'suggestions': SuggestedFlow.objects.all(),
         'form': form
     }
-    return render(request, 'base/events.html', context)
+    return render(request, 'base/flows.html', context)
 
     
 
+def flow_builder(request, flow_id):
+    print('Entered flow_builder view')  # Check if the view is being called
+    flow = get_object_or_404(Flow, id=flow_id, owner=request.user)
+
+    if request.method == 'POST':
+        print('POST request detected')
+        form = FlowForm(request.POST, instance=flow)
+        if form.is_valid():
+            print('Form is valid')
+            form.save()
+
+            steps_data = request.POST.get('steps')
+            if steps_data:
+                steps_data = json.loads(steps_data)
+                print('Steps data:', steps_data)
+
+                for step_data in steps_data:
+                    step_id = step_data['step_id']
+                    new_order = step_data['order']
+                    print(f'Updating step {step_id} to order {new_order}')
+
+                    # Update the order for each step
+                    FlowStep.objects.filter(id=step_id, flow=flow).update(order=new_order)
+
+            return redirect('flow', flow_id=flow_id)
+        else:
+            print('Form is invalid')
+            messages.error(request, 'Error saving flow. Please correct the form errors.')
+            return redirect('flow', flow_id=flow_id)
+
+    flow_steps = FlowStep.objects.filter(flow=flow).order_by('order')
+    action_types = FlowActionTypes.objects.all()
+
+    return render(request, 'base/flow_builder.html', {
+        'flow': flow,
+        'triggers': Trigger.objects.all(),
+        'form': FlowForm(instance=flow),
+        'flow_steps': flow_steps,
+        'action_types': action_types,
+    })
+
+
+@login_required(login_url='login')
+def delete_flow(request, event_id):
+    flow = Flow.objects.get(id=event_id, owner=request.user)
+    flow.delete()
+    messages.success(request, 'Flow deleted successfully.')
+    return redirect('flows')
+
+@login_required
+def activate_suggested_flow(request, suggestion_id):
+    # Get the suggested flow to copy
+    suggested_flow = get_object_or_404(SuggestedFlow, id=suggestion_id)
+
+    # Create a new Flow for the current user
+    new_flow = Flow.objects.create(
+        owner=request.user,
+        name=suggested_flow.name,
+        trigger=suggested_flow.trigger  # Copy trigger from the suggested flow
+    )
+
+    # Copy the steps from the suggested flow to the new flow
+    for suggested_step in suggested_flow.steps.all():
+        FlowStep.objects.create(
+            flow=new_flow,
+            order=suggested_step.order,
+            action_type=suggested_step.action_type,
+        )
+
+    # Copy text configs from the suggested flow to the new flow
+    for suggested_text_config in SuggestedTextConfig.objects.filter(id=suggested_flow.id):
+        TextConfig.objects.create(
+            flow=new_flow,
+            order=suggested_text_config.order,
+            text=suggested_text_config.text
+        )
+
+    # Copy time delay configs from the suggested flow to the new flow
+    for suggested_time_delay_config in SuggestedTimeDelayConfig.objects.filter(id=suggested_flow.id):
+        TimeDelayConfig.objects.create(
+            flow=new_flow,
+            order=suggested_time_delay_config.order,
+            delay=suggested_time_delay_config.delay
+        )
+
+    # After copying, redirect to the flow builder to allow further customization
+    return redirect('flow', flow_id=new_flow.id)
 
 
 

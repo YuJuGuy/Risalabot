@@ -1,0 +1,140 @@
+{% extends 'main.html' %}
+{% load static %}
+
+{% block content %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flow Builder</title>
+    <!-- Sortable.js for drag-and-drop -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.14.0/Sortable.min.js"></script>
+    <style>
+        .container { display: flex; margin: 20px 0; }
+        .steps-list { width: 25%; background: #f9f9f9; padding: 10px; border-right: 1px solid #ddd; }
+        .canvas { width: 75%; padding: 10px; }
+        .step { padding: 10px; margin: 5px 0; background: #eef; border: 1px solid #ccd; cursor: grab; }
+        .step-action { padding: 5px; margin: 5px 0; background: #cce; }
+        .action-btn { padding: 5px; background: #007bff; color: white; border: none; cursor: pointer; }
+        .action-btn:hover { background: #0056b3; }
+        .form-container { margin-top: 20px; }
+        .save-btn { padding: 10px 20px; background: green; color: white; border: none; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<h2>Flow Builder: {{ flow.name }}</h2>
+
+<div class="container">
+    <!-- List of available steps -->
+    <div class="steps-list" id="steps-list">
+        <h3>Available Actions</h3>
+        {% for action in action_types %}
+            <div class="step" data-id="{{ action.id }}">{{ action.label }}</div>
+        {% endfor %}
+    </div>
+
+    <!-- Flow Canvas where steps are added -->
+    <div class="canvas" id="flow-canvas">
+        <h3>Trigger: {{ flow.trigger.name }}</h3>
+        <div id="canvas-steps">
+            {% for step in flow_steps %}
+                <div class="step" data-id="{{ step.id }}">
+                    <p>{{ step.action_type.label }}</p>
+                    {% if step.action_type.name == 'sms' %}
+                        <div class="step-action">
+                            <p>Message: {{ step.text_config.message }}</p>
+                        </div>
+                    {% elif step.action_type.name == 'delay' %}
+                        <div class="step-action">
+                            <p>Delay: {{ step.time_delay_config.delay_time }} {{ step.time_delay_config.delay_type }}</p>
+                        </div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Save Button -->
+<div class="form-container">
+    <form method="POST" id="flow-form" action="{% url 'flow' flow.id %}">
+        {% csrf_token %}
+        
+        <!-- Include name and trigger fields in the form -->
+        <div>
+            <label for="id_name">Flow Name:</label>
+            <input type="text" id="id_name" name="name" value="{{ form.name.value }}">
+        </div>
+        
+        <div>
+            <label for="id_trigger">Trigger:</label>
+            <select id="id_trigger" name="trigger">
+                {% for trigger in triggers %}
+                    <option value="{{ trigger.id }}" {% if trigger.id == form.trigger.value %}selected{% endif %}>{{ trigger.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <button type="submit" class="save-btn">Save Flow</button>
+    </form>
+</div>
+
+<script>
+    // Initialize Sortable.js for drag-and-drop functionality
+    new Sortable(document.getElementById('steps-list'), {
+        group: { name: 'shared', pull: 'clone', put: false },
+        animation: 150
+    });
+
+    new Sortable(document.getElementById('canvas-steps'), {
+        group: { name: 'shared', pull: false, put: true },
+        animation: 150,
+        onAdd: function (evt) {
+            var actionTypeId = evt.item.getAttribute('data-id');
+            var flowId = '{{ flow.id }}';
+
+            // Send AJAX request to add the step to the flow
+            fetch("{% url 'flow' flow.id %}", {
+                method: 'POST',
+                headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+                body: new URLSearchParams({
+                    flow_id: flowId,
+                    action_type_id: actionTypeId
+                })
+            }).then(response => response.json()).then(data => {
+                console.log('Step added:', data);
+                // Optionally, refresh the canvas to show the new step
+            });
+        },
+        onEnd: function (evt) {
+            var items = document.querySelectorAll('#canvas-steps .step');
+            var updatedOrder = [];
+
+            // Capture the new order of the steps
+            items.forEach(function (item, index) {
+                updatedOrder.push({
+                    step_id: item.getAttribute('data-id'),
+                    order: index
+                });
+            });
+
+            // Send the new order to the server to update the backend
+            fetch("{% url 'flow' flow.id %}", {
+                method: 'POST',
+                headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+                body: new URLSearchParams({
+                    flow_id: '{{ flow.id }}',
+                    steps: JSON.stringify(updatedOrder)
+                })
+            }).then(response => response.json()).then(data => {
+                console.log('Steps reordered:', data);
+            });
+        }
+    });
+</script>
+
+</body>
+</html>
+{% endblock %}

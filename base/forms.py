@@ -110,10 +110,12 @@ class GroupCreationForm(forms.Form):
 class FlowForm(forms.ModelForm):
     class Meta:
         model = Flow
-        fields = ['name']
+        fields = ['name','trigger']
         labels = {
             'name': 'اسم التدفق',
+            'trigger': 'المشغل',
         }
         widgets = {
             'name': forms.TextInput(attrs={'placeholder': 'Enter flow name...'}),
+            'trigger': forms.Select(),  # This will display a dropdown for triggers
         }
