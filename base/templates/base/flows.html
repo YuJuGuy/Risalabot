@@ -38,6 +38,15 @@
                     <td>{{ flow.created_at}}</td>
                     <td>{{ flow.status }}</td>
                     <td>{{ flow.reciepients }}</td>
+                    <td>
+                        
+                        <div class="dropdown-icon">
+                            <i class="fa-solid fa-ellipsis-vertical"></i>
+                            <div class="dropdown-content">
+                                <a href="{% url 'flow' flow.id %}" class="edit-button">تعديل</a>
+                            </div>
+                        </div>
+                    </td>
                 </tr>
                 {% endfor %}
                 {% endif %}
@@ -116,6 +125,33 @@
     </div>
 
     <script>
+        document.addEventListener('click', function(event) {
+            const dropdownIcon = event.target.closest('.dropdown-icon');
+            if (dropdownIcon) {
+                event.stopPropagation(); // Prevent the event from bubbling up
+                closeAllDropdowns(); // Close other open dropdowns
+                const dropdown = dropdownIcon.querySelector('.dropdown-content');
+                dropdown.classList.toggle('show'); // Toggle the dropdown for the clicked icon
+            } else {
+                closeAllDropdowns(); // Close dropdowns if clicked outside
+            }
+        });
+
+        document.addEventListener('click', function(event) {
+            const dropdownContent = event.target.closest('.dropdown-content');
+            if (dropdownContent) {
+                event.stopPropagation(); // Prevent closing when clicking inside the dropdown
+            }
+            });
+        
+        // Function to close all dropdowns
+        function closeAllDropdowns() {
+            const dropdowns = document.querySelectorAll('.dropdown-content');
+            dropdowns.forEach(function(dropdown) {
+                dropdown.classList.remove('show');
+            });
+        }
+        
         var order_updated_event_type_id = '{{ order_updated_event_type_id }}';
         var eventFormActionUrl = '{% url "events" %}';
     </script>

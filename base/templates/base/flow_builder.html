@@ -31,7 +31,9 @@
     <div class="steps-list" id="steps-list">
         <h3>Available Actions</h3>
         {% for action in action_types %}
-            <div class="step" data-id="{{ action.id }}">{{ action.label }}</div>
+            <div class="step" data-id="{{ action.id }}" data-action-type="{{ action.name }}">
+                {{ action.label }}
+            </div>
         {% endfor %}
     </div>
 
@@ -40,15 +42,21 @@
         <h3>Trigger: {{ flow.trigger.name }}</h3>
         <div id="canvas-steps">
             {% for step in flow_steps %}
-                <div class="step" data-id="{{ step.id }}">
+                <div class="step" data-id="{{ step.id }}" data-action-type="{{ step.action_type.name }}">
                     <p>{{ step.action_type.label }}</p>
                     {% if step.action_type.name == 'sms' %}
                         <div class="step-action">
-                            <p>Message: {{ step.text_config.message }}</p>
+                            <label>Message:</label>
+                            <textarea class="sms-message">{{ step.text_config.message }}</textarea>
                         </div>
                     {% elif step.action_type.name == 'delay' %}
                         <div class="step-action">
-                            <p>Delay: {{ step.time_delay_config.delay_time }} {{ step.time_delay_config.delay_type }}</p>
+                            <label>Delay Time:</label>
+                            <input type="number" class="delay-time" value="{{ step.time_delay_config.delay_time }}">
+                            <select class="delay-type">
+                                <option value="hours" {% if step.time_delay_config.delay_type == "hours" %}selected{% endif %}>Hours</option>
+                                <option value="days" {% if step.time_delay_config.delay_type == "days" %}selected{% endif %}>Days</option>
+                            </select>
                         </div>
                     {% endif %}
                 </div>
@@ -82,58 +90,106 @@
 </div>
 
 <script>
-    // Initialize Sortable.js for drag-and-drop functionality
+    // Initialize Sortable.js for the available steps (left list)
     new Sortable(document.getElementById('steps-list'), {
-        group: { name: 'shared', pull: 'clone', put: false },
+        group: { name: 'shared', pull: 'clone', put: false },  // Can be cloned but not removed from source
         animation: 150
     });
 
+    // Initialize Sortable.js for the canvas (right list) to handle both adding and reordering steps
     new Sortable(document.getElementById('canvas-steps'), {
-        group: { name: 'shared', pull: false, put: true },
+        group: { name: 'shared', pull: false, put: true },  // Steps can be added and reordered
         animation: 150,
+
+        // Handle adding new steps from the left list
         onAdd: function (evt) {
-            var actionTypeId = evt.item.getAttribute('data-id');
-            var flowId = '{{ flow.id }}';
+            var newStep = evt.item;  // The newly added step element
+            var actionType = newStep.getAttribute('data-action-type');
 
-            // Send AJAX request to add the step to the flow
-            fetch("{% url 'flow' flow.id %}", {
-                method: 'POST',
-                headers: { 'X-CSRFToken': '{{ csrf_token }}' },
-                body: new URLSearchParams({
-                    flow_id: flowId,
-                    action_type_id: actionTypeId
-                })
-            }).then(response => response.json()).then(data => {
-                console.log('Step added:', data);
-                // Optionally, refresh the canvas to show the new step
-            });
+            // Assign an empty step_id for new steps
+            newStep.setAttribute('data-id', '');
+
+            // Dynamically add content-edit fields for the new step based on action type
+            if (actionType === 'sms') {
+                newStep.innerHTML += `
+                    <div class="step-action">
+                        <label>Message:</label>
+                        <textarea class="sms-message"></textarea>
+                    </div>
+                `;
+            } else if (actionType === 'delay') {
+                newStep.innerHTML += `
+                    <div class="step-action">
+                        <label>Delay Time:</label>
+                        <input type="number" class="delay-time" value="1">
+                        <select class="delay-type">
+                            <option value="hours">Hours</option>
+                            <option value="days">Days</option>
+                        </select>
+                    </div>
+                `;
+            }
         },
-        onEnd: function (evt) {
-            var items = document.querySelectorAll('#canvas-steps .step');
-            var updatedOrder = [];
 
-            // Capture the new order of the steps
-            items.forEach(function (item, index) {
-                updatedOrder.push({
-                    step_id: item.getAttribute('data-id'),
-                    order: index
-                });
-            });
-
-            // Send the new order to the server to update the backend
-            fetch("{% url 'flow' flow.id %}", {
-                method: 'POST',
-                headers: { 'X-CSRFToken': '{{ csrf_token }}' },
-                body: new URLSearchParams({
-                    flow_id: '{{ flow.id }}',
-                    steps: JSON.stringify(updatedOrder)
-                })
-            }).then(response => response.json()).then(data => {
-                console.log('Steps reordered:', data);
-            });
+        // Handle reordering steps within the canvas
+        onEnd: function () {
+            console.log('Steps reordered.');
         }
     });
+
+    // Capture form submission and append steps data
+    document.getElementById('flow-form').addEventListener('submit', function(e) {
+        e.preventDefault();  // Prevent default form submission
+
+        // Capture the new order and content of the steps
+        var items = document.querySelectorAll('#canvas-steps .step');
+        var updatedSteps = [];
+
+        items.forEach(function(item, index) {
+            var stepId = item.getAttribute('data-id');  // Step ID (could be empty for new steps)
+            var actionType = item.getAttribute('data-action-type');
+
+            var stepData = {
+                step_id: stepId,  // If the step is new, this will be an empty string
+                order: index,  // The current order of the step
+                action_type: actionType,  // Action type (e.g., sms, delay)
+                content: {}  // This will hold the step-specific content (e.g., message, delay time)
+            };
+
+            // Collect step-specific content (e.g., for SMS or delay actions)
+            if (actionType === 'sms') {
+                stepData.content.message = item.querySelector('.sms-message').value;
+            } else if (actionType === 'delay') {
+                stepData.content.delay_time = item.querySelector('.delay-time').value;
+                stepData.content.delay_type = item.querySelector('.delay-type').value;
+            }
+
+            updatedSteps.push(stepData);  // Add the step data to the array
+        });
+
+        // Prepare the form data
+        var formData = new FormData(this);  // Grab the current form data
+        formData.append('steps', JSON.stringify(updatedSteps));  // Add the steps as JSON
+
+        // Submit the form data using fetch
+        fetch(this.action, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+            body: formData
+        }).then(response => response.json()).then(data => {
+            if (data.success) {
+                console.log('Flow saved successfully!', data);
+                window.location.href = data.redirect_url;  // Redirect after success
+            } else {
+                console.error('Error saving flow:', data.errors);
+                alert('Error saving flow. Please check the input.');
+            }
+        }).catch(error => {
+            console.error('Error:', error);
+        });
+    });
 </script>
+
 
 </body>
 </html>

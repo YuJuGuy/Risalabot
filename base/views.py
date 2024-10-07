@@ -5,6 +5,7 @@ from django.contrib.auth import authenticate
 from celery.exceptions import CeleryError
 from django.core.exceptions import PermissionDenied
 from django.contrib import messages
+from django.db import transaction
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.utils.timezone import make_aware
@@ -16,12 +17,23 @@ from . apis import get_customer_data, create_customer_group, delete_customer_gro
 from django.utils.crypto import get_random_string
 from Risalabot.celery import app as celery_app
 from datetime import datetime
+from django.db.models import F
 from django.db import models
 from django.shortcuts import get_object_or_404
 import json
+from django.core.exceptions import ValidationError
 from django.urls import reverse
+import logging
+
+
 
 __all__ = ('celery_app',) 
+
+logger = logging.getLogger(__name__)
+
+class FlowBuilderError(Exception):
+    """Custom exception for Flow Builder specific errors"""
+    pass
 
 
 def home(request):
@@ -189,47 +201,249 @@ def flows(request):
 
     
 
+
+@login_required(login_url='login')
 def flow_builder(request, flow_id):
-    print('Entered flow_builder view')  # Check if the view is being called
-    flow = get_object_or_404(Flow, id=flow_id, owner=request.user)
+    """
+    Handle flow building operations with comprehensive error handling and data validation.
+    """
+    try:
+        flow = Flow.objects.get(id=flow_id, owner=request.user)
+    except Flow.DoesNotExist:
+        logger.warning(f"Flow {flow_id} not found for user {request.user.id}")
+        messages.error(request, 'Flow not found.')
+        return redirect('flows')
 
     if request.method == 'POST':
-        print('POST request detected')
+        return handle_flow_update(request, flow)
+
+    # GET request handling
+    try:
+        flow_steps = FlowStep.objects.filter(flow=flow).order_by('order')
+        action_types = FlowActionTypes.objects.all()
+
+        return render(request, 'base/flow_builder.html', {
+            'flow': flow,
+            'triggers': Trigger.objects.all(),
+            'form': FlowForm(instance=flow),
+            'flow_steps': flow_steps,
+            'action_types': action_types,
+        })
+    except Exception as e:
+        logger.error(f"Error loading flow builder page: {str(e)}", exc_info=True)
+        messages.error(request, 'An error occurred while loading the flow builder.')
+        return redirect('flows')
+
+def handle_flow_update(request, flow):
+    """
+    Handle the POST request for updating a flow and its steps.
+    """
+    # Create a savepoint for potential rollback
+    sid = transaction.savepoint()
+    
+    try:
+        # Validate and save flow form
         form = FlowForm(request.POST, instance=flow)
-        if form.is_valid():
-            print('Form is valid')
-            form.save()
+        if not form.is_valid():
+            raise ValidationError(form.errors)
 
-            steps_data = request.POST.get('steps')
-            if steps_data:
-                steps_data = json.loads(steps_data)
-                print('Steps data:', steps_data)
+        # Parse and validate steps data
+        steps_data = request.POST.get('steps')
+        if not steps_data:
+            raise FlowBuilderError("No steps data provided")
 
-                for step_data in steps_data:
-                    step_id = step_data['step_id']
-                    new_order = step_data['order']
-                    print(f'Updating step {step_id} to order {new_order}')
+        try:
+            steps_data = json.loads(steps_data)
+        except json.JSONDecodeError:
+            raise FlowBuilderError("Invalid steps data format")
 
-                    # Update the order for each step
-                    FlowStep.objects.filter(id=step_id, flow=flow).update(order=new_order)
+        # Validate steps data structure
+        validate_steps_data(steps_data)
 
-            return redirect('flow', flow_id=flow_id)
+        # Start the update process
+        with transaction.atomic():
+            # Save the flow first
+            flow = form.save()
+            
+            # Store original state for rollback if needed
+            original_steps = list(FlowStep.objects.filter(flow=flow).select_related(
+                'text_config', 
+                'time_delay_config'
+            ))
+
+            # Process the steps
+            process_flow_steps(flow, steps_data)
+
+        # If we get here, everything worked, so we can commit
+        transaction.savepoint_commit(sid)
+        
+        # Log success
+        logger.info(f"Successfully updated flow {flow.id} with {len(steps_data)} steps")
+        
+        return JsonResponse({
+            'success': True,
+            'redirect_url': request.build_absolute_uri(),
+            'message': 'Flow updated successfully'
+        })
+
+    except ValidationError as e:
+        transaction.savepoint_rollback(sid)
+        logger.error(f"Validation error in flow {flow.id}: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'errors': {
+                'form': form.errors if 'form' in locals() else {},
+                'validation': str(e)
+            }
+        })
+    except FlowBuilderError as e:
+        transaction.savepoint_rollback(sid)
+        logger.error(f"Flow builder error in flow {flow.id}: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'errors': {'flow_builder': str(e)}
+        })
+    except Exception as e:
+        transaction.savepoint_rollback(sid)
+        logger.error(f"Unexpected error in flow {flow.id}: {str(e)}", exc_info=True)
+        return JsonResponse({
+            'success': False,
+            'errors': {'server': 'An unexpected error occurred. Please try again.'}
+        })
+
+def validate_steps_data(steps_data):
+    """
+    Validate the structure and content of steps data.
+    """
+    if not isinstance(steps_data, list):
+        raise FlowBuilderError("Steps data must be a list")
+
+    for index, step in enumerate(steps_data):
+        if not isinstance(step, dict):
+            raise FlowBuilderError(f"Step {index} must be an object")
+
+        required_fields = ['action_type', 'content']
+        for field in required_fields:
+            if field not in step:
+                raise FlowBuilderError(f"Step {index} is missing required field: {field}")
+
+        if not isinstance(step['content'], dict):
+            raise FlowBuilderError(f"Step {index} content must be an object")
+
+        # Validate specific action types
+        action_type = step['action_type']
+        content = step['content']
+
+        if action_type == 'sms':
+            if 'message' not in content or not content['message'].strip():
+                raise FlowBuilderError(f"Step {index}: SMS message cannot be empty")
+        elif action_type == 'delay':
+            if 'delay_time' not in content:
+                raise FlowBuilderError(f"Step {index}: Delay time is required")
+            try:
+                delay_time = int(content['delay_time'])
+                if delay_time < 1:
+                    raise FlowBuilderError(f"Step {index}: Delay time must be positive")
+            except ValueError:
+                raise FlowBuilderError(f"Step {index}: Invalid delay time format")
+
+def process_flow_steps(flow, steps_data):
+    """
+    Process and save flow steps with their configurations.
+    """
+    existing_steps_ids = []
+
+    for index, step_data in enumerate(steps_data, start=1):
+        step = handle_step_creation_or_update(flow, step_data, index)
+        if step:
+            existing_steps_ids.append(step.id)
+
+    # Safely delete steps that are no longer in the flow
+    removed_steps = FlowStep.objects.filter(flow=flow).exclude(id__in=existing_steps_ids)
+    for step in removed_steps:
+        try:
+            step.delete()
+            logger.info(f"Deleted step {step.id} from flow {flow.id}")
+        except Exception as e:
+            logger.error(f"Error deleting step {step.id}: {str(e)}")
+            raise
+
+def handle_step_creation_or_update(flow, step_data, index):
+    """
+    Handle the creation or update of a single flow step and its configuration.
+    """
+    try:
+        step_id = step_data.get('step_id')
+        action_type = step_data['action_type']
+        content = step_data.get('content', {})
+
+        # Get or create the step
+        if step_id:
+            step = FlowStep.objects.get(id=step_id, flow=flow)
+            action_type_obj = FlowActionTypes.objects.get(name=action_type)
+            
+            # If action type changed, handle cleanup
+            if step.action_type != action_type_obj:
+                handle_action_type_change(step, action_type_obj)
+            
+            step.order = index
+            step.action_type = action_type_obj
+            step.save()
         else:
-            print('Form is invalid')
-            messages.error(request, 'Error saving flow. Please correct the form errors.')
-            return redirect('flow', flow_id=flow_id)
+            action_type_obj = FlowActionTypes.objects.get(name=action_type)
+            step = FlowStep.objects.create(
+                flow=flow,
+                order=index,
+                action_type=action_type_obj
+            )
 
-    flow_steps = FlowStep.objects.filter(flow=flow).order_by('order')
-    action_types = FlowActionTypes.objects.all()
+        # Handle step configuration
+        handle_step_configuration(step, action_type, content)
 
-    return render(request, 'base/flow_builder.html', {
-        'flow': flow,
-        'triggers': Trigger.objects.all(),
-        'form': FlowForm(instance=flow),
-        'flow_steps': flow_steps,
-        'action_types': action_types,
-    })
+        return step
 
+    except FlowStep.DoesNotExist:
+        logger.warning(f"Step {step_id} not found in flow {flow.id}")
+        return None
+    except FlowActionTypes.DoesNotExist:
+        logger.error(f"Invalid action type: {action_type}")
+        raise FlowBuilderError(f"Invalid action type: {action_type}")
+    except Exception as e:
+        logger.error(f"Error processing step in flow {flow.id}: {str(e)}")
+        raise
+
+def handle_action_type_change(step, new_action_type):
+    """
+    Handle cleanup when a step's action type changes.
+    """
+    TextConfig.objects.filter(flow_step=step).delete()
+    TimeDelayConfig.objects.filter(flow_step=step).delete()
+    step.action_type = new_action_type
+
+def handle_step_configuration(step, action_type, content):
+    """
+    Handle the configuration for a specific step based on its action type.
+    """
+    try:
+        if action_type == 'sms':
+            TimeDelayConfig.objects.filter(flow_step=step).delete()
+            TextConfig.objects.update_or_create(
+                flow_step=step,
+                defaults={'message': content.get('message', '').strip()}
+            )
+
+        elif action_type == 'delay':
+            TextConfig.objects.filter(flow_step=step).delete()
+            TimeDelayConfig.objects.update_or_create(
+                flow_step=step,
+                defaults={
+                    'delay_time': int(content.get('delay_time', 1)),
+                    'delay_type': content.get('delay_type', 'hours')
+                }
+            )
+    except Exception as e:
+        logger.error(f"Error handling configuration for step {step.id}: {str(e)}")
+        raise FlowBuilderError(f"Error configuring step: {str(e)}")
 
 @login_required(login_url='login')
 def delete_flow(request, event_id):

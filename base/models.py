@@ -6,6 +6,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
+import uuid
 
 # Create your models here.
 
@@ -109,6 +110,7 @@ class Trigger(models.Model):
 
 
 class Flow(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)  # Unique UUID as primary key
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='flows')
     name = models.CharField(max_length=255)  # Flow name
     created_at = models.DateTimeField(auto_now_add=True)
@@ -138,7 +140,7 @@ class FlowStep(models.Model):
     
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=['flow', 'order'], name='unique_order_per_flowstep')  # Unique name for FlowStep
+            models.UniqueConstraint(fields=['flow', 'order'], name='unique_order_per_flow')
         ]
 
     def save(self, *args, **kwargs):
@@ -146,6 +148,7 @@ class FlowStep(models.Model):
         if hasattr(self, 'text_config') and hasattr(self, 'time_delay_config'):
             raise ValidationError("A FlowStep cannot have both TextConfig and TimeDelayConfig.")
         super().save(*args, **kwargs)
+
 
     def __str__(self):
         return f"FlowStep in {self.flow.name} - Step {self.order}"
