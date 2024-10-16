@@ -1,7 +1,8 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
-from . models import User , UserEvent, Campaign, Flow
+from . models import User , UserEvent, Campaign, Flow, FlowActionTypes
 from django.core.exceptions import ValidationError
+import json
 
 class CreateUserForm(UserCreationForm):
     username = forms.CharField(label='اسم المستخدم', max_length=150)
@@ -119,3 +120,5 @@ class FlowForm(forms.ModelForm):
             'name': forms.TextInput(attrs={'placeholder': 'Enter flow name...'}),
             'trigger': forms.Select(),  # This will display a dropdown for triggers
         }
+        
+        

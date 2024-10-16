@@ -79,24 +79,24 @@
 
   
 
-    <div class="recommended-events">
+    <div class="recommended-flows">
         <p>الرسائل التلقائية الموصى بها</p>
-        <div class="recommended-events-container">
+        <div class="recommended-flows-container">
             {% if suggestions %}
             {% for suggestion in suggestions %}
-            <div class="event-card">
+            <div class="flow-card">
                 
-                <div class="event-card-body">
+                <div class="flow-card-body">
                     <div class="title-description">
                         <h3>{{ suggestion.name }}</h3>
                         <p>{{ suggestion.description }}</p>
                     </div>
-                    <div class="event-card-button">
+                    <div class="flow-card-button">
                         <a href="{% url 'activate_suggested_flow' suggestion.id %}" class="edit-button">تفعيل</a>
                     </div>
                     
                 </div>
-                <div class="event-card-img">
+                <div class="flow-card-img">
                     <img src="{% static 'svgs/'|add:suggestion.img %}">
                 </div>
             </div>
@@ -112,7 +112,7 @@
 
     <div id="myPopup" class="popup">
         <div class="popup-content">
-            <form id="eventForm" method="post" action="{% url 'events' %}">
+            <form id="eventForm" method="post" action="{% url 'flows' %}">
                 {% csrf_token %}
                 {{ form.as_p }}
                 
@@ -153,7 +153,7 @@
         }
         
         var order_updated_event_type_id = '{{ order_updated_event_type_id }}';
-        var eventFormActionUrl = '{% url "events" %}';
+        var eventFormActionUrl = '{% url "flows" %}';
     </script>
     <script src="{% static 'js/events.js' %}"></script>
 

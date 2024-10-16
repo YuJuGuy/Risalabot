@@ -2,36 +2,15 @@
 {% load static %}
 
 {% block content %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Flow Builder</title>
-    <!-- Sortable.js for drag-and-drop -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.14.0/Sortable.min.js"></script>
-    <style>
-        .container { display: flex; margin: 20px 0; }
-        .steps-list { width: 25%; background: #f9f9f9; padding: 10px; border-right: 1px solid #ddd; }
-        .canvas { width: 75%; padding: 10px; }
-        .step { padding: 10px; margin: 5px 0; background: #eef; border: 1px solid #ccd; cursor: grab; }
-        .step-action { padding: 5px; margin: 5px 0; background: #cce; }
-        .action-btn { padding: 5px; background: #007bff; color: white; border: none; cursor: pointer; }
-        .action-btn:hover { background: #0056b3; }
-        .form-container { margin-top: 20px; }
-        .save-btn { padding: 10px 20px; background: green; color: white; border: none; cursor: pointer; }
-    </style>
-</head>
-<body>
 
-<h2>Flow Builder: {{ flow.name }}</h2>
+
 
 <div class="container">
     <!-- List of available steps -->
     <div class="steps-list" id="steps-list">
         <h3>Available Actions</h3>
         {% for action in action_types %}
-            <div class="step" data-id="{{ action.id }}" data-action-type="{{ action.name }}">
+            <div class="action" data-id="{{ action.id }}" data-action-type="{{ action.name }}">
                 {{ action.label }}
             </div>
         {% endfor %}
@@ -39,19 +18,21 @@
 
     <!-- Flow Canvas where steps are added -->
     <div class="canvas" id="flow-canvas">
-        <h3>Trigger: {{ flow.trigger.name }}</h3>
-        <div id="canvas-steps">
+
+        
+            <div class="trigger" id="trigger">
+                <h3 id="trigger-name">{{ flow.trigger.name }}</h3>
+            </div>
+            <div class="canvas-steps" id="canvas-steps">
             {% for step in flow_steps %}
                 <div class="step" data-id="{{ step.id }}" data-action-type="{{ step.action_type.name }}">
                     <p>{{ step.action_type.label }}</p>
                     {% if step.action_type.name == 'sms' %}
-                        <div class="step-action">
-                            <label>Message:</label>
+                        <div class="step-action" style="display:none">
                             <textarea class="sms-message">{{ step.text_config.message }}</textarea>
                         </div>
                     {% elif step.action_type.name == 'delay' %}
-                        <div class="step-action">
-                            <label>Delay Time:</label>
+                        <div class="step-action" style="display:none">
                             <input type="number" class="delay-time" value="{{ step.time_delay_config.delay_time }}">
                             <select class="delay-type">
                                 <option value="hours" {% if step.time_delay_config.delay_type == "hours" %}selected{% endif %}>Hours</option>
@@ -89,108 +70,222 @@
     </form>
 </div>
 
+
+<div id="action-modal" class="modal" style="display:none;">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <h2 id="modal-title">Edit Action Settings</h2>
+
+        <div id="trigger-fields" style="display:none;">
+            <label>Trigger:</label>
+            <select id="modal-trigger" class="trigger">
+                {% for trigger in triggers %}
+                <option value="{{ trigger.id }}" {% if trigger.id == form.trigger.value %}selected{% endif %}>{{ trigger.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- SMS Action Fields -->
+        <div id="sms-fields" style="display:none;">
+            <label>Message:</label>
+            <textarea id="modal-sms-message" class="sms-message"></textarea>
+        </div>
+
+        <!-- Delay Action Fields -->
+        <div id="delay-fields" style="display:none;">
+            <label>Delay Time:</label>
+            <input type="number" id="modal-delay-time" class="delay-time" value="1">
+            <select id="modal-delay-type" class="delay-type">
+                <option value="hours">Hours</option>
+                <option value="days">Days</option>
+            </select>
+        </div>
+
+        <button id="save-action-btn">Save</button>
+    </div>
+</div>
+
+<!-- Hidden field to hold the updated trigger -->
+<input type="hidden" id="updated-trigger" name="trigger" value="{{ form.trigger.value }}">
+
+
+
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.14.0/Sortable.min.js"></script>
+
 <script>
-    // Initialize Sortable.js for the available steps (left list)
-    new Sortable(document.getElementById('steps-list'), {
-        group: { name: 'shared', pull: 'clone', put: false },  // Can be cloned but not removed from source
-        animation: 150
-    });
+// Initialize Sortable.js for the available steps (left list)
+new Sortable(document.getElementById('steps-list'), {
+    group: { name: 'shared', pull: 'clone', put: false },
+    sort: false,
+    animation: 150
+});
 
-    // Initialize Sortable.js for the canvas (right list) to handle both adding and reordering steps
-    new Sortable(document.getElementById('canvas-steps'), {
-        group: { name: 'shared', pull: false, put: true },  // Steps can be added and reordered
-        animation: 150,
+// Initialize Sortable.js for the canvas (right list)
+new Sortable(document.getElementById('canvas-steps'), {
+    group: { name: 'shared', pull: false, put: true },
+    animation: 150,
+    onAdd: function (evt) {
+        var newStep = evt.item;
+        var actionType = newStep.getAttribute('data-action-type');
+        newStep.classList.remove('action');
+        newStep.classList.add('step');
+        newStep.setAttribute('data-id', '');
 
-        // Handle adding new steps from the left list
-        onAdd: function (evt) {
-            var newStep = evt.item;  // The newly added step element
-            var actionType = newStep.getAttribute('data-action-type');
-
-            // Assign an empty step_id for new steps
-            newStep.setAttribute('data-id', '');
-
-            // Dynamically add content-edit fields for the new step based on action type
-            if (actionType === 'sms') {
-                newStep.innerHTML += `
-                    <div class="step-action">
-                        <label>Message:</label>
-                        <textarea class="sms-message"></textarea>
-                    </div>
-                `;
-            } else if (actionType === 'delay') {
-                newStep.innerHTML += `
-                    <div class="step-action">
-                        <label>Delay Time:</label>
-                        <input type="number" class="delay-time" value="1">
-                        <select class="delay-type">
-                            <option value="hours">Hours</option>
-                            <option value="days">Days</option>
-                        </select>
-                    </div>
-                `;
-            }
-        },
-
-        // Handle reordering steps within the canvas
-        onEnd: function () {
-            console.log('Steps reordered.');
+        if (actionType === 'sms') {
+            newStep.innerHTML += `
+                 <div class="step-action" style="display:none">
+                    <label>Message:</label>
+                    <textarea class="sms-message"></textarea>
+                </div>
+            `;
+        } else if (actionType === 'delay') {
+            newStep.innerHTML += `
+                 <div class="step-action" style="display:none">
+                    <label>Delay Time:</label>
+                    <input type="number" class="delay-time" value="1">
+                    <select class="delay-type">
+                        <option value="hours">Hours</option>
+                        <option value="days">Days</option>
+                    </select>
+                </div>
+            `;
         }
+    },
+    onEnd: function () {
+        console.log('Steps reordered.');
+    }
+});
+
+// Modal Handling
+var modal = document.getElementById("action-modal");
+var modalTitle = document.getElementById("modal-title");
+var smsFields = document.getElementById("sms-fields");
+var delayFields = document.getElementById("delay-fields");
+var triggerFields = document.getElementById("trigger-fields");
+var saveActionBtn = document.getElementById("save-action-btn");
+var currentStep = null;
+
+document.getElementById('trigger').addEventListener('click', function() {
+    modal.style.display = "block";
+    modalTitle.textContent = "Edit Trigger";
+    smsFields.style.display = "none";
+    delayFields.style.display = "none";
+    triggerFields.style.display = "block";
+});
+
+document.getElementById('canvas-steps').addEventListener('click', function(event) {
+    if (event.target.closest('.step')) {
+        currentStep = event.target.closest('.step');
+        var actionType = currentStep.getAttribute('data-action-type');
+        modal.style.display = "block";
+
+        if (actionType === 'sms') {
+            modalTitle.textContent = "Edit SMS Action";
+            smsFields.style.display = "block";
+            delayFields.style.display = "none";
+            triggerFields.style.display = "none";
+
+            document.getElementById('modal-sms-message').value = currentStep.querySelector('.sms-message').value;
+        } else if (actionType === 'delay') {
+            modalTitle.textContent = "Edit Delay Action";
+            smsFields.style.display = "none";
+            triggerFields.style.display = "none";
+
+            delayFields.style.display = "block";
+            document.getElementById('modal-delay-time').value = currentStep.querySelector('.delay-time').value;
+            document.getElementById('modal-delay-type').value = currentStep.querySelector('.delay-type').value;
+        }
+    }
+});
+
+document.querySelector(".close").onclick = function() {
+    modal.style.display = "none";
+};
+
+saveActionBtn.addEventListener('click', function() {
+    if (currentStep) {
+        var actionType = currentStep.getAttribute('data-action-type');
+
+        if (actionType === 'sms') {
+            var updatedMessage = document.getElementById("modal-sms-message").value;
+            currentStep.querySelector('.sms-message').value = updatedMessage;
+        } else if (actionType === 'delay') {
+            var updatedDelayTime = document.getElementById("modal-delay-time").value;
+            var updatedDelayType = document.getElementById("modal-delay-type").value;
+            currentStep.querySelector('.delay-time').value = updatedDelayTime;
+            currentStep.querySelector('.delay-type').value = updatedDelayType;
+        }
+    } else {
+        var updatedTrigger = document.getElementById("modal-trigger").value;
+        document.getElementById("updated-trigger").value = updatedTrigger;
+        document.getElementById("id_trigger").value = updatedTrigger;
+        document.getElementById("trigger-name").textContent = document.getElementById("modal-trigger").selectedOptions[0].textContent;
+    }
+    modal.style.display = "none";
+});
+
+window.onclick = function(event) {
+    if (event.target == modal) {
+        modal.style.display = "none";
+    }
+};
+
+// Form submission handling
+document.getElementById('flow-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    var items = document.querySelectorAll('#canvas-steps .step');
+    var updatedSteps = [];
+
+    items.forEach(function(item, index) {
+        var stepId = item.getAttribute('data-id');
+        var actionType = item.getAttribute('data-action-type');
+
+        var stepData = {
+            step_id: stepId,
+            order: index,
+            action_type: actionType,
+            content: {}
+        };
+
+        if (actionType === 'sms') {
+            stepData.content.message = item.querySelector('.sms-message').value;
+        } else if (actionType === 'delay') {
+            stepData.content.delay_time = item.querySelector('.delay-time').value;
+            stepData.content.delay_type = item.querySelector('.delay-type').value;
+        }
+
+        updatedSteps.push(stepData);
     });
 
-    // Capture form submission and append steps data
-    document.getElementById('flow-form').addEventListener('submit', function(e) {
-        e.preventDefault();  // Prevent default form submission
+    var formData = new FormData(this);
+    formData.append('steps', JSON.stringify(updatedSteps));
 
-        // Capture the new order and content of the steps
-        var items = document.querySelectorAll('#canvas-steps .step');
-        var updatedSteps = [];
-
-        items.forEach(function(item, index) {
-            var stepId = item.getAttribute('data-id');  // Step ID (could be empty for new steps)
-            var actionType = item.getAttribute('data-action-type');
-
-            var stepData = {
-                step_id: stepId,  // If the step is new, this will be an empty string
-                order: index,  // The current order of the step
-                action_type: actionType,  // Action type (e.g., sms, delay)
-                content: {}  // This will hold the step-specific content (e.g., message, delay time)
-            };
-
-            // Collect step-specific content (e.g., for SMS or delay actions)
-            if (actionType === 'sms') {
-                stepData.content.message = item.querySelector('.sms-message').value;
-            } else if (actionType === 'delay') {
-                stepData.content.delay_time = item.querySelector('.delay-time').value;
-                stepData.content.delay_type = item.querySelector('.delay-type').value;
-            }
-
-            updatedSteps.push(stepData);  // Add the step data to the array
-        });
-
-        // Prepare the form data
-        var formData = new FormData(this);  // Grab the current form data
-        formData.append('steps', JSON.stringify(updatedSteps));  // Add the steps as JSON
-
-        // Submit the form data using fetch
-        fetch(this.action, {
-            method: 'POST',
-            headers: { 'X-CSRFToken': '{{ csrf_token }}' },
-            body: formData
-        }).then(response => response.json()).then(data => {
-            if (data.success) {
-                console.log('Flow saved successfully!', data);
-                window.location.href = data.redirect_url;  // Redirect after success
-            } else {
-                console.error('Error saving flow:', data.errors);
-                alert('Error saving flow. Please check the input.');
-            }
-        }).catch(error => {
-            console.error('Error:', error);
-        });
+    fetch(this.action, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
+        },
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            window.location.href = data.redirect_url;
+        } else {
+            console.error('Error saving flow:', data.errors);
+            alert('Error saving flow: ' + data.errors);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An unexpected error occurred. Please try again.');
     });
+});
 </script>
-
-
 </body>
 </html>
 {% endblock %}

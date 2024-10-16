@@ -110,16 +110,43 @@ class Trigger(models.Model):
 
 
 class Flow(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)  # Unique UUID as primary key
+    STATUS_CHOICES = (
+        ('draft', 'Draft'),
+        ('active', 'Active'),
+        ('paused', 'Paused'),
+        ('archived', 'Archived'),
+    )
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='flows')
-    name = models.CharField(max_length=255)  # Flow name
+    name = models.CharField(max_length=255)
     created_at = models.DateTimeField(auto_now_add=True)
-    status = models.CharField(max_length=20, default='draft') 
-    trigger = models.ForeignKey('Trigger', on_delete=models.CASCADE, related_name='flows')  # Trigger is required (not nullable)
-    reciepients = models.IntegerField(default=0)     # add number of people who have gone through the flow
+    updated_at = models.DateTimeField(auto_now=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
+    status_changed_at = models.DateTimeField(null=True, blank=True)
+    trigger = models.ForeignKey('Trigger', on_delete=models.CASCADE, related_name='flows')
+    recipients = models.IntegerField(default=0)
+    
+    def save(self, *args, **kwargs):
+        if self.pk is not None:
+            try:
+                old_instance = Flow.objects.get(pk=self.pk)
+                if old_instance.status != self.status:
+                    self.status_changed_at = timezone.now()
+            except Flow.DoesNotExist:
+                # Handle the case where the instance doesn't exist yet
+                self.status_changed_at = timezone.now()
+        else:
+            # New instance being created
+            self.status_changed_at = timezone.now()
+            
+        super().save(*args, **kwargs)
+
+    class Meta:
+        ordering = ['-created_at']
 
     def __str__(self):
-        return self.name
+        return f"{self.name} ({self.get_status_display()})"
 
 
 class FlowActionTypes(models.Model):
