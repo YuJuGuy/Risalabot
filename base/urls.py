@@ -22,7 +22,8 @@ urlpatterns = [
     
     path('flows/', views.flows, name='flows'),
     path('flow/<uuid:flow_id>/', views.flow_builder, name='flow'),
-    path('flow/delete/<int:event_id>/', views.delete_flow, name='delete_flow'),
+    path('flow/delete/<uuid:flow_id>/', views.delete_flow, name='delete_flow'),
+    path('get-flows/', views.get_flows, name='get_flows'),
     path('activate-suggested-flow/<int:suggestion_id>/', views.activate_suggested_flow, name='activate_suggested_flow'),
 
 

@@ -8,18 +8,21 @@
 <div class="container">
     <!-- List of available steps -->
     <div class="steps-list" id="steps-list">
-        <h3>Available Actions</h3>
+        <div class="steps-list-header">
+            <h3>الإجراءات المتاحة</h3>
+        </div>
         {% for action in action_types %}
             <div class="action" data-id="{{ action.id }}" data-action-type="{{ action.name }}">
+                <i class="{{ action.icon}}" style="color: #63E6BE;"></i>
                 {{ action.label }}
             </div>
         {% endfor %}
     </div>
 
     <!-- Flow Canvas where steps are added -->
-    <div class="canvas" id="flow-canvas">
+    <div class="canvas">
 
-        
+            <div class="canvas-drag-drop" id="flow-canvas">
             <div class="trigger" id="trigger">
                 <h3 id="trigger-name">{{ flow.trigger.name }}</h3>
             </div>
@@ -44,6 +47,7 @@
             {% endfor %}
         </div>
     </div>
+    </div>
 </div>
 
 <!-- Save Button -->
@@ -52,21 +56,24 @@
         {% csrf_token %}
         
         <!-- Include name and trigger fields in the form -->
-        <div>
-            <label for="id_name">Flow Name:</label>
+        <div class="flowform-container">
+            <div class="flowform-right">
             <input type="text" id="id_name" name="name" value="{{ form.name.value }}">
-        </div>
-        
-        <div>
-            <label for="id_trigger">Trigger:</label>
-            <select id="id_trigger" name="trigger">
+            <select id="id_trigger" name="trigger" style="display: none;">
                 {% for trigger in triggers %}
                     <option value="{{ trigger.id }}" {% if trigger.id == form.trigger.value %}selected{% endif %}>{{ trigger.name }}</option>
                 {% endfor %}
             </select>
+            </div>
+            <div class="flowform-left">
+            <div class="save-buttons">
+            <button type="submit" class="save-active-btn" value="active">حفظ وإرسال</button>
+            <button type="submit" class="save-draft-btn" value="draft">حفظ كمسودة</button>
+            </div>
+            </div>
+
         </div>
         
-        <button type="submit" class="save-btn">Save Flow</button>
     </form>
 </div>
 
@@ -238,6 +245,10 @@ document.getElementById('flow-form').addEventListener('submit', function(e) {
     var items = document.querySelectorAll('#canvas-steps .step');
     var updatedSteps = [];
 
+    // Capture the button that was clicked
+    var clickedButton = e.submitter;
+    var status = clickedButton.value;
+
     items.forEach(function(item, index) {
         var stepId = item.getAttribute('data-id');
         var actionType = item.getAttribute('data-action-type');
@@ -246,6 +257,7 @@ document.getElementById('flow-form').addEventListener('submit', function(e) {
             step_id: stepId,
             order: index,
             action_type: actionType,
+            status: status,
             content: {}
         };
 
@@ -261,6 +273,7 @@ document.getElementById('flow-form').addEventListener('submit', function(e) {
 
     var formData = new FormData(this);
     formData.append('steps', JSON.stringify(updatedSteps));
+    formData.append('status', status);  // Add the status to the form data
 
     fetch(this.action, {
         method: 'POST',

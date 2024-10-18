@@ -152,6 +152,7 @@ class Flow(models.Model):
 class FlowActionTypes(models.Model):
     name = models.CharField(max_length=255)  # Internal name like 'sms', 'email'
     label = models.CharField(max_length=255)  # Display name like 'Send SMS', 'Send Email'
+    icon = models.CharField(max_length=255, blank=True, null=True)  # Optional icon
     description = models.TextField(blank=True, null=True)  # Optional description
     
 

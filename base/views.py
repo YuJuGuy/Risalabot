@@ -177,9 +177,8 @@ def delete_event(request, event_id):
 def flows(request):
     try:
         user = request.user
-        flows = user.flows.all()
     except User.DoesNotExist:
-        messages.error(request, 'No store linked. Please link a store first.')
+        messages.error(request, 'No user found.')
         return redirect('dashboard')
     
     if request.method == 'POST':
@@ -189,16 +188,36 @@ def flows(request):
             new_flow = form.save(commit=False)
             new_flow.owner = request.user  # Associate the flow with the current user
             new_flow.save()  # Now save the flow
+            messages.success(request, 'Flow created successfully.')
             return redirect('flow', flow_id=new_flow.id)  # Redirect to the flow builder
     else:
         form = FlowForm()
     
+    
     context = {
-        'flows': flows,
-        'suggestions': SuggestedFlow.objects.all(),
         'form': form
     }
     return render(request, 'base/flows.html', context)
+
+
+@login_required(login_url='login')
+def get_flows(request):
+    try:
+        user = request.user
+        flows = list(user.flows.all().values('id', 'name', 'updated_at', 'status', 'recipients'))
+        for flow in flows:
+            flow['updated_at'] = flow['updated_at'].strftime('%Y-%m-%d %H:%M')
+        suggestions = list(SuggestedFlow.objects.all().values('id', 'name', 'description', 'img'))
+        data = {
+            'flows': flows,
+            'suggestions': suggestions
+        }
+        return JsonResponse(data)
+        
+    except User.DoesNotExist:
+        messages.error(request, 'No user found.')
+        return redirect('dashboard')
+    
 
     
 def validate_steps_data(steps_data):
@@ -242,7 +261,7 @@ def validate_steps_data(steps_data):
 @require_http_methods(["GET", "POST"])
 def flow_builder(request, flow_id):
     try:
-        flow = get_object_or_404(Flow, id=flow_id, owner=request.user)
+        flow = Flow.objects.get(id=flow_id, owner=request.user)
     except Flow.DoesNotExist:
         if request.headers.get('x-requested-with') == 'XMLHttpRequest':
             return JsonResponse({'success': False, 'errors': 'Flow not found.'}, status=404)
@@ -254,12 +273,20 @@ def flow_builder(request, flow_id):
         if flow_form.is_valid():
             steps_data = request.POST.get('steps', '')
             
+
+            
             try:
                 steps = validate_steps_data(steps_data)
             except ValidationError as e:
                 if request.headers.get('x-requested-with') == 'XMLHttpRequest':
                     return JsonResponse({'success': False, 'errors': str(e)}, status=400)
                 messages.error(request, f"Steps validation error: {e}")
+                return redirect('flow', flow_id=flow_id)
+            
+            if not steps and request.POST.get('status') == 'active':
+                if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                    return JsonResponse({'success': False, 'errors': 'You need to add at least one message.'}, status=400)
+                messages.error(request, 'You need to add at least one message.')
                 return redirect('flow', flow_id=flow_id)
             
             try:
@@ -271,6 +298,7 @@ def flow_builder(request, flow_id):
                     for index, step_data in enumerate(steps, start=1):
                         step_id = step_data.get('step_id')
                         action_type = step_data['action_type']
+                        status = step_data['status']
                         content = step_data.get('content', {})
 
                         if step_id:
@@ -317,7 +345,7 @@ def flow_builder(request, flow_id):
                     FlowStep.objects.filter(flow=flow).exclude(id__in=existing_steps_ids).delete()
 
                 if FlowStep.objects.filter(flow=flow).exists():
-                    flow.status = 'active'
+                    flow.status = status
                     flow.save(update_fields=['status'])
                     
                 if request.headers.get('x-requested-with') == 'XMLHttpRequest':
@@ -350,8 +378,8 @@ def flow_builder(request, flow_id):
 
 
 @login_required(login_url='login')
-def delete_flow(request, event_id):
-    flow = Flow.objects.get(id=event_id, owner=request.user)
+def delete_flow(request, flow_id):
+    flow = get_object_or_404(Flow, id=flow_id, owner=request.user)
     flow.delete()
     messages.success(request, 'Flow deleted successfully.')
     return redirect('flows')
@@ -392,7 +420,7 @@ def activate_suggested_flow(request, suggestion_id):
                 new_step = FlowStep.objects.create(
                     flow=new_flow,
                     order=suggested_step.order,
-                    action_type=suggested_step.action_type
+                    action_type=suggested_step.action_type,
                 )
                 logger.info(f"Created new step {new_step.id}")
                 
@@ -581,7 +609,7 @@ def get_campaign_data(request, campaign_id=None):
             campaign = Campaign.objects.get(id=campaign_id, store=UserStoreLink.objects.get(user=request.user).store)
             data = {
                 'name': campaign.name,
-                'scheduled_time': campaign.scheduled_time.strftime('%Y-%m-%dT%H:%M'),  # Adjust format as per input type
+                'scheduled_time': campaign.scheduled_time.strftime('%Y-%m-%d %H:%M'),  # Adjust format as per input type
                 'customers_group': campaign.customers_group,
                 'status': campaign.status,
                 'msg': campaign.msg,

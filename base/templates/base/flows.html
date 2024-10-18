@@ -21,7 +21,7 @@
             </div>
             </div>
         </div>
-        <table id="campaigns-table">
+        <table id="flows-table">
             <thead>
                 <tr>
                     <th>الحملة</th>
@@ -30,26 +30,8 @@
                     <th>تم الاستلام</th>
                   </tr>
             </thead>
-            <tbody id="campaigns-body">
-                {% if flows %}
-                {% for flow in flows %}
-                <tr>
-                    <td>{{ flow.name }}</td>
-                    <td>{{ flow.created_at}}</td>
-                    <td>{{ flow.status }}</td>
-                    <td>{{ flow.reciepients }}</td>
-                    <td>
-                        
-                        <div class="dropdown-icon">
-                            <i class="fa-solid fa-ellipsis-vertical"></i>
-                            <div class="dropdown-content">
-                                <a href="{% url 'flow' flow.id %}" class="edit-button">تعديل</a>
-                            </div>
-                        </div>
-                    </td>
-                </tr>
-                {% endfor %}
-                {% endif %}
+            <tbody id="flows-body">
+                <!-- Flow data will be injected here by JavaScript -->
             </tbody>
         </table>
         <div class="pagination-controls">
@@ -74,87 +56,258 @@
     </div>
     
 
+    
+
 
 
 
   
 
-    <div class="recommended-flows">
-        <p>الرسائل التلقائية الموصى بها</p>
-        <div class="recommended-flows-container">
-            {% if suggestions %}
-            {% for suggestion in suggestions %}
-            <div class="flow-card">
-                
-                <div class="flow-card-body">
-                    <div class="title-description">
-                        <h3>{{ suggestion.name }}</h3>
-                        <p>{{ suggestion.description }}</p>
-                    </div>
-                    <div class="flow-card-button">
-                        <a href="{% url 'activate_suggested_flow' suggestion.id %}" class="edit-button">تفعيل</a>
-                    </div>
-                    
-                </div>
-                <div class="flow-card-img">
-                    <img src="{% static 'svgs/'|add:suggestion.img %}">
-                </div>
-            </div>
-            {% endfor %}
-
-
-
-    </div>
-    {% else %}
-    <p>You have no suggestion.</p>
-    {% endif %} 
-
 
     <div id="myPopup" class="popup">
         <div class="popup-content">
-            <form id="eventForm" method="post" action="{% url 'flows' %}">
+            <form id="flowForm" method="post" action="{% url 'flows' %}">
                 {% csrf_token %}
                 {{ form.as_p }}
-                
                 <div class="button-row">
                     <button type="submit" id="saveButton">حفظ</button>
                     <button type="button" id="closePopup">الغاء</button>
-                  </div>
+                </div>
             </form>
+            
         </div>
     </div>
 
+    <div class="recommended-flows">
+        <p>الرسائل التلقائية الموصى بها</p>
+        <div id="recommended-flows-container" class="recommended-flows-container">
+           
+            <!-- Suggested Flows will be injected here by JavaScript -->
+
+        </div>
+    </div>
+
+    <div id="get-flows-url" data-get-flows-url="{% url 'get_flows' %}"></div>
+    <div id="activate-suggested-flow-url" data-activate-suggested-flow-url="{% url 'activate_suggested_flow' 0 %}"></div>
+
+
     <script>
-        document.addEventListener('click', function(event) {
-            const dropdownIcon = event.target.closest('.dropdown-icon');
-            if (dropdownIcon) {
-                event.stopPropagation(); // Prevent the event from bubbling up
-                closeAllDropdowns(); // Close other open dropdowns
-                const dropdown = dropdownIcon.querySelector('.dropdown-content');
-                dropdown.classList.toggle('show'); // Toggle the dropdown for the clicked icon
-            } else {
-                closeAllDropdowns(); // Close dropdowns if clicked outside
-            }
+    var flowFormActionUrl = '{% url "flows" %}';
+    let allFlows = [];
+    let currentPage = 1;
+    let rowsPerPage = 25;
+    let totalFlows = 0;
+
+    document.addEventListener("DOMContentLoaded", function() {
+
+        setupPagination();
+        setupSearch()
+        fetchAllFlows();
+
+
+
+    });
+
+    function openAddPopup() {
+        const flowForm = document.getElementById("flowForm");
+        if (flowForm) {
+            flowForm.reset();  // Resets the form
+            flowForm.action = flowFormActionUrl;  // Sets the action URL
+            document.getElementById("saveButton").innerText = "حفظ";
+            document.getElementById("myPopup").classList.add("show");  // Shows the popup by adding 'show' class
+            document.getElementById("myPopup").style.display = "block";  // Ensures popup is visible
+        } else {
+            console.error("Form not found.");
+        }
+    }
+    
+    document.getElementById("myButton").addEventListener("click", openAddPopup);
+    
+    // Event listener for close button to close popup
+    document.getElementById("closePopup").addEventListener("click", function() {
+        document.getElementById("myPopup").classList.remove("show");
+        document.getElementById("myPopup").style.display = "none";  // Hides the popup by setting display to none
+    });
+    
+    // Event listener to close popup if clicked outside
+    window.addEventListener("click", function(event) {
+        const popup = document.getElementById("myPopup");
+        if (event.target === popup) {
+            popup.classList.remove("show");
+            popup.style.display = "none";  // Hides the popup when clicked outside
+        }
+    });
+    
+
+
+    document.addEventListener('click', function(event) {
+        const dropdownIcon = event.target.closest('.dropdown-icon');
+        if (dropdownIcon) {
+            event.stopPropagation(); // Prevent the event from bubbling up
+            closeAllDropdowns(); // Close other open dropdowns
+            const dropdown = dropdownIcon.querySelector('.dropdown-content');
+            dropdown.classList.toggle('show'); // Toggle the dropdown for the clicked icon
+        } else {
+            closeAllDropdowns(); // Close dropdowns if clicked outside
+        }
+    });
+
+    document.addEventListener('click', function(event) {
+        const dropdownContent = event.target.closest('.dropdown-content');
+        if (dropdownContent) {
+            event.stopPropagation(); // Prevent closing when clicking inside the dropdown
+        }
         });
 
-        document.addEventListener('click', function(event) {
-            const dropdownContent = event.target.closest('.dropdown-content');
-            if (dropdownContent) {
-                event.stopPropagation(); // Prevent closing when clicking inside the dropdown
+    // Function to close all dropdowns
+    function closeAllDropdowns() {
+        const dropdowns = document.querySelectorAll('.dropdown-content');
+        dropdowns.forEach(function(dropdown) {
+            dropdown.classList.remove('show');
+        });
+    }
+
+    function setupSearch() {
+        const searchInput = document.getElementById('search');
+        searchInput.addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                currentPage = 1;
+                filterFlows();
             }
-            });
-        
-        // Function to close all dropdowns
-        function closeAllDropdowns() {
-            const dropdowns = document.querySelectorAll('.dropdown-content');
-            dropdowns.forEach(function(dropdown) {
-                dropdown.classList.remove('show');
-            });
+        });
+    }
+
+    function filterFlows() {
+        const searchInput = document.getElementById('search').value.toLowerCase();
+        const filteredFlows = allFlows.filter(flow =>
+            flow.name.toLowerCase().includes(searchInput) ||
+            flow.updated_at.toLowerCase().includes(searchInput) ||
+            flow.status.toLowerCase().includes(searchInput) ||
+            flow.recipients.toString().includes(searchInput)
+
+        );
+        totalFlows = filteredFlows.length;
+        displayFlows(filteredFlows.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage));
+        updatePaginationControls();
+    }
+
+    function setupPagination() {
+        const rowsPerPageSelect = document.getElementById('rows-per-page');
+        const prevPageButton = document.getElementById('prev-page');
+        const nextPageButton = document.getElementById('next-page');
+    
+        rowsPerPageSelect.addEventListener('change', function() {
+            rowsPerPage = parseInt(this.value);
+            currentPage = 1;
+            filterFlows();
+        });
+    
+        prevPageButton.addEventListener('click', () => changePage(-1));
+        nextPageButton.addEventListener('click', () => changePage(1));
+    }
+    
+    function changePage(delta) {
+        const newPage = currentPage + delta;
+        if (newPage > 0 && newPage <= Math.ceil(totalFlows / rowsPerPage)) {
+            currentPage = newPage;
+            filterFlows();
         }
-        
-        var order_updated_event_type_id = '{{ order_updated_event_type_id }}';
-        var eventFormActionUrl = '{% url "flows" %}';
+    }
+    
+    function updatePaginationControls() {
+        const prevPageButton = document.getElementById('prev-page');
+        const nextPageButton = document.getElementById('next-page');
+    
+        prevPageButton.disabled = currentPage === 1;
+        nextPageButton.disabled = currentPage >= Math.ceil(totalFlows / rowsPerPage);
+    }
+
+
+    function fetchAllFlows() {
+        const getFlowsUrl = document.getElementById('get-flows-url').dataset.getFlowsUrl;
+
+        fetch(getFlowsUrl, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' }
+        })
+        .then(response => response.json())
+        .then(data => {
+            allFlows = data.flows;
+            totalFlows = data.flows.length;
+            displayFlows(data.flows.slice(0, rowsPerPage));
+            displaySuggestedFlows(data.suggestions);
+            updatePaginationControls();
+        })
+        .catch(error => {
+            console.error('Error fetching flows:', error);
+            showError('An error occurred while fetching flows.');
+        });
+    }
+
+    function displaySuggestedFlows(flows) {
+        const recommendedFlowsContainer = document.getElementById('recommended-flows-container');
+        recommendedFlowsContainer.innerHTML = '';
+
+        if (flows && flows.length > 0) {
+            flows.forEach(flow => {
+                const flowCard = document.createElement('div');
+                flowCard.className = 'flow-card';
+                flowCard.innerHTML = `
+                    <div class="flow-card-body">
+                        <div class="title-description">
+                            <h3>${flow.name}</h3>
+                            <p>${flow.description}</p>
+                        </div>
+                        <div class="flow-card-button">
+                            <a href="/activate-suggested-flow/${flow.id}" class="edit-button">تفعيل</a>
+                        </div>
+                    </div>
+                    <div class="flow-card-img">
+                        <img src="/static/svgs/${flow.img}" alt="${flow.name}">
+                    </div>
+                `;
+                recommendedFlowsContainer.appendChild(flowCard);
+            });
+        } else {
+            // No recommended flows found
+            recommendedFlowsContainer.innerHTML = '<p>لا توجد رسائل تلقائية موصى بها.</p>';
+        }
+    }
+
+    
+
+
+    function displayFlows(flows) {
+        const flowsBody = document.getElementById('flows-body');
+        const flowsTable = document.getElementById('flows-table');
+
+        flowsBody.innerHTML = '';
+
+        if (flows && flows.length > 0) {
+            flows.forEach(flow => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${flow.name}</td>
+                    <td>${flow.updated_at}</td>
+                    <td>${flow.status}</td>
+                    <td>${flow.recipients}</td>
+                    <td><div class="dropdown-icon">
+                                <i class="fa-solid fa-ellipsis-vertical"></i>
+                                <div class="dropdown-content">
+                                    <a href="/flow/${flow.id}/" class="edit-button">تعديل</a>
+                                    <a href="/flow/delete/${flow.id}/" class="delete-button">حذف</a>
+                                </div>
+                            </div>
+                    </td>
+                `;
+                flowsBody.appendChild(row);
+            });
+            flowsTable.style.display = 'table';
+        } else {
+            flowsBody.innerHTML = '<tr><td colspan="4">لا توجد حملات</td></tr>';
+        }
+    }
     </script>
-    <script src="{% static 'js/events.js' %}"></script>
 
 {% endblock %}
