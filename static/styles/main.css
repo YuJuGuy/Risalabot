@@ -878,6 +878,8 @@ td i {
   direction: ltr;
   height: 100%;
   background-color: #f3f4f6;
+  overflow: hidden; /* Avoid browser scrollbar */
+
 }
 
 
@@ -909,30 +911,38 @@ td i {
   flex-direction: column;
   padding: 1rem; 
   align-items: center;
+  height: 100vh; /* Fill available height */
 }
 
-.canvas-drag-drop{
-  margin-top: 1rem;
-  width: 80%;
-  height: 80%;
-  padding: 1rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+.panzoom-container {
+
+  width: 80%; /* Set this as the visible area */
+  height: 80vh; /* A smaller visible height */
   background-color: #fff;
   border-radius: 8px;
   box-shadow: rgba(0, 0, 0, 0.1) 0px 4px 12px;
+  overflow: hidden; /* Hide overflow to simulate a "window" for panning */
+  position: relative;
 }
 
-.canvas-steps{
+.canvas-drag-drop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;  /* Ensure the inner canvas is larger for free movement */
+  height: 100%; /* Both width and height are larger for more panning space */
+  position: absolute;
+  background-color: #fff;
+}
+
+.canvas-steps {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 1rem;
   padding: 1rem;
-  flex-wrap: wrap;
-  justify-content: center;  
   width: 100%;
+  height: 100%;
 }
 
 

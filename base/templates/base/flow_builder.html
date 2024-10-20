@@ -22,32 +22,47 @@
     <!-- Flow Canvas where steps are added -->
     <div class="canvas">
 
-            <div class="canvas-drag-drop" id="flow-canvas">
-            <div class="trigger" id="trigger">
-                <h3 id="trigger-name">{{ flow.trigger.name }}</h3>
-            </div>
-            <div class="canvas-steps" id="canvas-steps">
-            {% for step in flow_steps %}
-                <div class="step" data-id="{{ step.id }}" data-action-type="{{ step.action_type.name }}">
-                    <p>{{ step.action_type.label }}</p>
-                    {% if step.action_type.name == 'sms' %}
-                        <div class="step-action" style="display:none">
-                            <textarea class="sms-message">{{ step.text_config.message }}</textarea>
+        <div class="panzoom-container" id="panzoom-container">
+                <div class="canvas-drag-drop" id="flow-canvas">
+                    <div class="trigger" id="trigger">
+                        <h3 id="trigger-name">{{ flow.trigger.name }}</h3>
+                    </div>
+                
+                    <div class="canvas-steps" id="canvas-steps">
+                    {% for step in flow_steps %}
+                        <div class="step" data-id="{{ step.id }}" data-action-type="{{ step.action_type.name }}">
+                            <p>{{ step.action_type.label }}</p>
+                            {% if step.action_type.name == 'sms' %}
+                                <div class="step-action" style="display:none">
+                                    <textarea class="sms-message">{{ step.text_config.message }}</textarea>
+                                </div>
+
+                            {% elif step.action_type.name == 'delay' %}
+                                <div class="step-action" style="display:none">
+                                    <input type="number" class="delay-time" value="{{ step.time_delay_config.delay_time }}">
+                                    <select class="delay-type">
+                                        <option value="hours" {% if step.time_delay_config.delay_type == "hours" %}selected{% endif %}>Hours</option>
+                                        <option value="days" {% if step.time_delay_config.delay_type == "days" %}selected{% endif %}>Days</option>
+                                    </select>
+                                </div>
+
+                            {% endif %}
+
                         </div>
-                    {% elif step.action_type.name == 'delay' %}
-                        <div class="step-action" style="display:none">
-                            <input type="number" class="delay-time" value="{{ step.time_delay_config.delay_time }}">
-                            <select class="delay-type">
-                                <option value="hours" {% if step.time_delay_config.delay_type == "hours" %}selected{% endif %}>Hours</option>
-                                <option value="days" {% if step.time_delay_config.delay_type == "days" %}selected{% endif %}>Days</option>
-                            </select>
-                        </div>
-                    {% endif %}
+                    {% endfor %}
+                    </div>
+                    
                 </div>
-            {% endfor %}
+        </div>
+
+        <div class="canvas-controls">
+            <button id="zoom-in">+</button>
+            <button id="zoom-out">-</button>
+            <button id="center-canvas">Center</button>
         </div>
     </div>
-    </div>
+
+
 </div>
 
 <!-- Save Button -->
@@ -117,10 +132,29 @@
 
 
 
-
+<script src='https://unpkg.com/panzoom@9.4.0/dist/panzoom.min.js'></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.14.0/Sortable.min.js"></script>
 
 <script>
+var flowCanvas = document.getElementById('flow-canvas');
+var panzoomContainer = document.getElementById('panzoom-container');
+var panzoomInstance = panzoom(flowCanvas, {
+    maxScale: 3,   // Max zoom level
+    minScale: 0.1, // Min zoom level
+    smoothScroll: false,
+    contain: 'outside', // Allow dragging beyond bounds
+    cursor: 'grab', // Use grab cursor
+    startScale: .5,
+    transformOrigin: {x: 0.5, y: 0.5}
+    
+});
+
+
+// Allow zoom with the mouse wheel
+flowCanvas.addEventListener('wheel', panzoomInstance.zoomWithWheel);
+
+
+
 // Initialize Sortable.js for the available steps (left list)
 new Sortable(document.getElementById('steps-list'), {
     group: { name: 'shared', pull: 'clone', put: false },
