@@ -30,8 +30,9 @@
                 
                     <div class="canvas-steps" id="canvas-steps">
                     {% for step in flow_steps %}
-                        <div class="step" data-id="{{ step.id }}" data-action-type="{{ step.action_type.name }}">
-                            <p>{{ step.action_type.label }}</p>
+                        <div class="step no-pan" data-id="{{ step.id }}" data-action-type="{{ step.action_type.name }}">
+                            <i class="{{ step.action_type.icon}}" style="color: #63E6BE;"></i>
+                            {{ step.action_type.label }}
                             {% if step.action_type.name == 'sms' %}
                                 <div class="step-action" style="display:none">
                                     <textarea class="sms-message">{{ step.text_config.message }}</textarea>
@@ -57,8 +58,8 @@
 
         <div class="canvas-controls">
             <button id="zoom-in">+</button>
+            <button id="center-canvas">توسيط</button>
             <button id="zoom-out">-</button>
-            <button id="center-canvas">Center</button>
         </div>
     </div>
 
@@ -96,35 +97,41 @@
 <div id="action-modal" class="modal" style="display:none;">
     <div class="modal-content">
         <span class="close">&times;</span>
-        <h2 id="modal-title">Edit Action Settings</h2>
 
         <div id="trigger-fields" style="display:none;">
-            <label>Trigger:</label>
+            <label>المشغل:</label>
             <select id="modal-trigger" class="trigger">
                 {% for trigger in triggers %}
-                <option value="{{ trigger.id }}" {% if trigger.id == form.trigger.value %}selected{% endif %}>{{ trigger.name }}</option>
+                <option value="{{ trigger.id }}" data-description="{{ trigger.description }}" {% if trigger.id == form.trigger.value %}selected{% endif %}>{{ trigger.name }}</option>
                 {% endfor %}
             </select>
+
+            <div id="trigger-description" style="display:none;">
+            </div>
         </div>
 
         <!-- SMS Action Fields -->
         <div id="sms-fields" style="display:none;">
-            <label>Message:</label>
+            <label>الرسالة:</label>
             <textarea id="modal-sms-message" class="sms-message"></textarea>
         </div>
 
         <!-- Delay Action Fields -->
         <div id="delay-fields" style="display:none;">
-            <label>Delay Time:</label>
+            <label>التأخير:</label>
             <input type="number" id="modal-delay-time" class="delay-time" value="1">
             <select id="modal-delay-type" class="delay-type">
-                <option value="hours">Hours</option>
-                <option value="days">Days</option>
+                <option value="hours">ساعات</option>
+                <option value="days">أيام</option>
             </select>
         </div>
 
-        <button id="save-action-btn">Save</button>
+        <div class="modal-footer">
+            <button id="save-action-btn">حفظ</button>
+            <button id="delete-step-btn" style="display:none;">حذف</button>
+        </div>
     </div>
+
 </div>
 
 <!-- Hidden field to hold the updated trigger -->
@@ -132,26 +139,85 @@
 
 
 
-<script src='https://unpkg.com/panzoom@9.4.0/dist/panzoom.min.js'></script>
+<script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.14.0/Sortable.min.js"></script>
 
 <script>
 var flowCanvas = document.getElementById('flow-canvas');
 var panzoomContainer = document.getElementById('panzoom-container');
-var panzoomInstance = panzoom(flowCanvas, {
-    maxScale: 3,   // Max zoom level
-    minScale: 0.1, // Min zoom level
+
+var startScale = 1; // You can adjust this as needed
+
+// Calculate the center position
+var containerWidth = panzoomContainer.offsetWidth;
+
+// Calculate the starting X and Y positions
+var startX = -containerWidth * (1 / startScale);
+
+var panzoomInstance = Panzoom(flowCanvas, {
+    maxScale: 3,
+    minScale: 0.1,
     smoothScroll: false,
-    contain: 'outside', // Allow dragging beyond bounds
-    cursor: 'grab', // Use grab cursor
-    startScale: .5,
-    transformOrigin: {x: 0.5, y: 0.5}
-    
+    contain: 'outside',
+    cursor: 'grab',
+    startScale: startScale,
+    transformOrigin: { x: 0.5, y: 0.5 },
+    excludeClass: 'no-pan',
+    startX: startX,
+
 });
+
 
 
 // Allow zoom with the mouse wheel
 flowCanvas.addEventListener('wheel', panzoomInstance.zoomWithWheel);
+
+
+
+document.getElementById('center-canvas').addEventListener('click', function() {
+    var containerWidth = panzoomContainer.offsetWidth;
+
+    var contentWidth = flowCanvas.offsetWidth;
+
+    var currentScale = panzoomInstance.getScale();
+
+    if (currentScale < 1) {
+        panzoomInstance.pan(-containerWidth/ currentScale, 0, {force:true });
+    }
+    else {
+        panzoomInstance.zoom(1);
+        panzoomInstance.pan(-containerWidth , 0, {force:true });
+    }
+});
+
+document.getElementById('zoom-in').addEventListener('click', function() {
+    panzoomInstance.zoomIn();
+});
+
+document.getElementById('zoom-out').addEventListener('click', function() {
+    panzoomInstance.zoomOut();
+});
+
+// Add debounce function
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+// Create a debounced version of updateConnections
+const debouncedUpdateConnections = debounce(updateConnections, 100);
+
+// Add listeners for pan and zoom events
+flowCanvas.addEventListener('panzoompan', debouncedUpdateConnections);
+flowCanvas.addEventListener('panzoomzoom', debouncedUpdateConnections);
+
 
 
 
@@ -170,8 +236,15 @@ new Sortable(document.getElementById('canvas-steps'), {
         var newStep = evt.item;
         var actionType = newStep.getAttribute('data-action-type');
         newStep.classList.remove('action');
-        newStep.classList.add('step');
+        newStep.classList.add('step', 'no-pan');
         newStep.setAttribute('data-id', '');
+
+        // Add delete button to the step
+        document.getElementById('delete-step-btn').onclick = function(e) {
+            e.stopPropagation();
+            newStep.remove();
+            updateConnections();
+        };
 
         if (actionType === 'sms') {
             newStep.innerHTML += `
@@ -192,15 +265,20 @@ new Sortable(document.getElementById('canvas-steps'), {
                 </div>
             `;
         }
+
+        updateConnections();
     },
-    onEnd: function () {
-        console.log('Steps reordered.');
+    onEnd: function (evt) {
+        updateConnections();
+        
+    },
+    onSort: function (evt) {
+        updateConnections();
     }
 });
 
 // Modal Handling
 var modal = document.getElementById("action-modal");
-var modalTitle = document.getElementById("modal-title");
 var smsFields = document.getElementById("sms-fields");
 var delayFields = document.getElementById("delay-fields");
 var triggerFields = document.getElementById("trigger-fields");
@@ -209,10 +287,14 @@ var currentStep = null;
 
 document.getElementById('trigger').addEventListener('click', function() {
     modal.style.display = "block";
-    modalTitle.textContent = "Edit Trigger";
     smsFields.style.display = "none";
     delayFields.style.display = "none";
     triggerFields.style.display = "block";
+
+
+    
+    // Hide delete button for trigger
+    document.getElementById('delete-step-btn').style.display = 'none';
 });
 
 document.getElementById('canvas-steps').addEventListener('click', function(event) {
@@ -221,15 +303,16 @@ document.getElementById('canvas-steps').addEventListener('click', function(event
         var actionType = currentStep.getAttribute('data-action-type');
         modal.style.display = "block";
 
+        // Show delete button in modal for steps
+        document.getElementById('delete-step-btn').style.display = 'inline-block';
+
         if (actionType === 'sms') {
-            modalTitle.textContent = "Edit SMS Action";
             smsFields.style.display = "block";
             delayFields.style.display = "none";
             triggerFields.style.display = "none";
 
             document.getElementById('modal-sms-message').value = currentStep.querySelector('.sms-message').value;
         } else if (actionType === 'delay') {
-            modalTitle.textContent = "Edit Delay Action";
             smsFields.style.display = "none";
             triggerFields.style.display = "none";
 
@@ -332,7 +415,112 @@ document.getElementById('flow-form').addEventListener('submit', function(e) {
         alert('An unexpected error occurred. Please try again.');
     });
 });
+
+function updateConnections() {
+    const canvasSteps = document.getElementById('canvas-steps');
+    const steps = [document.getElementById('trigger'), ...canvasSteps.querySelectorAll('.step')];
+    
+    // Remove existing connections and insert points
+    canvasSteps.querySelectorAll('.connection-line, .insert-point').forEach(el => el.remove());
+
+    steps.forEach((step, index) => {
+        if (index < steps.length - 1) {
+            const nextStep = steps[index + 1];
+            
+            // Create connection line
+            const connection = document.createElement('div');
+            connection.className = 'connection-line';
+            
+            // Position line relative to current step
+            connection.style.top = '100%';
+            connection.style.left = '50%';
+            connection.style.height = `${nextStep.offsetTop - (step.offsetTop + step.offsetHeight)}px`;
+            
+            step.appendChild(connection);
+
+            // Create insert point
+            const insertPoint = document.createElement('div');
+            insertPoint.className = 'insert-point';
+            
+            // Position insert point on the line
+            insertPoint.style.top = `${(nextStep.offsetTop - (step.offsetTop + step.offsetHeight)) / 2}px`;
+            insertPoint.style.left = '50%';
+            insertPoint.style.transform = 'translate(-50%, -50%)';
+            
+            insertPoint.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const newStep = document.createElement('div');
+                newStep.className = 'step no-pan';
+                newStep.setAttribute('data-action-type', 'new');
+                newStep.innerHTML = '<p>New Action</p>';
+                nextStep.parentNode.insertBefore(newStep, nextStep);
+                updateConnections();
+            });
+            
+            connection.appendChild(insertPoint);
+        }
+    });
+}
+
+window.addEventListener('resize', updateConnections);
+
+// After all steps are loaded and panzoom is initialized
+updateConnections();
+
+// Add click event listener for the delete button in the modal
+document.getElementById('delete-step-btn').addEventListener('click', function() {
+    if (currentStep) {
+        currentStep.remove();
+        updateConnections();
+        modal.style.display = "none";
+    }
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    const triggerSelect = document.getElementById('modal-trigger');
+    const triggerDescription = document.getElementById('trigger-description');
+    
+    // Function to update the description
+    function updateDescription() {
+        const selectedOption = triggerSelect.options[triggerSelect.selectedIndex];
+        const description = selectedOption.getAttribute('data-description');
+        if (description) {
+            triggerDescription.textContent = description;
+            triggerDescription.style.display = 'block';
+        } else {
+            triggerDescription.style.display = 'none';
+        }
+    }
+    
+    // Update description on page load
+    updateDescription();
+    
+    // Update description when selection changes
+    triggerSelect.addEventListener('change', updateDescription);
+});
+
+// Add this at the end of your existing script
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Get all links in the document
+    var links = document.getElementsByTagName('a');
+
+    // Iterate through all links
+    for (var i = 0; i < links.length; i++) {
+        links[i].addEventListener('click', function(event) {
+            // Check if this link is not a save or draft button
+            if (!this.classList.contains('save-active-btn') && !this.classList.contains('save-draft-btn')) {
+                // Show confirmation dialog
+                if (!confirm('هل أنت متأكد أنك تريد مغادرة هذه الصفحة؟ قد تفقد التغييرات غير المحفوظة.')) {
+                    // If user clicks "Cancel", prevent the default action
+                    event.preventDefault();
+                }
+            }
+        });
+    }
+});
 </script>
 </body>
 </html>
 {% endblock %}
+

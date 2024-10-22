@@ -103,6 +103,7 @@ class UserEvent(models.Model):
 
 class Trigger(models.Model):
     name = models.CharField(max_length=255)
+    event_type = models.CharField(max_length=255, null=True, blank=True)
     description = models.TextField(blank=True, null=True)
 
     def __str__(self):
