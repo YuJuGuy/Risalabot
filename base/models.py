@@ -8,8 +8,6 @@ from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 import uuid
 
-# Create your models here.
-
 class User(AbstractUser):
     email = models.EmailField(max_length=200, unique=True)
     session_id = models.CharField(max_length=200, unique=True, null=True)
@@ -35,7 +33,10 @@ class Store(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     subscription = models.ForeignKey(Subscription, on_delete=models.SET_NULL, null=True, blank=True)
     token_valid = models.BooleanField(default=True)
-    message_count = models.IntegerField(default=0)
+    subscription_message_count = models.IntegerField(default=0)
+    total_customers = models.IntegerField(default=0)
+    total_purchases = models.IntegerField(default=0)
+    total_messages_sent = models.IntegerField(default=0)
     subscription_date = models.DateTimeField(default=timezone.now)
 
     def __str__(self):
@@ -58,49 +59,36 @@ class Campaign(models.Model):
     purchases = models.IntegerField(default=0)
     msg = models.TextField()  # Assuming msg is text content
     customers_group = models.CharField(max_length=255)  # Changed field to store the selected group
+    messages_sent = models.IntegerField(default=0)
 
     def __str__(self):
         return self.name
     
+    def save(self, *args, **kwargs):
+        if self.pk is not None:
+            try:
+                old_instance = Campaign.objects.get(pk=self.pk)
+                if old_instance.status != self.status:
+                    self.status_changed_at = timezone.now()
+                
+                # Update store totals
+                messages_diff = self.messages_sent - old_instance.messages_sent
+                purchases_diff = self.purchases - old_instance.purchases
+                
+                if messages_diff != 0 or purchases_diff != 0:
+                    self.store.total_messages_sent += messages_diff
+                    self.store.total_purchases += purchases_diff
+                    self.store.save()
+                
+            except Campaign.DoesNotExist:
+                self.status_changed_at = timezone.now()
+        else:
+            # New instance being created
+            self.status_changed_at = timezone.now()
+            
+        super().save(*args, **kwargs)
     
-        
-class EventType(models.Model):
-    name = models.CharField(max_length=255, unique=True)
-    label = models.CharField(max_length=255, unique=True)
-    description = models.TextField(blank=True, null=True)
-
-    def __str__(self):
-        return self.label
-
-class UserEvent(models.Model):
-    ORDER_UPDATED_SUBCATEGORIES = [
-        ('pending_payment', 'بإنتظار الدفع'),
-        ('pending_review', 'بإنتظار المراجعة'),
-        ('in_progress', 'قيد التنفيذ'),
-        ('completed', 'تم التنفيذ'),
-        ('in_delivery', 'جاري التوصيل'),
-        ('delivered', 'تم التوصيل'),
-        ('shipped', 'تم الشحن'),
-        ('cancelled', 'ملغي'),
-        ('returned', 'مسترجع'),
-        ('in_return', 'قيد الإسترجاع'),
-        ('quotation_requested', 'طلب عرض سعر'),
-    ]
-
-    store = models.ForeignKey(Store, on_delete=models.CASCADE)
-    event_type = models.ForeignKey(EventType, on_delete=models.CASCADE)
-    subcategory = models.CharField(max_length=50, choices=ORDER_UPDATED_SUBCATEGORIES, blank=True, null=True)
-    message_template = models.TextField(blank=True, null=True)
-
-    class Meta:
-        unique_together = ('store', 'event_type', 'subcategory')
-
-    def __str__(self):
-        if self.subcategory:
-            return f"{self.store.store_name} - {self.store.store_id} - {self.event_type.name} - {self.get_subcategory_display()}"
-        return f"{self.store.store_name} - {self.store.store_id} - {self.event_type.name}"
     
-
 class Trigger(models.Model):
     name = models.CharField(max_length=255)
     event_type = models.CharField(max_length=255, null=True, blank=True)
@@ -111,22 +99,25 @@ class Trigger(models.Model):
 
 
 class Flow(models.Model):
+    # arabic status choices
     STATUS_CHOICES = (
-        ('draft', 'Draft'),
-        ('active', 'Active'),
-        ('paused', 'Paused'),
-        ('archived', 'Archived'),
+        ('draft', 'مسودة'),
+        ('active', 'مفعلة'),
+        ('paused', 'موقوفة'),
+        ('archived', 'محظورة'),
     )
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='flows')
+    store = models.ForeignKey(Store, on_delete=models.CASCADE, related_name='flows')  # Add this line
     name = models.CharField(max_length=255)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
     status_changed_at = models.DateTimeField(null=True, blank=True)
     trigger = models.ForeignKey('Trigger', on_delete=models.CASCADE, related_name='flows')
-    recipients = models.IntegerField(default=0)
+    messages_sent = models.IntegerField(default=0)
+    purchases = models.IntegerField(default=0)
     
     def save(self, *args, **kwargs):
         if self.pk is not None:
@@ -134,8 +125,17 @@ class Flow(models.Model):
                 old_instance = Flow.objects.get(pk=self.pk)
                 if old_instance.status != self.status:
                     self.status_changed_at = timezone.now()
+                
+                # Update store totals
+                messages_diff = self.messages_sent - old_instance.messages_sent
+                purchases_diff = self.purchases - old_instance.purchases
+                
+                if messages_diff != 0 or purchases_diff != 0:
+                    self.store.total_messages_sent += messages_diff
+                    self.store.total_purchases += purchases_diff
+                    self.store.save()
+                
             except Flow.DoesNotExist:
-                # Handle the case where the instance doesn't exist yet
                 self.status_changed_at = timezone.now()
         else:
             # New instance being created
@@ -165,7 +165,6 @@ class FlowStep(models.Model):
     flow = models.ForeignKey(Flow, on_delete=models.CASCADE, related_name='steps')
     order = models.PositiveIntegerField(validators=[MinValueValidator(1)])  # Order must be 1 or above
     action_type = models.ForeignKey(FlowActionTypes, on_delete=models.CASCADE)
-    next_step = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True)
     
     class Meta:
         constraints = [
@@ -226,7 +225,7 @@ class TimeDelayConfig(models.Model):
         'text_config__isnull': True  # Only show steps that don't have a TextConfig
     })
     delay_time = models.PositiveIntegerField()  # Delay in hours or days
-    delay_type = models.CharField(max_length=50, choices=[('hours', 'Hours'), ('days', 'Days')])
+    delay_type = models.CharField(max_length=50, choices=[('hours', 'Hours'), ('days', 'Days'), ('minutes', 'Minutes')])
 
     def __str__(self):
         return f"TimeDelayConfig for {self.flow_step.flow.name} - Step {self.flow_step.order}"
@@ -247,7 +246,7 @@ class SuggestedTimeDelayConfig(models.Model):
         'suggested_text_config__isnull': True  # Only show steps that don't have a SuggestedTextConfig
     })
     delay_time = models.PositiveIntegerField()  # Delay in hours or days
-    delay_type = models.CharField(max_length=50, choices=[('hours', 'Hours'), ('days', 'Days')])
+    delay_type = models.CharField(max_length=50, choices=[('hours', 'Hours'), ('days', 'Days'), ('minutes', 'Minutes')])
 
     def __str__(self):
         return f"Suggested TimeDelayConfig for {self.suggested_flow_step.suggested_flow.name} - Step {self.suggested_flow_step.order}"
@@ -271,3 +270,5 @@ def create_config_for_suggested_flow_step(sender, instance, created, **kwargs):
             SuggestedTextConfig.objects.create(suggested_flow_step=instance, message='Default SMS message')
         elif instance.action_type.name == 'delay' and not hasattr(instance, 'suggested_time_delay_config'):
             SuggestedTimeDelayConfig.objects.create(suggested_flow_step=instance, delay_time=1, delay_type='hours')
+
+

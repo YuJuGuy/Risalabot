@@ -15,9 +15,6 @@ urlpatterns = [
     
     path('dashboard/', views.dashboard, name="dashboard"),
     
-    path('events/', views.manage_event, name='events'),
-    path('events/<int:event_id>/', views.manage_event, name='manage_event'),
-    path('events/delete/<int:event_id>/', views.delete_event, name='delete_event'),
     
     
     path('flows/', views.flows, name='flows'),

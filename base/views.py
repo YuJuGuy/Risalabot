@@ -9,10 +9,10 @@ from django.db import transaction
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.utils.timezone import make_aware
-from . forms import CreateUserForm, UserEventForm, CampaignForm, GroupCreationForm, FlowForm
-from . models import User, Store, UserStoreLink, UserEvent, EventType,Trigger, Campaign, FlowActionTypes, Flow, FlowStep, SuggestedFlow, SuggestedFlowStep, TextConfig, TimeDelayConfig,SuggestedTextConfig, SuggestedTimeDelayConfig
+from . forms import CreateUserForm, CampaignForm, GroupCreationForm, FlowForm
+from . models import User, Store, UserStoreLink,Trigger, Campaign, FlowActionTypes, Flow, FlowStep, SuggestedFlow, SuggestedFlowStep, TextConfig, TimeDelayConfig,SuggestedTextConfig, SuggestedTimeDelayConfig
 from django.http import JsonResponse
-from automations.tasks import send_email_task
+from automations.tasks import send_whatsapp_message_task
 from . apis import get_customer_data, create_customer_group, delete_customer_group,group_campaign, get_customers_from_group
 from django.utils.crypto import get_random_string
 from Risalabot.celery import app as celery_app
@@ -103,74 +103,79 @@ def dashboard(request):
     if user_linked:
         store_link = UserStoreLink.objects.get(user=request.user)
         store = store_link.store
-        message_count = store.message_count
+        message_count = store.total_messages_sent
+        purchases = store.total_purchases
+        total_customers = store.total_customers
+        
 
 
     context = {
         'user_linked': user_linked,
         'store': store,
-        'message_count': message_count
+        'message_count': message_count,
+        'purchases': purchases,
+        'total_customers': total_customers
     }
 
     return render(request, 'base/dashboard.html', context)
 
-@login_required(login_url='login')
-def manage_event(request, event_id=None):
-    try:
-        store = UserStoreLink.objects.get(user=request.user).store
-        events = UserEvent.objects.filter(store=store)
-    except UserStoreLink.DoesNotExist:
-        messages.error(request, 'No store linked. Please link a store first.')
-        return redirect('dashboard')
+# @login_required(login_url='login')
+# def manage_event(request, event_id=None):
+#     try:
+#         store = UserStoreLink.objects.get(user=request.user).store
+#         events = UserEvent.objects.filter(store=store)
+#     except UserStoreLink.DoesNotExist:
+#         messages.error(request, 'No store linked. Please link a store first.')
+#         return redirect('dashboard')
     
-    event = None
-    if event_id:
-        event = UserEvent.objects.get(id=event_id, store=UserStoreLink.objects.get(user=request.user).store)
+#     event = None
+#     if event_id:
+#         event = UserEvent.objects.get(id=event_id, store=UserStoreLink.objects.get(user=request.user).store)
 
-    if request.method == 'POST':
-        form = UserEventForm(request.POST, instance=event)
-        if form.is_valid():
-            event_type = form.cleaned_data['event_type']
-            subcategory = form.cleaned_data['subcategory']
+#     if request.method == 'POST':
+#         form = UserEventForm(request.POST, instance=event)
+#         if form.is_valid():
+#             event_type = form.cleaned_data['event_type']
+#             subcategory = form.cleaned_data['subcategory']
             
-            if UserEvent.objects.filter(store=store, event_type=event_type, subcategory=subcategory).exclude(id=event_id).exists():
-                messages.error(request, 'You have already created an event for this type and subcategory.')
-            else:
-                event = form.save(commit=False)
-                event.store = store
-                event.save()
-                if event_id:
-                    messages.success(request, 'Event updated successfully.')
-                else:
-                    messages.success(request, 'Event created successfully.')
-            return redirect('events')
-        else:
-            messages.error(request, 'Error saving event. Please correct the form errors.')
-    else:
-        form = UserEventForm(instance=event)
+#             if UserEvent.objects.filter(store=store, event_type=event_type, subcategory=subcategory).exclude(id=event_id).exists():
+#                 messages.error(request, 'You have already created an event for this type and subcategory.')
+#             else:
+#                 event = form.save(commit=False)
+#                 event.store = store
+#                 event.save()
+#                 if event_id:
+#                     messages.success(request, 'Event updated successfully.')
+#                 else:
+#                     messages.success(request, 'Event created successfully.')
+#             return redirect('events')
+#         else:
+#             messages.error(request, 'Error saving event. Please correct the form errors.')
+#     else:
+#         form = UserEventForm(instance=event)
 
-    try:
-        order_updated_event_type = EventType.objects.get(name='order.updated')
-        order_updated_event_type_id = order_updated_event_type.id
-    except EventType.DoesNotExist:
-        order_updated_event_type_id = None
+#     try:
+#         order_updated_event_type = EventType.objects.get(name='order.updated')
+#         order_updated_event_type_id = order_updated_event_type.id
+#     except EventType.DoesNotExist:
+#         order_updated_event_type_id = None
 
-    context = {
-        'events': events,
-        'form': form,
-        'event': event,
-        'order_updated_event_type_id': order_updated_event_type_id,
-    }
-    return render(request, 'base/events.html', context)
+#     context = {
+#         'events': events,
+#         'form': form,
+#         'event': event,
+#         'order_updated_event_type_id': order_updated_event_type_id,
+#     }
+#     return render(request, 'base/events.html', context)
 
 
 
-@login_required(login_url='login')
-def delete_event(request, event_id):
-    event = UserEvent.objects.get(id=event_id, store=UserStoreLink.objects.get(user=request.user).store)
-    event.delete()
-    messages.success(request, 'Event deleted successfully.')
-    return redirect('events')
+# @login_required(login_url='login')
+# def delete_event(request, event_id):
+#     event = UserEvent.objects.get(id=event_id, store=UserStoreLink.objects.get(user=request.user).store)
+#     event.delete()
+#     messages.success(request, 'Event deleted successfully.')
+#     return redirect('events')
 
 
 @login_required(login_url='login')
@@ -204,7 +209,9 @@ def flows(request):
 def get_flows(request):
     try:
         user = request.user
-        flows = list(user.flows.all().values('id', 'name', 'updated_at', 'status', 'recipients'))
+        flows = list(user.flows.all().values('id', 'name', 'updated_at', 'status', 'messages_sent','purchases'))
+        for flow in flows:
+            flow['status'] = dict(Flow.STATUS_CHOICES).get(flow['status'], flow['status'])
         for flow in flows:
             flow['updated_at'] = flow['updated_at'].strftime('%Y-%m-%d %H:%M')
         suggestions = list(SuggestedFlow.objects.all().values('id', 'name', 'description', 'img'))
@@ -252,7 +259,7 @@ def validate_steps_data(steps_data):
                 if not delay_time or not str(delay_time).isdigit():
                     raise ValidationError("Delay action requires a valid delay time.")
 
-                if delay_type not in ['hours', 'days']:
+                if delay_type not in ['hours', 'days', 'minutes']:
                     raise ValidationError("Invalid delay type. Choose either 'hours' or 'days'.")
         
         return steps
@@ -329,7 +336,7 @@ def flow_builder(request, flow_id):
                         elif action_type == 'delay':
                             if not content.get('delay_time') or not str(content.get('delay_time')).isdigit():
                                 raise ValidationError('Delay action requires a valid delay time.')
-                            if content.get('delay_type') not in ['hours', 'days']:
+                            if content.get('delay_type') not in ['hours', 'days', 'minutes']:
                                 raise ValidationError('Invalid delay type. Choose either "hours" or "days".')
                             TextConfig.objects.filter(flow_step=step).delete()
                             TimeDelayConfig.objects.update_or_create(
@@ -398,6 +405,7 @@ def activate_suggested_flow(request, suggestion_id):
             # Create a new Flow for the current user
             new_flow = Flow.objects.create(
                 owner=request.user,
+                store=UserStoreLink.objects.get(user=request.user).store,
                 name=suggested_flow.name,
                 trigger=suggested_flow.trigger,
                 status='draft'  # Always start as draft
@@ -508,7 +516,7 @@ def campaign(request):
                 messages.error(request, 'No customers in the selected group.')
                 return redirect('campaigns')
 
-            if len(customers_numbers) > store.subscription.messages_limit - store.message_count:
+            if len(customers_numbers) > store.subscription.messages_limit - store.subscription_message_count:
                 messages.error(request, 'Insufficient message balance.')
                 return redirect('campaigns')
 
@@ -517,9 +525,16 @@ def campaign(request):
             campaign.status = 'scheduled'
             campaign.store = store
             campaign.save()
+            
+            data = {
+                'customers_numbers': customers_numbers,
+                'msg': msg,
+                'store_id': store.id,
+                'campaign_id': campaign.id
+            }
 
             # Pass the campaign_id to the task
-            task = send_email_task.apply_async(eta=scheduled_time, args=[customers_numbers, msg, store.id, campaign.id])
+            task = send_whatsapp_message_task.apply_async(eta=scheduled_time, args=[data])
             print(customers_numbers)
             campaign.task_id = task.id
             campaign.save()
@@ -577,9 +592,16 @@ def edit_campaign(request, campaign_id):
                 if len(customers_numbers) == 0:
                     messages.error(request, 'No customers in the selected group.')
                     return redirect('campaigns')
+                
+                data = {
+                    'customers_numbers': customers_numbers,
+                    'msg': msg,
+                    'store_id': store.id,
+                    'campaign_id': campaign.id
+                }
 
                 # Schedule the new task
-                task = send_email_task.apply_async(eta=scheduled_time, args=[customers_numbers, msg, store.id, campaign.id])
+                task =  send_whatsapp_message_task.apply_async(eta=scheduled_time, args=[data])
                 
                 # Save the new task_id
                 campaign.task_id = task.id
@@ -624,7 +646,7 @@ def get_campaign_data(request, campaign_id=None):
                 'id': campaign.id,
                 'name': campaign.name,
                 'scheduled_time': campaign.scheduled_time.strftime('%Y-%m-%d %H:%M'),  # Adjust format as per input type
-                'store': campaign.store.store_name,
+                'messages_sent': campaign.messages_sent,
                 'status': campaign.status,
                 'edit_url': reverse('edit_campaign', args=[campaign.id]),  # Add edit URL for each campaign
                 'delete_url': reverse('campaign_delete', args=[campaign.id]),  # Add delete URL for each campaign
@@ -715,7 +737,12 @@ def customers_view(request):
                 messages.success(request, 'Group created successfully.')
                 return redirect('customers')
             else:
-                messages.error(request, 'Error creating group. Please correct the form errors 1.')
+                #get the field name and the error message
+                error_message = response.get('error', {}).get('message', 'An error occurred')
+                error_fields = response.get('error', {}).get('fields', {})
+                for field, messages_list in error_fields.items():
+                    for field_error in messages_list:
+                        messages.error(request, f"{error_message} - {field}: {field_error}")
                 return redirect('customers')
         else:
             messages.error(request, 'Error creating group. Please correct the form errors 2.')
@@ -767,3 +794,4 @@ def delete_customer_list(request, group_id):
     else:
         messages.error(request, 'Error deleting group.')
         return redirect('customers')
+

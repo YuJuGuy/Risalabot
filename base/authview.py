@@ -3,7 +3,7 @@ from django.contrib import messages
 from django.http import JsonResponse,HttpRequest
 from django.contrib.auth.decorators import login_required
 import requests
-from . models import UserStoreLink, Store, UserEvent, User
+from . models import UserStoreLink, Store, User
 from dotenv import load_dotenv
 import os
 import random
@@ -75,6 +75,7 @@ def callback(request):
 
             if store_info_response.status_code == 200:
                 store_info = store_info_response.json()['data']
+                print(store_info)
                 store_name = store_info.get('name')
                 store_id = store_info.get('id')
                 # check if the store has an email and not null

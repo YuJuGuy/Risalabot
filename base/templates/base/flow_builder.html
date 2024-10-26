@@ -44,6 +44,7 @@
                                     <select class="delay-type">
                                         <option value="hours" {% if step.time_delay_config.delay_type == "hours" %}selected{% endif %}>Hours</option>
                                         <option value="days" {% if step.time_delay_config.delay_type == "days" %}selected{% endif %}>Days</option>
+                                        <option value="minutes" {% if step.time_delay_config.delay_type == "minutes" %}selected{% endif %}>Minutes</option>
                                     </select>
                                 </div>
 
@@ -123,6 +124,7 @@
             <select id="modal-delay-type" class="delay-type">
                 <option value="hours">ساعات</option>
                 <option value="days">أيام</option>
+                <option value="minutes">دقائق</option>
             </select>
         </div>
 
@@ -261,6 +263,7 @@ new Sortable(document.getElementById('canvas-steps'), {
                     <select class="delay-type">
                         <option value="hours">Hours</option>
                         <option value="days">Days</option>
+                        <option value="minutes">Minutes</option>
                     </select>
                 </div>
             `;

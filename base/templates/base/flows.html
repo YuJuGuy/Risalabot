@@ -68,9 +68,9 @@
         <div class="popup-content">
             <form id="flowForm" method="post" action="{% url 'flows' %}">
                 {% csrf_token %}
-                {{ form.as_p }}
+                {{ form.as_p }}                
                 <div class="button-row">
-                    <button type="submit" id="saveButton">حفظ</button>
+                    <button class="save-button" type="submit" id="saveButton">حفظ</button>
                     <button type="button" id="closePopup">الغاء</button>
                 </div>
             </form>
@@ -184,7 +184,7 @@
             flow.name.toLowerCase().includes(searchInput) ||
             flow.updated_at.toLowerCase().includes(searchInput) ||
             flow.status.toLowerCase().includes(searchInput) ||
-            flow.recipients.toString().includes(searchInput)
+            flow.messages_sent.toString().includes(searchInput)
 
         );
         totalFlows = filteredFlows.length;
@@ -291,7 +291,7 @@
                     <td>${flow.name}</td>
                     <td>${flow.updated_at}</td>
                     <td>${flow.status}</td>
-                    <td>${flow.recipients}</td>
+                    <td>${flow.messages_sent}</td>
                     <td><div class="dropdown-icon">
                                 <i class="fa-solid fa-ellipsis-vertical"></i>
                                 <div class="dropdown-content">

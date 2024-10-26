@@ -1,6 +1,6 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
-from . models import User , UserEvent, Campaign, Flow, FlowActionTypes
+from . models import User , Campaign, Flow, FlowActionTypes
 from django.core.exceptions import ValidationError
 import json
 
@@ -14,17 +14,7 @@ class CreateUserForm(UserCreationForm):
         model = User
         fields = ['username', 'email', 'password1', 'password2']
 
-class UserEventForm(forms.ModelForm):
-    class Meta:
-        model = UserEvent
-        fields = ['event_type', 'subcategory', 'message_template']
 
-    def __init__(self, *args, **kwargs):
-        super(UserEventForm, self).__init__(*args, **kwargs)
-
-        instance = kwargs.get('instance')
-        if instance and instance.event_type.label == 'تحديث حالة الطلب':  # Check with the label instead of name
-            self.fields['subcategory'].widget = forms.Select(choices=UserEvent.ORDER_UPDATED_SUBCATEGORIES)
         
         
 class CampaignForm(forms.ModelForm):
@@ -54,7 +44,10 @@ class CampaignForm(forms.ModelForm):
         
         
 class GroupCreationForm(forms.Form):
-    name = forms.CharField(max_length=100 , label='اسم المجموعة')
+    name = forms.CharField(
+        max_length=100,
+        widget=forms.TextInput(attrs={'placeholder': 'اسم المجموعة'})
+    )
 
     def clean(self):
         cleaned_data = super().clean()

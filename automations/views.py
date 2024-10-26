@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 import logging
 import json
 from base.models import User, Store, Flow,UserStoreLink
+from .tasks import process_flows_task
 
 # log to a file
 
@@ -23,80 +24,102 @@ load_dotenv()
 # Replace with your actual Signature token
 SIGNATURE_TOKEN = os.getenv('SIGNATURE_TOKEN')
 
-@csrf_exempt  # Disable CSRF protection for webhook endpoint
-@require_POST  # Only allow POST requests
+def verify_signature(payload, signature):
+    expected_signature = hmac.new(
+        SIGNATURE_TOKEN.encode('utf-8'),
+        msg=payload,
+        digestmod=hashlib.sha256
+    ).hexdigest()
+
+    return hmac.compare_digest(expected_signature, signature)
+
+
+@csrf_exempt
+@require_POST
 def webhook(request):
-    # Get headers
     security_strategy = request.headers.get('X-Salla-Security-Strategy')
     signature = request.headers.get('X-Salla-Signature')
-    # Get payload (assuming it's JSON)
     payload = request.body
-    
 
     if security_strategy == "Signature" and signature:
-        # Calculate expected HMAC signature
-        expected_signature = hmac.new(
-            SIGNATURE_TOKEN.encode('utf-8'),
-            msg=payload,
-            digestmod=hashlib.sha256
-        ).hexdigest()
-
-        # Compare the calculated signature with the received signature
-        if hmac.compare_digest(expected_signature, signature):
+        if verify_signature(payload, signature):
             try:
                 payload_json = json.loads(payload.decode('utf-8'))
                 event = payload_json.get('event')
                 logging.info(f"Signature verified successfully. Event: {event}")
                 
-                # Check if the event matches any trigger using a single database query
-                matching_trigger = Trigger.objects.filter(event_type=event).exists()
+                if event == 'order.updated':
+                    status_id = payload_json.get('data', {}).get('status', {}).get('id', '')
+                    event = f"{event}.{status_id}"
                 
-                if matching_trigger:
+                if Trigger.objects.filter(event_type=event).exists():
                     process_webhook(payload_json)
+                    return JsonResponse({"message": "Webhook processed successfully"}, status=200)
                 else:
                     logging.warning(f"Unrecognized event type: {event}")
-                return JsonResponse({"message": "Webhook processed successfully"}, status=200)
+                    return JsonResponse({"message": "Unrecognized event"}, status=400)
             except json.JSONDecodeError:
                 logging.error("Failed to decode JSON payload")
                 return JsonResponse({"message": "Invalid JSON payload"}, status=400)
         else:
-            # Signature is not valid
             logging.error("Signature verification failed")
             return JsonResponse({"message": "Signature verification failed"}, status=403)
     else:
-        # Invalid security strategy or missing signature
         logging.error("Invalid security strategy or missing signature header")
         return JsonResponse({"message": "Invalid security strategy or missing signature header"}, status=403)
-    
-    
-    
-def process_webhook(payload):
-    event = payload.get('event')
-    store_id = payload.get('merchant')
-    
-    # Find the matching trigger
-    matching_trigger = Trigger.objects.filter(event_type=event).first()
-    
-    if matching_trigger:
-        # Find the UserStoreLink for the given store_id
-        user_store_link = UserStoreLink.objects.filter(store__store_id=store_id).first()
-        
-        if user_store_link:
-            # Find the all the flows associated with the user and the matching trigger
-            flows = Flow.objects.filter(
-                owner=user_store_link.user,
-                trigger=matching_trigger
-            ).all()
-            
-            if flows:
-                print(f"Found flow: {flows}")
-                # Process the flow here
-            else:
-                print(f"No flow found for user {user_store_link.user} and trigger {matching_trigger}")
-        else:
-            print(f"No UserStoreLink found for store_id: {store_id}")
-    else:
-        print(f"No matching trigger found for event: {event}")
 
-    
+
+def process_webhook(payload):
+    try:
+        event = payload.get('event')
+        store_id = payload.get('merchant')
+
+        if event == 'order.updated':
+            status_id = payload.get('data', {}).get('status', {}).get('id', '')
+            event = f"{event}.{status_id}"
+            
+        # Extract customer information
+        customer = payload.get('data', {}).get('customer', {})
+        customer_name = f"{customer.get('first_name', '')} {customer.get('last_name', '')}".strip()
+        customer_phone = f"{customer.get('mobile_code', '')}{customer.get('mobile', '')}"
+
+        # Prepare flow data
+        flow_data = {
+            'store_id': store_id,
+            'customer_name': customer_name,
+            'customer_phone': customer_phone,
+        }
+        
+
+        # Find matching trigger
+        matching_trigger = Trigger.objects.filter(event_type=event).first()
+        if not matching_trigger:
+            raise ValueError(f"No matching trigger found for event: {event}")
+
+        # Find UserStoreLink
+        user_store_link = UserStoreLink.objects.filter(store__store_id=store_id).first()
+        if not user_store_link:
+            raise ValueError(f"No UserStoreLink found for store_id: {store_id}")
+
+        # Find all matching flows for the trigger and user
+        flows = Flow.objects.filter(
+            owner=user_store_link.user,
+            trigger=matching_trigger,
+            status='active'
+        ).select_related('trigger').all()
+
+        if flows:
+            logging.info(f"Found flow(s) for user {user_store_link.user}: {flows}")
+
+            # Serialize flow IDs for Celery task
+            flow_ids = list(flows.values_list('id', flat=True))
+
+            # Pass the flow IDs and flow data to the Celery task
+            process_flows_task.delay(flow_ids, flow_data)
+
+        else:
+            logging.warning(f"No flow found for user {user_store_link.user} and trigger {matching_trigger.event_type}")
+
+    except Exception as e:
+        logging.error(f"Error processing webhook: {str(e)}")
 

@@ -62,7 +62,7 @@
                     <th>الحملة</th>
                     <th>الوقت المجدول</th>
                     <th>الحالة</th>
-                    <th>المتجر</th>
+                    <th>الرسائل المرسلة</th>
                   </tr>
             </thead>
             <tbody id="campaigns-body">
@@ -252,7 +252,7 @@
         // Filter campaigns based on the search input
         const filteredCampaigns = allCampaigns.filter(campaign => {
             return campaign.name.toLowerCase().includes(searchInput) ||
-                   campaign.store.toLowerCase().includes(searchInput) ||
+                   campaign.messages_sent.toLowerCase().includes(searchInput) ||
                    campaign.status.toLowerCase().includes(searchInput) ||
                    campaign.scheduled_time.toLowerCase().includes(searchInput);
         });
@@ -314,7 +314,7 @@
                   <td>${campaign.name}</td>
                   <td>${campaign.scheduled_time}</td>
                   <td>${campaign.status}</td>
-                  <td>${campaign.store}</td>
+                  <td>${campaign.messages_sent}</td>
                   <td>
                       <div class="dropdown-icon">
                           <i class="fa-solid fa-ellipsis-vertical"></i>

@@ -6,11 +6,11 @@
     <div class="popup-content2">
         <form method="post" id="group-creation-form2">
             {% csrf_token %}
-            {{ form.name.label_tag }} {{ form.name }}
+            {{ form.name }}
             <div id="conditions-container"></div>
             <button class="rule-button" type="button" id="add-condition-button">اضافة شرط</button>
             <div class="button-row">
-                <button type="submit">انشاء مجموعة</button>
+                <button class="create-group-button" type="submit">انشاء مجموعة</button>
                 <button type="button" id="closePopup">الغاء</button>
             </div>
         </form>
@@ -34,7 +34,7 @@
         </select>
         </div>
         <div class="value-container">
-            <input type="text" name="value_field" class="value-field" />
+            <input type="number" name="value_field" class="value-field" placeholder="القيمة" min="1"/>
         </div>
         <div class="remove-condition">
         <button class="remove-button" type="button" id="remove-condition">حذف</button>
@@ -373,10 +373,10 @@
                 const valueContainer = conditionDiv.querySelector('.value-container');
                 const index = conditionDiv.dataset.index;
                 valueContainer.innerHTML = event.target.value === 'between' ? `
-                    <input type="text" name="min_value_field-${index}" class="min-value-field" placeholder="القيمة الصغرى" />
-                    <input type="text" name="max_value_field-${index}" class="max-value-field" placeholder="القيمة الكبرى" />
+                    <input type="number" name="min_value_field-${index}" class="min-value-field" placeholder="القيمة الصغرى" min="0"/>
+                    <input type="number" name="max_value_field-${index}" class="max-value-field" placeholder="القيمة الكبرى" min="1"/>
                 ` : `
-                    <input type="number" name="value_field-${index}" class="value-field" />
+                    <input type="number" name="value_field-${index}" class="value-field" min="1"/>
                 `;
             }
         });

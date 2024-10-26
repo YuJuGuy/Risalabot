@@ -5,7 +5,7 @@
 
 /*========== VARIABLES CSS ==========*/
 :root {
-  --header-height: 3.5rem;
+  --header-height: 4.5rem;
 
   /*========== Colors ==========*/
   --first-color: #a7d7c5;
@@ -69,8 +69,8 @@ html, body {
 }
 
 .logo-container{
-  width: 35px;
-  height: 25px;
+  width: 200px;
+  height: auto;
 }
 .logo{
   color : #fff;
@@ -194,6 +194,62 @@ img {
   font: inherit;
 }
 
+/* Dashboard */
+
+.metrics-container{
+  padding: 2rem;
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  gap: 2rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+
+.metric-card{
+  display: flex;
+  flex-direction: row;
+  flex: 1 1 calc(25% - 2rem); /* Adjust this value based on how many cards you want per row */
+  min-width: 250px; /* Set a minimum width to prevent cards from becoming too narrow */
+  height: auto;
+  border-radius: 8px;
+  box-shadow: rgba(55, 63, 71, 5%) 0px 0px 0px 1px, rgba(55, 63, 71, 16%) 0px 1px 4px;
+  background-color: #fff;
+  padding: 1rem;
+}
+
+.metric-icon{
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 2.5rem;
+  width: 20%;
+  height: auto;
+}
+
+.metric-content{
+  display: flex;
+  flex-direction: column;
+  text-align: center;
+  width: 80%;
+  justify-content: center;
+}
+
+.metric-content h5{
+  font-size: 1rem;
+  font-weight: 500;
+  margin: 0;
+  color: #666;
+}
+
+.metric-content h1{
+  font-weight: 600;
+  margin: 0;
+  color: #333;
+}
+
+
 /*Customer List*/
 
 
@@ -217,6 +273,7 @@ img {
 }
 .table-container{
   margin: 2rem;
+  padding: 1rem;
   border-radius: 4px;
   box-shadow: rgba(55, 63, 71, 10%) 0px 0px 0px 1px, rgba(55, 63, 71, 16%) 0px 1px 4px;
   background-color: var(--color-background-default-base);
@@ -262,23 +319,32 @@ padding: 0.5rem 0.75rem;
 font-size: 0.875rem;
 
 }
-.customers-card-container {
-padding: 0.5rem;
-width: 200px;
-height: auto;
-border-radius: 8px;
-box-shadow: rgba(55, 63, 71, 5%) 0px 0px 0px 1px, rgba(55, 63, 71, 16%) 0px 1px 4px;
-background-color: #fff;
-}
-
-.group-card-container{
+.customers-card-container,
+.group-card-container {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 calc(20% - 15px); /* Changed to 10% width with fixed flex-grow and flex-shrink */
   padding: 0.5rem;
-  width: 200px;
+  min-width: 200px; /* Set a minimum width to prevent cards from becoming too narrow */
+  max-width: calc(20% - 15px); /* Added max-width to maintain consistent sizing */
   height: auto;
   border-radius: 8px;
   box-shadow: rgba(55, 63, 71, 5%) 0px 0px 0px 1px, rgba(55, 63, 71, 16%) 0px 1px 4px;
   background-color: #fff;
+}
+
+.group-card-container {
   cursor: pointer;
+}
+
+.cards-container{
+  display: flex;
+  padding: 1rem;
+  margin: 1rem;
+  flex-wrap: wrap;
+  gap: 15px;
+  max-width: 100%;
+  justify-content: flex-start; /* Center the cards */
 }
 
 
@@ -314,13 +380,7 @@ font-size: 1.2rem;
 font-weight: 500;
 color: #333;
 }
-.cards-container{
-display: flex;
-margin: 2rem;
-flex-wrap: wrap; /* This allows cards to wrap to the next line */
-gap: 15px; /* Adjust the gap between cards as needed */
-max-width: 100%;
-}
+
 
 .space{
   height: 20px;
@@ -433,8 +493,7 @@ select{
   padding: 20px;
   border: 1px solid #888;
   border-radius: 4px;
-  width: 50%;
-  max-width: 600px; /* Adjust maximum width as needed */
+  width: 40%;
   text-align: center; /* Center content horizontally */
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); /* Optional: Add box shadow for depth */
 }
@@ -459,9 +518,11 @@ select{
 .condition {
   margin-top: 10px;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   gap: 10px;
   justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
 }
 .condition select {
   font-family: inherit;
@@ -473,11 +534,16 @@ select{
   display: flex;
   align-items: center; /* Align items vertically */
   justify-content: center;
+  gap: 10px;
 }
 
 .value-field {
   width: 100px;
-  margin-left: 10px; /* Add spacing between input and select */
+}
+.condition-container{
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
 }
 
 .remove-button {
@@ -490,10 +556,11 @@ select{
   background-color: #d9534f;
   color: #fff;
 }
-
-.remove-condition {
-  margin-left: 10px;
+.create-group-button, .save-button{
+  background-color: #21aa78;
+  color: #fff;
 }
+
 
 #close-popup-button {
   margin-top: 10px; /* Add margin above the close button */
@@ -966,6 +1033,8 @@ td i {
 }
 
 
+
+
 .action { 
   display: flex;
   flex-direction: row;
@@ -1241,3 +1310,7 @@ td i {
   font: inherit;
 
 }
+
+
+
+
