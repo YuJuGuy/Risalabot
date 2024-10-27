@@ -37,7 +37,7 @@ class CampaignForm(forms.ModelForm):
         store_groups = kwargs.pop('store_groups', [])
         super(CampaignForm, self).__init__(*args, **kwargs)
         self.fields['customers_group'].widget = forms.Select(
-            choices=[('', 'Select Customer Group')] + [(group['id'], group['name']) for group in store_groups]
+            choices=[('', 'اختر مجموعة العملاء')] + [(group['id'], group['name']) for group in store_groups]
         )
         # Optional: Set HTML attributes for 'customers_group'
         self.fields['customers_group'].widget.attrs.update({'class': 'custom-select'})
@@ -110,8 +110,14 @@ class FlowForm(forms.ModelForm):
             'trigger': 'المشغل',
         }
         widgets = {
-            'name': forms.TextInput(attrs={'placeholder': 'Enter flow name...'}),
-            'trigger': forms.Select(),  # This will display a dropdown for triggers
+            'name': forms.TextInput(attrs={'placeholder': 'أدخل اسم التدفق'}),
+            'trigger': forms.Select(attrs={'placeholder': 'اختر المشغل'}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super(FlowForm, self).__init__(*args, **kwargs)
+        # Customize the empty label for the trigger field
+        self.fields['trigger'].empty_label = "اختر المشغل"
         
         
+

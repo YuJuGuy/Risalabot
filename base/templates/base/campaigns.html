@@ -1,10 +1,12 @@
 {% extends 'main.html' %}
+{% load static %}
 
 {% block content %}
 
 
   <div class="popup" id="myPopup">
-    <div class="popup-content">
+    <div class="popup-group">
+    <div class="popup-content-campaign">
       <form method="POST" id="campaign-form">
         {% csrf_token %}
         {{ form.non_field_errors }}
@@ -36,6 +38,19 @@
           <button type="button" id="closePopupButton">الغاء</button>
         </div>
       </form>
+    </div>
+    <div class="campaign-visualization">
+        <div class="wallpaper">
+          <img src="{% static 'images/wallpaper.png' %}" alt="wallpaper">
+          <div class="visualization-item">
+            <ul class="chat-item">
+              <li class="chat-item-message">
+                <p id="visualization-message"></p>
+              </li>
+            </ul>
+          </div>
+        </div>
+    </div>
     </div>
   </div>
   
@@ -116,6 +131,9 @@
             closePopupButton.addEventListener('click', function(event) {
                 event.preventDefault();
                 closePopup();
+                visualMessage.innerText = '';
+
+
             });
         }
     
@@ -139,7 +157,25 @@
                 event.stopPropagation(); // Prevent closing when clicking inside the dropdown
             }
         });
+
+        // Add message visualization update
+        const messageInput = document.getElementById('id_msg');
+        const visualMessage = document.getElementById('visualization-message');
+        
+        // Set initial message
+        visualMessage.innerText = messageInput.value;
+        
+        // Update message as user types
+        messageInput.addEventListener('input', function() {
+            visualMessage.innerText = this.value;
+        });
+
+
+
     });
+
+
+
       
       // Function to close all dropdowns
       function closeAllDropdowns() {

@@ -158,16 +158,120 @@ img {
     );
     display: none;
 }
-.popup-content {
+
+.popup-group{
+  margin: 10%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 600px;
+  overflow: hidden;
+}
+.popup-content-campaign{
     background-color: white;
-    margin: 10% auto;
     padding: 20px;
-    width: 50%;
+    width: 40%;
     font-weight: bolder;
-    border-radius: 5px;
+    border-top-right-radius: 5px;
+    border-bottom-right-radius: 5px;
+    height: 100%;
 }
 
-.popup-content textarea {
+.popup-content-flow{
+  background-color: white;
+  margin: 10% auto;
+  padding: 20px;
+  width: 50%;
+  font-weight: bolder;
+  border-radius: 5px;
+}
+
+.popup-content-flow form{
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.campaign-visualization{
+  width: 40%;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  border-top-left-radius: 5px;
+  border-bottom-left-radius: 5px;
+}
+
+
+
+.wallpaper{
+  width: 100%;
+  height: 100%;
+  position: relative; /* Add this */
+}
+
+.wallpaper img{
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-top-left-radius: 5px;
+  border-bottom-left-radius: 5px;
+}
+
+.visualization-item{
+  width: 100%;
+  height: 100%;
+  position: absolute; /* Change to absolute */
+  top: 0;           /* Add this */
+  left: 0;          /* Add this */
+}
+
+.chat-item{
+  float: right;
+  list-style: none;
+  max-width: 75%;
+  position: relative; /* Add this */
+}
+
+.chat-item-message{
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  border-bottom-left-radius: 10px;
+  border-bottom-right-radius: 10px;
+  border-top-left-radius: 10px;
+  
+  background: #E8FFD4 none repeat scroll 0 0;
+  padding: 1rem;
+  font-size: 0.875rem;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  position: relative; /* Add this */
+}
+
+/* Add this new style for the triangle */
+.chat-item-message::after {
+  content: '';
+  position: absolute;
+  right: -12px;
+  top: 0;
+  border: 8px solid transparent;
+  border-color: transparent transparent transparent #e8ffd4;
+  border-width: 0px 0 14px 13px;
+}
+
+.chat-item-message p{
+  margin: 0;
+}
+
+.form-group select{
+  font-family: inherit;
+  direction: rtl;
+}
+
+
+
+.popup-content textarea, .popup-content-flow textarea, .popup-content-campaign textarea {
   resize: none;
   padding: 0.5rem;
   width: 100%;
@@ -176,7 +280,7 @@ img {
   font-size: 0.875rem !important;
   font: inherit;
 }
-.popup-content button {
+.popup-content button, .popup-content-flow button, .popup-content-campaign button {
     display: block;
     margin: 0 auto;
     
@@ -185,7 +289,7 @@ img {
     display: block;
 }
 
-.popup-content input{
+.popup-content input, .popup-content-flow input, .popup-content-campaign input{
   padding: 0.5rem;
   width: 100%;
   border-radius: 4px;
@@ -210,8 +314,9 @@ img {
 .metric-card{
   display: flex;
   flex-direction: row;
-  flex: 1 1 calc(25% - 2rem); /* Adjust this value based on how many cards you want per row */
+  flex: 1 1 calc(20% - 2rem); /* Adjust this value based on how many cards you want per row */
   min-width: 250px; /* Set a minimum width to prevent cards from becoming too narrow */
+  max-width: calc(20% - 15px); /* Added max-width to maintain consistent sizing */
   height: auto;
   border-radius: 8px;
   box-shadow: rgba(55, 63, 71, 5%) 0px 0px 0px 1px, rgba(55, 63, 71, 16%) 0px 1px 4px;
@@ -226,6 +331,10 @@ img {
   font-size: 2.5rem;
   width: 20%;
   height: auto;
+}
+
+.metric-icon i{
+  color: #666;
 }
 
 .metric-content{
@@ -246,9 +355,31 @@ img {
 .metric-content h1{
   font-weight: 600;
   margin: 0;
-  color: #333;
+  color: #1a1a1a;
 }
 
+.chart-container-wrapper{
+  margin: 2rem;
+  border-radius: 4px;
+  display: flex;
+  justify-content: flex-start;
+  flex-direction: row;
+  gap: 2rem;
+}
+
+.chart-container{
+  padding: 1rem;
+  box-shadow: rgba(55, 63, 71, 10%) 0px 0px 0px 1px, rgba(55, 63, 71, 16%) 0px 1px 4px;
+  background-color: #fff;
+  flex: 1 1 calc(50% - 3rem);
+  border-radius: 8px;
+
+}
+
+.chart-container canvas{
+  width: 100% !important;
+  height: auto !important;
+}
 
 /*Customer List*/
 
@@ -447,12 +578,16 @@ button.square-button:disabled i {
 }
 
 select{
-  direction: ltr;
-  padding: 0.5rem;
+  direction: rtl;
+  padding: 0.5rem 1rem;
   border-radius: 4px;
   border: 1px solid #ccc;
   font-size: 0.875rem;
+  font-family: inherit;
 }
+
+
+
 
 
 
@@ -1310,6 +1445,9 @@ td i {
   font: inherit;
 
 }
+
+
+
 
 
 

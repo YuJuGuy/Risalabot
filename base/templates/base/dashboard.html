@@ -38,7 +38,74 @@
             <h1>{{ message_count }}</h1>
         </div>
     </div>
+    <div class="metric-card">
+        <div class="metric-icon">
+            <i class="fas fa-cog"></i>
+        </div>
+        <div class="metric-content">
+            <h5>الأتمتة النشطة</h5>
+            <h1>{{ message_count }}</h1>
+        </div>
+    </div>
+</div>
+
+<div class="chart-container-wrapper">
+    <div class="chart-container">
+        <canvas id="myChart"></canvas>
+    </div>
+    <div class="chart-container">
+        <canvas id="myChart2"></canvas>
+    </div>
 </div>
 
 
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    const ctx = document.getElementById('myChart');
+    const ctx2 = document.getElementById('myChart2');
+
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['Red', 'Blue', 'Yellow', 'Green', 'Purple', 'Orange'],
+      datasets: [{
+        label: '# of Votes',
+        data: [12, 19, 3, 5, 2, 3],
+        borderWidth: 1
+      }]
+    },
+    options: {
+      scales: {
+        y: {
+          beginAtZero: true
+        }
+      }
+    }
+  });
+
+  new Chart(ctx2, {
+    type: 'line',
+    data: {
+        labels: ['Red', 'Blue', 'Yellow', 'Green', 'Purple', 'Orange'],
+        datasets: [{
+            label: '# of Votes',
+            data: [12, 19, 3, 5, 2, 3],
+            borderWidth: 1
+        }]
+    },
+    options: {
+        scales: {
+            y: {
+                beginAtZero: true
+            }
+        }
+    }
+  });
+
+
+
+</script>
 {% endblock %}

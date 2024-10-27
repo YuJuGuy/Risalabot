@@ -65,10 +65,14 @@
 
 
     <div id="myPopup" class="popup">
-        <div class="popup-content">
+        <div class="popup-content-flow">
             <form id="flowForm" method="post" action="{% url 'flows' %}">
                 {% csrf_token %}
-                {{ form.as_p }}                
+                {% for field in form %}
+                    <div class="form-field">
+                        {{ field }}
+                    </div>
+                {% endfor %}
                 <div class="button-row">
                     <button class="save-button" type="submit" id="saveButton">حفظ</button>
                     <button type="button" id="closePopup">الغاء</button>
