@@ -39,7 +39,17 @@ def get_customers_from_group(user, group_id):
         
         if int(group_id) in [int(group) for group in customer_groups]:
             customer_number = str(customer.get('mobile_code')) + str(customer.get('mobile'))
-            customers.append(customer_number)
+            customer_full_name = f"{customer.get('first_name')} {customer.get('last_name')}"
+            customer_first_name = customer.get('first_name', '')
+            customer_email = customer.get('email', '')
+            customer_country = customer.get('country', '')
+            customers.append({
+                'customer_number': customer_number,
+                'customer_full_name': customer_full_name,
+                'customer_first_name': customer_first_name,
+                'customer_country': customer_country,
+                'customer_email': customer_email
+            })
             
     return customers
 

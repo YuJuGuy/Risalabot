@@ -35,7 +35,7 @@
                             {{ step.action_type.label }}
                             {% if step.action_type.name == 'sms' %}
                                 <div class="step-action" style="display:none">
-                                    <textarea class="sms-message">{{ step.text_config.message }}</textarea>
+                                    <textarea class="sms-message" placeholder="أدخل نص الرسالة هنا">{{ step.text_config.message }}</textarea>
                                 </div>
 
                             {% elif step.action_type.name == 'delay' %}
@@ -96,9 +96,9 @@
 
 
 <div id="action-modal" class="modal" style="display:none;">
+    <div class="popup-group">
     <div class="modal-content">
         <span class="close">&times;</span>
-
         <div id="trigger-fields" style="display:none;">
             <label>المشغل:</label>
             <select id="modal-trigger" class="trigger">
@@ -110,11 +110,42 @@
             <div id="trigger-description" style="display:none;">
             </div>
         </div>
-
         <!-- SMS Action Fields -->
         <div id="sms-fields" style="display:none;">
             <label>الرسالة:</label>
-            <textarea id="modal-sms-message" class="sms-message"></textarea>
+            <textarea placeholder="أدخل نص الرسالة هنا" id="modal-sms-message" class="sms-message"></textarea>
+            <div class="available-variables">
+                <div class="variable-item-container">
+                    <div class="variable-item" onclick="addVariableToMessage('{اسم العميل}')">
+                        <p>اسم العميل</p>
+                    </div>
+                    <div class="variable-item" onclick="addVariableToMessage('{الاسم الاول}')">
+                        <p>الاسم الاول</p>
+                    </div>
+                    <div class="variable-item" onclick="addVariableToMessage('{الايميل}')">
+                        <p>الايميل</p>
+                    </div>
+                    <div class="variable-item" onclick="addVariableToMessage('{رقم العميل}')">
+                        <p>رقم العميل</p>
+                    </div>
+                    <div class="variable-item" onclick="addVariableToMessage('{الدولة}')">
+                        <p>الدولة</p>
+                    </div>
+                    <div class="variable-item" onclick="addVariableToMessage('{رقم التتبع}')">
+                        <p>رقم التتبع</p>
+                    </div>
+                    <div class="variable-item" onclick="addVariableToMessage('{الحالة}')">
+                        <p>الحالة</p>
+                    </div>
+                    <div class="variable-item" onclick="addVariableToMessage('{السعر}')">
+                        <p>السعر</p>
+                    </div>
+                    <div class="variable-item" onclick="addVariableToMessage('{رابط التقييم}')">
+                        <p>رابط التقييم</p>
+                    </div>
+                </div>
+                <p>المتغيرات سوف تستبدل بالقيم المناسبة للعميل المرسل له</p>
+            </div>
         </div>
 
         <!-- Delay Action Fields -->
@@ -132,6 +163,19 @@
             <button id="save-action-btn">حفظ</button>
             <button id="delete-step-btn" style="display:none;">حذف</button>
         </div>
+    </div>
+    <div class="campaign-visualization" id="sms-visualization" style="display:none;">
+        <div class="wallpaper">
+          <img src="{% static 'images/wallpaper.png' %}" alt="wallpaper">
+          <div class="visualization-item">
+            <ul class="chat-item">
+              <li class="chat-item-message">
+                <p id="visualization-message"></p>
+              </li>
+            </ul>
+          </div>
+        </div>
+    </div>
     </div>
 
 </div>
@@ -222,6 +266,17 @@ flowCanvas.addEventListener('panzoomzoom', debouncedUpdateConnections);
 
 
 
+const messageInput = document.getElementById('modal-sms-message');
+const visualMessage = document.getElementById('visualization-message');
+
+// Set initial message
+visualMessage.innerText = messageInput.value;
+
+// Update message as user types
+messageInput.addEventListener('input', function() {
+    visualMessage.innerText = this.value;
+});
+
 
 // Initialize Sortable.js for the available steps (left list)
 new Sortable(document.getElementById('steps-list'), {
@@ -251,14 +306,34 @@ new Sortable(document.getElementById('canvas-steps'), {
         if (actionType === 'sms') {
             newStep.innerHTML += `
                  <div class="step-action" style="display:none">
-                    <label>Message:</label>
-                    <textarea class="sms-message"></textarea>
+                    <label>الرسالة:</label>
+                    <textarea placeholder="أدخل نص الرسالة هنا"class="sms-message"></textarea>
+                            <div class="available-variables">
+                                <div class="variable-item-container">
+                                    <div class="variable-item" onclick="addVariableToMessage('{اسم العميل}')">
+                                        <p>اسم العميل</p>
+                                    </div>
+                                    <div class="variable-item" onclick="addVariableToMessage('{الاسم الاول}')">
+                                        <p>الاسم الاول</p>
+                                    </div>
+                                    <div class="variable-item" onclick="addVariableToMessage('{الايميل}')">
+                                        <p>الايميل</p>
+                                    </div>
+                                    <div class="variable-item" onclick="addVariableToMessage('{رقم العميل}')">
+                                        <p>رقم العميل</p>
+                                    </div>
+                                    <div class="variable-item" onclick="addVariableToMessage('{الدولة}')">
+                                        <p>الدولة</p>
+                                    </div>
+                                </div>
+                                <p>المتغيرات سوف تستبدل بالقيم المناسبة للعميل المرسل له</p>
+                            </div>
                 </div>
             `;
         } else if (actionType === 'delay') {
             newStep.innerHTML += `
                  <div class="step-action" style="display:none">
-                    <label>Delay Time:</label>
+                    <label>التأخير:</label>
                     <input type="number" class="delay-time" value="1">
                     <select class="delay-type">
                         <option value="hours">Hours</option>
@@ -286,14 +361,15 @@ var smsFields = document.getElementById("sms-fields");
 var delayFields = document.getElementById("delay-fields");
 var triggerFields = document.getElementById("trigger-fields");
 var saveActionBtn = document.getElementById("save-action-btn");
+var smsVisualization = document.getElementById("sms-visualization");
 var currentStep = null;
 
 document.getElementById('trigger').addEventListener('click', function() {
-    modal.style.display = "block";
+    modal.style.display = "flex";
     smsFields.style.display = "none";
     delayFields.style.display = "none";
     triggerFields.style.display = "block";
-
+    smsVisualization.style.display = "none";
 
     
     // Hide delete button for trigger
@@ -304,7 +380,7 @@ document.getElementById('canvas-steps').addEventListener('click', function(event
     if (event.target.closest('.step')) {
         currentStep = event.target.closest('.step');
         var actionType = currentStep.getAttribute('data-action-type');
-        modal.style.display = "block";
+        modal.style.display = "flex";
 
         // Show delete button in modal for steps
         document.getElementById('delete-step-btn').style.display = 'inline-block';
@@ -313,12 +389,15 @@ document.getElementById('canvas-steps').addEventListener('click', function(event
             smsFields.style.display = "block";
             delayFields.style.display = "none";
             triggerFields.style.display = "none";
-
-            document.getElementById('modal-sms-message').value = currentStep.querySelector('.sms-message').value;
+            smsVisualization.style.display = "block";
+            const currentMessage = currentStep.querySelector('.sms-message').value;
+            document.getElementById('modal-sms-message').value = currentMessage;
+            // Update visualization immediately when modal opens
+            document.getElementById('visualization-message').innerText = currentMessage;
         } else if (actionType === 'delay') {
             smsFields.style.display = "none";
             triggerFields.style.display = "none";
-
+            smsVisualization.style.display = "none";
             delayFields.style.display = "block";
             document.getElementById('modal-delay-time').value = currentStep.querySelector('.delay-time').value;
             document.getElementById('modal-delay-type').value = currentStep.querySelector('.delay-type').value;
@@ -328,6 +407,8 @@ document.getElementById('canvas-steps').addEventListener('click', function(event
 
 document.querySelector(".close").onclick = function() {
     modal.style.display = "none";
+    document.getElementById('visualization-message').innerText = '';
+
 };
 
 saveActionBtn.addEventListener('click', function() {
@@ -418,6 +499,15 @@ document.getElementById('flow-form').addEventListener('submit', function(e) {
         alert('An unexpected error occurred. Please try again.');
     });
 });
+
+function addVariableToMessage(variable){
+    const messageInput = document.getElementById('modal-sms-message');
+    const visualMessage = document.getElementById('visualization-message');
+    messageInput.value += variable;
+    visualMessage.innerText = messageInput.value;
+
+  }
+
 
 function updateConnections() {
     const canvasSteps = document.getElementById('canvas-steps');
@@ -526,4 +616,5 @@ document.addEventListener('DOMContentLoaded', function() {
 </body>
 </html>
 {% endblock %}
+
 

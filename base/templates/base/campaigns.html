@@ -31,7 +31,28 @@
           {{ form.msg.errors }}
           {{ form.msg }}
         </div>
-  
+
+
+        <div class="available-variables">
+          <div class="variable-item-container">
+          <div class="variable-item" onclick="addVariableToMessage('{اسم العميل}')">
+            <p>اسم العميل</p>
+          </div>
+          <div class="variable-item" onclick="addVariableToMessage('{الاسم الاول}')">
+            <p>الاسم الاول</p>
+          </div>
+          <div class="variable-item" onclick="addVariableToMessage('{الايميل}')">
+            <p>الايميل</p>
+          </div>
+          <div class="variable-item" onclick="addVariableToMessage('{رقم العميل}')">
+            <p>رقم العميل</p>
+          </div>
+          <div class="variable-item" onclick="addVariableToMessage('{الدولة}')">
+            <p>الدولة</p>
+          </div>
+          </div>
+          <p>المتغيرات سوف تستبدل بالقيم المناسبة للعميل المرسل له</p>
+        </div>
 
         <div class="button-row">
           <button type="submit" class="create-button">جدولة</button>
@@ -175,6 +196,15 @@
     });
 
 
+    function addVariableToMessage(variable){
+      const messageInput = document.getElementById('id_msg');
+      const visualMessage = document.getElementById('visualization-message');
+      messageInput.value += variable;
+      visualMessage.innerText = messageInput.value;
+
+    }
+
+
 
       
       // Function to close all dropdowns
@@ -225,7 +255,7 @@
                       document.getElementById('id_msg').value = campaignData.msg;
   
                       // Show the popup
-                      document.getElementById("myPopup").style.display = "block";
+                      document.getElementById("myPopup").style.display = "flex";
                       closeAllDropdowns();
                   } else {
                       alert('Failed to load campaign data');
@@ -242,7 +272,7 @@
           document.getElementById('id_customers_group').readOnly = false;
           document.getElementById('id_msg').readOnly = false;
           form.reset();
-          document.getElementById("myPopup").style.display = "block";
+          document.getElementById("myPopup").style.display = "flex";
           closeAllDropdowns();
       }
   }

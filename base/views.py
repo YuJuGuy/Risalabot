@@ -192,6 +192,7 @@ def flows(request):
             # Save the form but don't commit yet, as we need to add the owner
             new_flow = form.save(commit=False)
             new_flow.owner = request.user  # Associate the flow with the current user
+            new_flow.store = UserStoreLink.objects.get(user=request.user).store
             new_flow.save()  # Now save the flow
             messages.success(request, 'Flow created successfully.')
             return redirect('flow', flow_id=new_flow.id)  # Redirect to the flow builder
@@ -510,9 +511,12 @@ def campaign(request):
                 messages.error(request, 'Scheduled time cannot be in the past.')
                 return redirect('campaigns')
 
-            customers_numbers = get_customers_from_group(request.user, group_id)
 
-            if len(customers_numbers) == 0:
+            customers_data = get_customers_from_group(request.user, group_id)
+            
+            customers_numbers = [customer['customer_number'] for customer in customers_data]
+
+            if len(customers_data) == 0:
                 messages.error(request, 'No customers in the selected group.')
                 return redirect('campaigns')
 
@@ -527,7 +531,7 @@ def campaign(request):
             campaign.save()
             
             data = {
-                'customers_numbers': customers_numbers,
+                'customers_data': customers_data,
                 'msg': msg,
                 'store_id': store.id,
                 'campaign_id': campaign.id
@@ -535,7 +539,6 @@ def campaign(request):
 
             # Pass the campaign_id to the task
             task = send_whatsapp_message_task.apply_async(eta=scheduled_time, args=[data])
-            print(customers_numbers)
             campaign.task_id = task.id
             campaign.save()
             

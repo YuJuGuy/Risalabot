@@ -72,23 +72,32 @@ def webhook(request):
 def process_webhook(payload):
     try:
         event = payload.get('event')
-        store_id = payload.get('merchant')
+        store_id = str(payload.get('merchant', ''))
 
         if event == 'order.updated':
             status_id = payload.get('data', {}).get('status', {}).get('id', '')
             event = f"{event}.{status_id}"
             
-        # Extract customer information
-        customer = payload.get('data', {}).get('customer', {})
-        customer_name = f"{customer.get('first_name', '')} {customer.get('last_name', '')}".strip()
-        customer_phone = f"{customer.get('mobile_code', '')}{customer.get('mobile', '')}"
-
-        # Prepare flow data
+        data = payload.get('data', {}) or {}
+        customer = data.get('customer', {}) or {}
+        
+        # Prepare flow data with safe dictionary access
         flow_data = {
-            'store_id': store_id,
-            'customer_name': customer_name,
-            'customer_phone': customer_phone,
+            'store_id': str(store_id),
+            'customer_full_name': f"{customer.get('first_name', '')} {customer.get('last_name', '')}".strip(),
+            'customer_first_name': str(customer.get('first_name', '')),
+            'customer_country': str(customer.get('country', '')),
+            'customer_email': str(customer.get('email', '')),
+            'customer_phone': f"{customer.get('mobile_code', '')}{customer.get('mobile', '')}",
+            'tracking_link': str((data.get('shipping', {}) or {}).get('shipment', {}).get('tracking_link', '')),
+            'status_arabic': str((data.get('status', {}) or {}).get('name', '')),
+            'rating_link': str((data.get('urls', {}) or {}).get('rating_link', '')),
+            'total_amount': str((data.get('amounts', {}) or {}).get('total', {}).get('amount', '')),
         }
+        
+        
+        logging.info(f"Flow data: {flow_data}")
+        
         
 
         # Find matching trigger

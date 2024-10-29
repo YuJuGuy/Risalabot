@@ -69,8 +69,22 @@ def send_whatsapp_message_task(self, data):
     failed_count = 0  # Track failed messages
 
     # Sending messages in batch or all at once
-    for number in data['customers_numbers']:
-        success, message = send_whatsapp_message(store, number, data['msg'], session)
+    for customer in data['customers_data']:
+        # Only process replacements if the message contains placeholders
+        if '{' in data['msg']:
+            replacements = {
+                '{اسم العميل}': customer['customer_full_name'],
+                '{الاسم الاول}': customer['customer_first_name'],
+                '{الايميل}': customer['customer_email'],
+                '{رقم العميل}': customer['customer_number'],
+                '{الدولة}': customer['customer_country']
+            }
+            
+            # Apply all replacements in one loop
+            for placeholder, value in replacements.items():
+                data['msg'] = data['msg'].replace(placeholder, value)
+        
+        success, message = send_whatsapp_message(store, customer['customer_number'], data['msg'], session)
         if success:
             sent_count += 1
             with transaction.atomic():
@@ -117,6 +131,25 @@ def process_flows_task(self, flow_ids, flow_data, current_step_index=0):
             for index, flow_step in enumerate(flow_steps[current_step_index:], start=current_step_index):
                 if flow_step.action_type.name == 'sms':
                     text_config = TextConfig.objects.get(flow_step=flow_step)
+                  
+                    if '{' in text_config.message:
+                        replacements = {
+                            '{اسم العميل}': flow_data['customer_full_name'],
+                            '{الاسم الاول}': flow_data['customer_first_name'],
+                            '{الايميل}': flow_data['customer_email'],
+                            '{رقم العميل}': flow_data['customer_phone'],
+                            '{الدولة}': flow_data['customer_country'],
+                            '{رقم التتبع}': flow_data['tracking_link'],
+                            '{الحالة}': flow_data['status_arabic'],
+                            '{السعر}': flow_data['total_amount'],
+                            '{رابط التقييم}': flow_data['rating_link']
+                    }
+                        # Apply all replacements in one loop
+                        for placeholder, value in replacements.items():
+                            text_config.message = text_config.message.replace(placeholder, value)
+                    
+                
+                            
                     success, message = send_whatsapp_message(store, flow_data['customer_phone'], text_config.message, session)
                     if success:
                         with transaction.atomic():
