@@ -185,7 +185,6 @@
         
         // Set initial message
         visualMessage.innerText = messageInput.value;
-        
         // Update message as user types
         messageInput.addEventListener('input', function() {
             visualMessage.innerText = this.value;
@@ -208,6 +207,8 @@
 
       
       // Function to close all dropdowns
+
+      
       function closeAllDropdowns() {
         const dropdowns = document.querySelectorAll('.dropdown-content');
         dropdowns.forEach(function(dropdown) {
@@ -218,6 +219,7 @@
     function showPopup(campaignId) {
       const form = document.getElementById('campaign-form');
       const submitButton = document.querySelector('.create-button');
+      const visualMessage = document.getElementById('visualization-message'); 
   
       if (campaignId) {
           // Editing mode
@@ -253,6 +255,9 @@
                       document.getElementById('id_scheduled_time').value = campaignData.scheduled_time;
                       document.getElementById('id_customers_group').value = campaignData.customers_group;
                       document.getElementById('id_msg').value = campaignData.msg;
+                      // populate message visualization
+
+                      visualMessage.innerText = campaignData.msg;
   
                       // Show the popup
                       document.getElementById("myPopup").style.display = "flex";

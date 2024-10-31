@@ -5,6 +5,39 @@ import base64
 import time
 
 
+def get_customer_count(user):
+    try:
+        store = UserStoreLink.objects.get(user=user).store
+        access_token = store.access_token
+        
+        headers = {
+            'Authorization': f'Bearer {access_token}'
+        }
+        
+        customers_url = "https://api.salla.dev/admin/v2/customers"
+        response = requests.get(customers_url, headers=headers)
+        response.raise_for_status()
+        customers_data = response.json()
+        
+        return {
+            'success': True,
+            'customer_count': len(customers_data.get('data', []))
+        }
+    except UserStoreLink.DoesNotExist:
+        return {
+            'success': False,
+            'message': 'UserStoreLink does not exist for the given user.'
+        }
+    except requests.RequestException as e:
+        return {
+            'success': False,
+            'message': str(e)
+        }
+    except Exception as e:
+        return {
+            'success': False,
+            'message': str(e)
+        }
 
 def group_campaign(user):
     store = UserStoreLink.objects.get(user=user).store

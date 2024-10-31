@@ -70,3 +70,8 @@ admin.site.register(TextConfig)
 admin.site.register(TimeDelayConfig)
 admin.site.register(SuggestedTextConfig)
 admin.site.register(SuggestedTimeDelayConfig)
+
+
+admin.site.site_header = "Risalabot Admin"
+admin.site.site_title = "Risalabot Admin Portal"
+admin.site.index_title = "Welcome to Risalabot Admin Portal"

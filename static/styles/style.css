@@ -23,7 +23,6 @@ body {
     border-radius: 20px; /* Slightly smaller border-radius for a modern look */
     padding: 2rem 3rem; /* Increased padding for better spacing */
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
-    width: 400px; /* Width for a bigger form */
     max-width: 100%;
   }
   
@@ -111,4 +110,56 @@ body {
     list-style-type: none;
     padding: 0;
     text-align: center;
+  }
+
+  .forgot-password{
+    margin-bottom: 1rem;
+    text-align: right;
+  }
+
+  .forgot-password-link{
+    color: #84c7ae;
+    text-decoration: none;
+    font-weight: 700;
+  }
+
+  .forgot-password-link:hover{
+    text-decoration: underline;
+  }
+
+  .reset-password-container{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+  }
+
+  .reset-password-container input{
+    margin-bottom: 1rem;
+  }
+
+
+
+  .submit-button {
+    text-align: center;
+    text-decoration: none;
+    color: #ffffff;
+  }
+
+
+  .info-box{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+  }
+
+  .info-icon{
+    font-size: 2rem;
+    font-weight: 700;
+  }
+
+  .info-text{
+    list-style-type: none;
+    padding: 0;
   }

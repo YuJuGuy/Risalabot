@@ -12,7 +12,10 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 
 from pathlib import Path
 from datetime import timedelta
-    
+from dotenv import load_dotenv
+import os
+from celery.schedules import crontab
+load_dotenv()
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -148,8 +151,8 @@ EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_USE_SSL = False
-EMAIL_HOST_USER = 'joer3y@gmail.com'
-EMAIL_HOST_PASSWORD = 'iuwq niqb gugb lcif'
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
 
 
 CELERY_BROKER_URL = 'redis://localhost:6379/0'
@@ -190,5 +193,13 @@ LOGGING = {
             'handlers': ['console', 'file'],
             'level': 'DEBUG',
         },
+    },
+}
+
+
+CELERY_BEAT_SCHEDULE = {
+    'update-total-customers-every-30-minutes': {
+        'task': 'automations.tasks.update_total_customers',  # Adjust this to match your task path
+        'schedule': crontab(minute='*/30'),  # Runs every 30 minutes
     },
 }

@@ -25,6 +25,7 @@ from django.core.exceptions import ValidationError
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 from django.db import IntegrityError
+from automations.tasks import update_total_customers
 
 import logging
 
@@ -97,25 +98,32 @@ def registerPage(request):
 
 @login_required(login_url='login')
 def dashboard(request):
-    user_linked = UserStoreLink.objects.filter(user=request.user).exists()
-    store = None
-    message_count = 0
-    if user_linked:
-        store_link = UserStoreLink.objects.get(user=request.user)
-        store = store_link.store
-        message_count = store.total_messages_sent
-        purchases = store.total_purchases
-        total_customers = store.total_customers
-        
-
-
+    # Initialize default values
     context = {
-        'user_linked': user_linked,
-        'store': store,
-        'message_count': message_count,
-        'purchases': purchases,
-        'total_customers': total_customers
+        'store': None,
+        'message_count': 0,
+        'purchases': 0,
+        'total_customers': 0,
+        'active_automations': 0
     }
+
+    try:
+        # Get store data if it exists
+        store_link = UserStoreLink.objects.select_related('store').get(user=request.user)
+        store = store_link.store
+        # Update context with store data
+        context.update({
+            'store': store,
+            'message_count': store.total_messages_sent,
+            'purchases': store.total_purchases,
+            'total_customers': store.total_customers,
+            'active_automations': Flow.objects.filter(owner=request.user, status='active').count() + Campaign.objects.filter(store=store, status='scheduled').count()
+        })
+    except UserStoreLink.DoesNotExist:
+        messages.warning(request, 'No store linked to your account.')
+    except Exception as e:
+        logger.error(f"Error in dashboard view: {str(e)}")
+        messages.error(request, 'An error occurred while loading dashboard data.')
 
     return render(request, 'base/dashboard.html', context)
 
@@ -590,19 +598,21 @@ def edit_campaign(request, campaign_id):
                                     
                 
                 
-                customers_numbers = get_customers_from_group(request.user, group_id)
+                customers_data = get_customers_from_group(request.user, group_id)
+            
+                customers_numbers = [customer['customer_number'] for customer in customers_data]
+
 
                 if len(customers_numbers) == 0:
                     messages.error(request, 'No customers in the selected group.')
                     return redirect('campaigns')
                 
                 data = {
-                    'customers_numbers': customers_numbers,
+                    'customers_data': customers_data,
                     'msg': msg,
                     'store_id': store.id,
                     'campaign_id': campaign.id
                 }
-
                 # Schedule the new task
                 task =  send_whatsapp_message_task.apply_async(eta=scheduled_time, args=[data])
                 
