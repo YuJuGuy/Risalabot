@@ -7,6 +7,7 @@
   <div class="popup" id="myPopup">
     <div class="popup-group">
     <div class="popup-content-campaign">
+      <span id="closePopupButton" class="close">&times;</span>
       <form method="POST" id="campaign-form">
         {% csrf_token %}
         {{ form.non_field_errors }}
@@ -32,6 +33,11 @@
           {{ form.msg }}
         </div>
 
+        <div class="form-group" style="display:none;">
+          {{ form.status.errors }}
+          {{ form.status }}
+        </div>
+
 
         <div class="available-variables">
           <div class="variable-item-container">
@@ -55,8 +61,8 @@
         </div>
 
         <div class="button-row">
-          <button type="submit" class="create-button">جدولة</button>
-          <button type="button" id="closePopupButton">الغاء</button>
+          <button type="submit" id="scheduled" class="save-active-btn" value="scheduled">جدولة</button>
+          <button type="submit" class="save-draft-btn" value="draft">حفظ كمسودة</button>
         </div>
       </form>
     </div>
@@ -130,6 +136,9 @@
       let rowsPerPage = 25;
       let totalCampaigns = 0;
 
+
+
+
       document.addEventListener('DOMContentLoaded', function() {
         // Attach event listeners
         setupPagination();
@@ -194,6 +203,31 @@
 
     });
 
+  
+    document.getElementById('campaign-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+  
+      var statusSelector = document.querySelector('[name="status"]');  // Select the hidden status field
+      var clickedButton = e.submitter;  // Get the button that triggered the submit event
+      var status = clickedButton.value;
+  
+      statusSelector.value = status;  // Set the value of the status field
+      console.log(statusSelector.value);  // For debugging, shows the selected status
+  
+      e.target.submit();  // Submit the form with the updated status
+  });
+  
+
+
+
+
+
+      
+
+
+
+
+
 
     function addVariableToMessage(variable){
       const messageInput = document.getElementById('id_msg');
@@ -218,7 +252,7 @@
       
     function showPopup(campaignId) {
       const form = document.getElementById('campaign-form');
-      const submitButton = document.querySelector('.create-button');
+      const submitButton = document.querySelector('.save-active-btn');
       const visualMessage = document.getElementById('visualization-message'); 
   
       if (campaignId) {
@@ -232,14 +266,16 @@
                       allCampaigns = data.data;
                       const campaignData = data.data;
   
-                      if (campaignData.status === "scheduled") {
+                      if (campaignData.status === "scheduled" || campaignData.status === "draft") {
                           submitButton.innerText = 'تحديث';
                           submitButton.style.display = ''; // Ensure the button is visible
                           // Make fields editable
                           document.getElementById('id_name').readOnly = false;
                           document.getElementById('id_scheduled_time').readOnly = false;
                           document.getElementById('id_customers_group').readOnly = false;
+                          document.getElementById('id_customers_group').disabled = false;
                           document.getElementById('id_msg').readOnly = false;
+
                       } else {
                           // Hide the submit button
                           submitButton.style.display = 'none';
@@ -247,6 +283,7 @@
                           document.getElementById('id_name').readOnly = true;
                           document.getElementById('id_scheduled_time').readOnly = true;
                           document.getElementById('id_customers_group').readOnly = true;
+                          document.getElementById('id_customers_group').disabled = true;
                           document.getElementById('id_msg').readOnly = true;
                       }
   
@@ -275,6 +312,7 @@
           document.getElementById('id_name').readOnly = false;
           document.getElementById('id_scheduled_time').readOnly = false;
           document.getElementById('id_customers_group').readOnly = false;
+          document.getElementById('id_customers_group').disabled = false;
           document.getElementById('id_msg').readOnly = false;
           form.reset();
           document.getElementById("myPopup").style.display = "flex";
@@ -370,36 +408,38 @@
     }
     
 
-      function displayCampaigns(campaigns) {
-        const campaignsBody = document.getElementById('campaigns-body');
-        const campaignsTable = document.getElementById('campaigns-table');
-        const loadingDiv = document.getElementById('campaigns-loading');
-    
-        campaignsBody.innerHTML = '';
-        loadingDiv.style.display = 'none';
-    
-        if (campaigns.length > 0) {
+    function displayCampaigns(campaigns) {
+      const campaignsBody = document.getElementById('campaigns-body');
+      const campaignsTable = document.getElementById('campaigns-table');
+      const loadingDiv = document.getElementById('campaigns-loading');
+  
+      campaignsBody.innerHTML = '';
+      loadingDiv.style.display = 'none';
+  
+      if (campaigns.length > 0) {
           campaigns.forEach(campaign => {
               const row = document.createElement('tr');
               row.innerHTML = `
                   <td>${campaign.name}</td>
                   <td>${campaign.scheduled_time}</td>
-                  <td>${campaign.status}</td>
+                  <td>${campaign.status_display}</td>
                   <td>${campaign.messages_sent}</td>
                   <td>
                       <div class="dropdown-icon">
                           <i class="fa-solid fa-ellipsis-vertical"></i>
-                              ${campaign.status === "scheduled" ? `
+                          ${
+                              campaign.status === "scheduled" || campaign.status === "draft" ? `
                                   <div class="dropdown-content">
-                                    <a href="javascript:void(0);" onclick="showPopup('${campaign.id}');">تعديل</a>
-                                    <a href="${campaign.cancel_url}">الغاء</a>
+                                      <a href="javascript:void(0);" onclick="showPopup('${campaign.id}');">تعديل</a>
+                                      <a href="${campaign.cancel_url}">الغاء</a>
                                   </div>
                               ` : `
                                   <div class="dropdown-content">
-                                    <a href="javascript:void(0);" onclick="showPopup('${campaign.id}');">اظهار</a>
-                                    <a href="${campaign.delete_url}">حذف</a>
+                                      <a href="javascript:void(0);" onclick="showPopup('${campaign.id}');">اظهار</a>
+                                      <a href="${campaign.delete_url}">حذف</a>
                                   </div>
-                              `}
+                              `
+                          }
                       </div>
                   </td>
               `;
@@ -409,7 +449,8 @@
       } else {
           showError('No campaigns found.');
       }
-    }
+  }
+  
 
 
     function setupPagination() {

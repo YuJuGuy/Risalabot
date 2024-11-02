@@ -24,10 +24,10 @@
 
         <div class="panzoom-container" id="panzoom-container">
                 <div class="canvas-drag-drop" id="flow-canvas">
-                    <div class="trigger" id="trigger">
-                        <h3 id="trigger-name">{{ flow.trigger.name }}</h3>
-                    </div>
-                
+                        <div class="trigger" id="trigger">
+                            <h3 id="trigger-name">{{ flow.trigger.name }}</h3>
+                        </div>
+                    
                     <div class="canvas-steps" id="canvas-steps">
                     {% for step in flow_steps %}
                         <div class="step no-pan" data-id="{{ step.id }}" data-action-type="{{ step.action_type.name }}">
@@ -76,9 +76,9 @@
         <div class="flowform-container">
             <div class="flowform-right">
             <input type="text" id="id_name" name="name" value="{{ form.name.value }}">
-            <select id="id_trigger" name="trigger" style="display: none;">
+            <select class="trigger-select" id="id_trigger" name="trigger" style="display: none;">
                 {% for trigger in triggers %}
-                    <option value="{{ trigger.id }}" {% if trigger.id == form.trigger.value %}selected{% endif %}>{{ trigger.name }}</option>
+                    <option value="{{ trigger.id }}" data-description="{{ trigger.description }}" {% if trigger.id == form.trigger.value %}selected{% endif %}>{{ trigger.name }}</option>
                 {% endfor %}
             </select>
             </div>
@@ -97,19 +97,23 @@
 
 <div id="action-modal" class="modal" style="display:none;">
     <div class="popup-group">
-    <div class="modal-content">
+    <div class="modal-content" id="modal-content">
         <span class="close">&times;</span>
-        <div id="trigger-fields" style="display:none;">
-            <label>المشغل:</label>
-            <select id="modal-trigger" class="trigger">
-                {% for trigger in triggers %}
-                <option value="{{ trigger.id }}" data-description="{{ trigger.description }}" {% if trigger.id == form.trigger.value %}selected{% endif %}>{{ trigger.name }}</option>
-                {% endfor %}
-            </select>
-
-            <div id="trigger-description" style="display:none;">
+            <div id="trigger-fields" style="position: none;">
+                <label>المشغل:</label>
+                <div class="custom-select">
+                    <div id="selected-trigger" class="select-selected">اختر المشغل</div>
+                    <div id="options-list" class="select-items">
+                        {% for trigger in triggers %}
+                        <div class="select-option" data-id="{{ trigger.id }}">
+                            <span class="trigger-name">{{ trigger.name }}</span>
+                            <span class="trigger-description">{{ trigger.description }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
             </div>
-        </div>
+            
         <!-- SMS Action Fields -->
         <div id="sms-fields" style="display:none;">
             <label>الرسالة:</label>
@@ -362,7 +366,12 @@ var delayFields = document.getElementById("delay-fields");
 var triggerFields = document.getElementById("trigger-fields");
 var saveActionBtn = document.getElementById("save-action-btn");
 var smsVisualization = document.getElementById("sms-visualization");
+var modalContent = document.getElementById("modal-content")
+var selectedTrigger = document.getElementById('selected-trigger');
+var optionsList = document.getElementById('options-list');
+var options = document.querySelectorAll('.select-option');
 var currentStep = null;
+
 
 document.getElementById('trigger').addEventListener('click', function() {
     modal.style.display = "flex";
@@ -370,8 +379,8 @@ document.getElementById('trigger').addEventListener('click', function() {
     delayFields.style.display = "none";
     triggerFields.style.display = "block";
     smsVisualization.style.display = "none";
+    modalContent.style.height = "auto";
 
-    
     // Hide delete button for trigger
     document.getElementById('delete-step-btn').style.display = 'none';
 });
@@ -386,10 +395,14 @@ document.getElementById('canvas-steps').addEventListener('click', function(event
         document.getElementById('delete-step-btn').style.display = 'inline-block';
 
         if (actionType === 'sms') {
-            smsFields.style.display = "block";
             delayFields.style.display = "none";
             triggerFields.style.display = "none";
+            smsFields.style.display = "block";
             smsVisualization.style.display = "block";
+            modalContent.style.height = "100%";
+
+        
+            
             const currentMessage = currentStep.querySelector('.sms-message').value;
             document.getElementById('modal-sms-message').value = currentMessage;
             // Update visualization immediately when modal opens
@@ -399,6 +412,7 @@ document.getElementById('canvas-steps').addEventListener('click', function(event
             triggerFields.style.display = "none";
             smsVisualization.style.display = "none";
             delayFields.style.display = "block";
+            modalContent.style.height = "auto";
             document.getElementById('modal-delay-time').value = currentStep.querySelector('.delay-time').value;
             document.getElementById('modal-delay-type').value = currentStep.querySelector('.delay-type').value;
         }
@@ -425,11 +439,18 @@ saveActionBtn.addEventListener('click', function() {
             currentStep.querySelector('.delay-type').value = updatedDelayType;
         }
     } else {
-        var updatedTrigger = document.getElementById("modal-trigger").value;
-        document.getElementById("updated-trigger").value = updatedTrigger;
-        document.getElementById("id_trigger").value = updatedTrigger;
-        document.getElementById("trigger-name").textContent = document.getElementById("modal-trigger").selectedOptions[0].textContent;
+        // Fetch selected trigger data before saving
+        const updatedTriggerId = selectedTrigger.dataset.selectedId || "";
+        const updatedTriggerName = selectedTrigger.textContent || "";
+
+        // Update elements with selected trigger details
+        document.getElementById("updated-trigger").value = updatedTriggerId;
+        document.getElementById("id_trigger").value = updatedTriggerId;
+        document.getElementById("trigger-name").textContent = updatedTriggerName;
     }
+
+    // Ensure dropdown is closed after save
+    optionsList.style.display = 'none';
     modal.style.display = "none";
 });
 
@@ -438,6 +459,29 @@ window.onclick = function(event) {
         modal.style.display = "none";
     }
 };
+
+document.addEventListener('DOMContentLoaded', function () {
+
+    selectedTrigger.addEventListener('click', function () {
+        optionsList.style.display = optionsList.style.display === 'block' ? 'none' : 'block';
+    });
+
+    options.forEach(option => {
+        option.addEventListener('click', function () {
+            selectedTrigger.textContent = option.querySelector('.trigger-name').textContent;
+            optionsList.style.display = 'none';
+            selectedTrigger.dataset.selectedId = option.dataset.id;
+        });
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function (event) {
+        if (!document.getElementById('trigger-fields').contains(event.target)) {
+            optionsList.style.display = 'none';
+        }
+    });
+});
+
 
 // Form submission handling
 document.getElementById('flow-form').addEventListener('submit', function(e) {
@@ -569,28 +613,6 @@ document.getElementById('delete-step-btn').addEventListener('click', function() 
     }
 });
 
-document.addEventListener('DOMContentLoaded', function() {
-    const triggerSelect = document.getElementById('modal-trigger');
-    const triggerDescription = document.getElementById('trigger-description');
-    
-    // Function to update the description
-    function updateDescription() {
-        const selectedOption = triggerSelect.options[triggerSelect.selectedIndex];
-        const description = selectedOption.getAttribute('data-description');
-        if (description) {
-            triggerDescription.textContent = description;
-            triggerDescription.style.display = 'block';
-        } else {
-            triggerDescription.style.display = 'none';
-        }
-    }
-    
-    // Update description on page load
-    updateDescription();
-    
-    // Update description when selection changes
-    triggerSelect.addEventListener('change', updateDescription);
-});
 
 // Add this at the end of your existing script
 

@@ -20,7 +20,7 @@ class CreateUserForm(UserCreationForm):
 class CampaignForm(forms.ModelForm):
     class Meta:
         model = Campaign
-        fields = ['name', 'scheduled_time', 'msg', 'customers_group']
+        fields = ['name', 'scheduled_time', 'msg', 'customers_group', 'status']
         widgets = {
             'name': forms.TextInput(attrs={'placeholder': 'أدخل اسم الحملة'}),
             'scheduled_time': forms.DateTimeInput(
@@ -31,6 +31,7 @@ class CampaignForm(forms.ModelForm):
             ),
             'msg': forms.Textarea(attrs={'placeholder': 'أدخل نص الرسالة هنا'}),
             # 'customers_group' is a Select widget; placeholders don't apply directly
+            'status': forms.Select(attrs={'placeholder': 'حالة الحملة'}, choices=[('scheduled','جدولة'), ('draft', 'مسودة')]), # add choices to the widget
         }
 
     def __init__(self, *args, **kwargs):

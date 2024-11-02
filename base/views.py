@@ -25,7 +25,8 @@ from django.core.exceptions import ValidationError
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 from django.db import IntegrityError
-from automations.tasks import update_total_customers
+from automations.tasks import reset_monthly_quota
+from datetime import datetime, timezone, timedelta
 
 import logging
 
@@ -111,6 +112,7 @@ def dashboard(request):
         # Get store data if it exists
         store_link = UserStoreLink.objects.select_related('store').get(user=request.user)
         store = store_link.store
+
         # Update context with store data
         context.update({
             'store': store,
@@ -120,10 +122,12 @@ def dashboard(request):
             'active_automations': Flow.objects.filter(owner=request.user, status='active').count() + Campaign.objects.filter(store=store, status='scheduled').count()
         })
     except UserStoreLink.DoesNotExist:
-        messages.warning(request, 'No store linked to your account.')
+        logger.error(f"No store linked to your account")
     except Exception as e:
         logger.error(f"Error in dashboard view: {str(e)}")
         messages.error(request, 'An error occurred while loading dashboard data.')
+    
+
 
     return render(request, 'base/dashboard.html', context)
 
@@ -204,12 +208,16 @@ def flows(request):
             new_flow.save()  # Now save the flow
             messages.success(request, 'Flow created successfully.')
             return redirect('flow', flow_id=new_flow.id)  # Redirect to the flow builder
+        else:
+            messages.error(request, 'Error creating flow. Please correct the form errors.')
+            return redirect('flows')
     else:
         form = FlowForm()
     
     
     context = {
-        'form': form
+        'form': form,
+        'triggers': Trigger.objects.all(),
     }
     return render(request, 'base/flows.html', context)
 
@@ -511,31 +519,40 @@ def campaign(request):
         form = CampaignForm(request.POST, store_groups=store_groups)
         if form.is_valid():
             msg = form.cleaned_data['msg']
+            status = form.cleaned_data['status']
             group_id = form.cleaned_data['customers_group']
             scheduled_time = form.cleaned_data['scheduled_time']
-            if scheduled_time.tzinfo is None or scheduled_time.tzinfo.utcoffset(scheduled_time) is None:
-                scheduled_time = make_aware(scheduled_time)
-            if scheduled_time < make_aware(datetime.now()):
-                messages.error(request, 'Scheduled time cannot be in the past.')
-                return redirect('campaigns')
 
+            # Only perform the additional validations if the status is 'active'
+            if status == 'scheduled':
+                if scheduled_time.tzinfo is None or scheduled_time.tzinfo.utcoffset(scheduled_time) is None:
+                    scheduled_time = make_aware(scheduled_time)
+                if scheduled_time < make_aware(datetime.now()):
+                    messages.error(request, 'Scheduled time cannot be in the past.')
+                    return redirect('campaigns')
 
-            customers_data = get_customers_from_group(request.user, group_id)
-            
-            customers_numbers = [customer['customer_number'] for customer in customers_data]
+                # Fetch customers only for active campaigns
+                customers_data = get_customers_from_group(request.user, group_id)
+                customers_numbers = [customer['customer_number'] for customer in customers_data]
 
-            if len(customers_data) == 0:
-                messages.error(request, 'No customers in the selected group.')
-                return redirect('campaigns')
+                if len(customers_data) == 0:
+                    messages.error(request, 'No customers in the selected group.')
+                    return redirect('campaigns')
 
-            if len(customers_numbers) > store.subscription.messages_limit - store.subscription_message_count:
-                messages.error(request, 'Insufficient message balance.')
-                return redirect('campaigns')
+                # Check if the message limit is sufficient
+                if len(customers_numbers) > store.subscription.messages_limit - store.subscription_message_count:
+                    messages.error(request, 'Insufficient message balance.')
+                    return redirect('campaigns')
+            else:
+                # Set customers_data and customers_numbers to empty if it's a draft
+                customers_data = []
+                customers_numbers = []
 
             # Save the campaign and get the campaign ID
             campaign = form.save(commit=False)
-            campaign.status = 'scheduled'
+            campaign.status = status
             campaign.store = store
+            campaign.scheduled_time = scheduled_time
             campaign.save()
             
             data = {
@@ -545,11 +562,14 @@ def campaign(request):
                 'campaign_id': campaign.id
             }
 
-            # Pass the campaign_id to the task
-            task = send_whatsapp_message_task.apply_async(eta=scheduled_time, args=[data])
-            campaign.task_id = task.id
-            campaign.save()
-            
+            # Schedule the task only if the status is 'active'
+            if status == 'scheduled':
+                task = send_whatsapp_message_task.apply_async(args=[data])
+                campaign.task_id = task.id
+                campaign.save()
+                messages.success(request, 'Campaign created and sent successfully.')
+            else:
+                messages.success(request, 'Campaign saved as draft.')
             
             return redirect('campaigns')  # Adjust the redirect as needed
     else:
@@ -560,77 +580,104 @@ def campaign(request):
     }
     
     return render(request, 'base/campaigns.html', context)
-
         
+
+@login_required(login_url='login')
 def edit_campaign(request, campaign_id):
     try:
         store = UserStoreLink.objects.get(user=request.user).store
         campaign = Campaign.objects.get(id=campaign_id, store=store)
         
-        if campaign.status != 'scheduled':
-            messages.error(request, 'This campaign is not scheduled, so it cannot be updated.')
+        # Only allow editing if the campaign is 'scheduled' or 'failed'
+        if campaign.status not in ['scheduled', 'draft']:
+            messages.error(request, 'This campaign cannot be updated as it is not scheduled.')
             return redirect('campaigns')
         
-        if request.method == 'POST':
-            store_groups_response = group_campaign(request.user)
-            store_groups = store_groups_response.get('data', [])
+        store_groups_response = group_campaign(request.user)
+        store_groups = store_groups_response.get('data', [])
 
+        if request.method == 'POST':
             form = CampaignForm(request.POST, instance=campaign, store_groups=store_groups)
             if form.is_valid():
-
-                # Revoke the old task
-                if campaign.task_id:
-                    celery_app.control.revoke(campaign.task_id, terminate=True)
-
-                # Update campaign details
-                form.save()
-
-                # Schedule the new task with updated data
-                msg = form.cleaned_data['msg']
-                group_id = form.cleaned_data['customers_group']
+                status = form.cleaned_data['status']
                 scheduled_time = form.cleaned_data['scheduled_time']
-                #check if the scheduled time is timezone aware and not in the past
-                if scheduled_time.tzinfo is None or scheduled_time.tzinfo.utcoffset(scheduled_time) is None:
-                    scheduled_time = make_aware(scheduled_time)
-                if scheduled_time < make_aware(datetime.now()):
-                    messages.error(request, 'Scheduled time cannot be in the past.')
-                    return redirect('campaigns')
-                                    
+                group_id = form.cleaned_data['customers_group']
+                msg = form.cleaned_data['msg']
                 
-                
-                customers_data = get_customers_from_group(request.user, group_id)
-            
-                customers_numbers = [customer['customer_number'] for customer in customers_data]
+                # If the campaign is 'scheduled', validate and reschedule
+                if status == 'scheduled':
+                    # Revoke the old task if there is one
+                    if campaign.task_id:
+                        celery_app.control.revoke(campaign.task_id, terminate=True)
 
+                    # Ensure scheduled_time is timezone-aware and in the future
+                    if scheduled_time.tzinfo is None or scheduled_time.tzinfo.utcoffset(scheduled_time) is None:
+                        scheduled_time = make_aware(scheduled_time)
+                    if scheduled_time < make_aware(datetime.now()):
+                        messages.error(request, 'Scheduled time cannot be in the past.')
+                        return redirect('campaigns')
+                    
+                    # Fetch customers for the selected group
+                    customers_data = get_customers_from_group(request.user, group_id)
+                    customers_numbers = [customer['customer_number'] for customer in customers_data]
 
-                if len(customers_numbers) == 0:
-                    messages.error(request, 'No customers in the selected group.')
-                    return redirect('campaigns')
-                
-                data = {
-                    'customers_data': customers_data,
-                    'msg': msg,
-                    'store_id': store.id,
-                    'campaign_id': campaign.id
-                }
-                # Schedule the new task
-                task =  send_whatsapp_message_task.apply_async(eta=scheduled_time, args=[data])
-                
-                # Save the new task_id
-                campaign.task_id = task.id
-                campaign.status = 'scheduled'
-                campaign.save(update_fields=['task_id', 'status'])
+                    if len(customers_numbers) == 0:
+                        messages.error(request, 'No customers in the selected group.')
+                        return redirect('campaigns')
+                    
+                    if len(customers_data) == 0:
+                        messages.error(request, 'No customers in the selected group.')
+                        return redirect('campaigns')
 
-                messages.success(request, 'Campaign updated and rescheduled successfully.')
+                    # Check if the message limit is sufficient
+                    if len(customers_numbers) > store.subscription.messages_limit - store.subscription_message_count:
+                        messages.error(request, 'Insufficient message balance.')
+                        return redirect('campaigns')
+                    
+                    data = {
+                        'customers_data': customers_data,
+                        'msg': msg,
+                        'store_id': store.id,
+                        'campaign_id': campaign.id
+                    }
+
+                    # Schedule the task with the new time
+                    task = send_whatsapp_message_task.apply_async(eta=scheduled_time, args=[data])
+                    
+                    # Update the campaign's task_id and status to 'scheduled'
+                    campaign.task_id = task.id
+                    campaign.status = 'scheduled'
+                    campaign.scheduled_time = scheduled_time
+                    campaign.save(update_fields=['task_id', 'status', 'scheduled_time'])
+                    messages.success(request, 'Campaign updated and rescheduled successfully.')
+                
+                # If status is 'draft' or any other, just save without scheduling
+                else:
+                    campaign.status = status
+                    campaign.scheduled_time = scheduled_time
+                    campaign.save(update_fields=['status', 'scheduled_time'])
+                    messages.success(request, 'Campaign updated successfully as a draft.')
+
                 return redirect('campaigns')
             else:
-                # Handle form errors
                 messages.error(request, 'Form is invalid.')
                 return redirect('campaigns')
 
     except Campaign.DoesNotExist:
         messages.error(request, 'Campaign not found.')
         return redirect('campaigns')
+    except UserStoreLink.DoesNotExist:
+        messages.error(request, 'No store linked. Please link a store first.')
+        return redirect('dashboard')
+    
+    # Render form with initial data
+    form = CampaignForm(instance=campaign, store_groups=store_groups)
+    context = {
+        'form': form,
+        'campaign': campaign,
+    }
+    return render(request, 'base/edit_campaign.html', context)
+
 
 
 
@@ -647,20 +694,25 @@ def get_campaign_data(request, campaign_id=None):
                 'scheduled_time': campaign.scheduled_time.strftime('%Y-%m-%d %H:%M'),  # Adjust format as per input type
                 'customers_group': campaign.customers_group,
                 'status': campaign.status,
+                'status_display': dict(Campaign.status_choices).get(campaign.status, campaign.status),
                 'msg': campaign.msg,
                 'edit_url': reverse('edit_campaign', args=[campaign.id]),  # Add edit URL
                 'delete_url': reverse('campaign_delete', args=[campaign.id])  # Add delete URL
             }
+            
+
+                
             return JsonResponse({'success': True, 'data': data})
         else:
             # Fetch all campaigns
-            campaigns = Campaign.objects.filter(store=store, status__in=['scheduled', 'failed', 'completed', 'draft','cancelled']).order_by('-scheduled_time')
+            campaigns = Campaign.objects.filter(store=store, status__in=['scheduled', 'failed', 'sent', 'draft','cancelled']).order_by('-scheduled_time')
             data = [{
                 'id': campaign.id,
                 'name': campaign.name,
                 'scheduled_time': campaign.scheduled_time.strftime('%Y-%m-%d %H:%M'),  # Adjust format as per input type
                 'messages_sent': campaign.messages_sent,
                 'status': campaign.status,
+                'status_display': dict(Campaign.status_choices).get(campaign.status, campaign.status),
                 'edit_url': reverse('edit_campaign', args=[campaign.id]),  # Add edit URL for each campaign
                 'delete_url': reverse('campaign_delete', args=[campaign.id]),  # Add delete URL for each campaign
                 'cancel_url': reverse('campaign_cancel', args=[campaign.id])

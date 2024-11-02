@@ -66,16 +66,33 @@
 
     <div id="myPopup" class="popup">
         <div class="popup-content-flow">
-            <form id="flowForm" method="post" action="{% url 'flows' %}">
+            <span id ="closePopup" class="close">&times;</span>
+            <form id="flowForm" method="post" action="{% url 'flows' %}" novalidate>
                 {% csrf_token %}
                 {% for field in form %}
                     <div class="form-field">
+                        {% if field.name == 'trigger'%}
+                        <div style="display:none;">
+                            {{ field }}
+                        </div>
+                        <div class="custom-select" style="width: 100%;">
+                            <div id="selected-trigger" class="select-selected">اختر المشغل</div>
+                            <div id="options-list" class="select-items">
+                                {% for trigger in triggers %}
+                                <div class="select-option" data-id="{{ trigger.id }}">
+                                    <span class="trigger-name">{{ trigger.name }}</span>
+                                    <span class="trigger-description">{{ trigger.description }}</span>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% else %}
                         {{ field }}
+                        {% endif %}
                     </div>
                 {% endfor %}
                 <div class="button-row">
                     <button class="save-button" type="submit" id="saveButton">حفظ</button>
-                    <button type="button" id="closePopup">الغاء</button>
                 </div>
             </form>
             
@@ -102,6 +119,79 @@
     let rowsPerPage = 25;
     let totalFlows = 0;
 
+
+    document.addEventListener('DOMContentLoaded', function () {
+        var selectedTrigger = document.getElementById('selected-trigger');
+        var optionsList = document.getElementById('options-list');
+        var options = document.querySelectorAll('.select-option');
+        var hiddenSelect = document.querySelector('[name="trigger"]');  // Select the hidden form field for the trigger
+        var nameInput = document.querySelector('[name="name"]');  // Select the name input field
+    
+        selectedTrigger.addEventListener('click', function () {
+            optionsList.style.display = optionsList.style.display === 'block' ? 'none' : 'block';
+        });
+    
+        options.forEach(option => {
+            option.addEventListener('click', function () {
+                selectedTrigger.textContent = option.querySelector('.trigger-name').textContent;
+                optionsList.style.display = 'none';
+                selectedTrigger.dataset.selectedId = option.dataset.id;
+    
+                // Update the hidden select field with the chosen trigger's ID
+                hiddenSelect.value = option.dataset.id;
+            });
+        });
+    
+        window.addEventListener('click', function (event) {
+            if (!event.target.closest('.custom-select')) {
+                optionsList.style.display = 'none';
+            }
+        });
+
+        // add event listener to form
+        document.getElementById('flowForm').addEventListener('submit', function(event) {
+            if (!selectedTrigger.dataset.selectedId) {
+                event.preventDefault();  // Prevent form submission
+                hiddenSelect.setCustomValidity('يرجى اختيار المشغل');  // Set validity message on the hidden select
+        
+                // Display the error message visually on selectedTrigger
+                selectedTrigger.textContent = 'يرجى اختيار المشغل';
+                selectedTrigger.style.color = 'red';
+                selectedTrigger.style.border = '2px solid red';
+            } 
+            else if (!nameInput.value) {
+                event.preventDefault();  // Prevent form submission
+                nameInput.setCustomValidity('يرجى ادخال اسم الأتمته');  // Set validity message on the name input
+
+                // Display the error message visually on nameInput
+                nameInput.style.border = '2px solid red';
+
+            }
+            
+            else {
+                nameInput.setCustomValidity('');  // Clear custom validity
+                nameInput.style.border = '';  // Remove error styling
+                hiddenSelect.setCustomValidity('');  // Clear custom validity
+                selectedTrigger.style.color = '';  // Reset color to default
+                selectedTrigger.style.border = '';  // Remove error styling
+            }
+        });
+
+        options.forEach(option => {
+            option.addEventListener('click', function () {
+                selectedTrigger.textContent = option.querySelector('.trigger-name').textContent;
+                optionsList.style.display = 'none';
+                selectedTrigger.dataset.selectedId = option.dataset.id;
+        
+                // Update the hidden select field and reset styling
+                hiddenSelect.value = option.dataset.id;
+                selectedTrigger.style.color = '';  // Reset text color to default
+                selectedTrigger.style.border = '';  // Clear the error styling
+            });
+        });
+        
+
+    });
     document.addEventListener("DOMContentLoaded", function() {
 
         setupPagination();

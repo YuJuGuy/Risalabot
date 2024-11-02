@@ -12,7 +12,7 @@ class UserAdmin(admin.ModelAdmin):
 # Customize Store model admin
 @admin.register(Store)
 class StoreAdmin(admin.ModelAdmin):
-    list_display = ('store_name', 'store_id', 'subscription', 'created_at', 'updated_at', 'token_valid', 'total_customers', 'total_purchases', 'total_messages_sent')
+    list_display = ('store_name', 'store_id', 'subscription', 'created_at', 'updated_at', 'token_valid', 'total_customers', 'total_purchases', 'total_messages_sent', 'subscription_message_count')
     search_fields = ('store_name', 'store_id')
     list_filter = ('token_valid', 'subscription')
     ordering = ('-created_at',)

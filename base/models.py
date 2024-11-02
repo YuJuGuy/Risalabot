@@ -50,6 +50,14 @@ class UserStoreLink(models.Model):
         return f'{self.user.email} : {self.store.store_name} : {self.store.store_id}'
 
 class Campaign(models.Model):
+    status_choices = (
+        ('draft', 'مسودة'),
+        ('scheduled', 'مجدولة'),
+        ('sent', 'تم الإرسال'),
+        ('cancelled', 'تم الإلغاء'),
+        ('failed', 'فشلت'),
+    
+    )
     store = models.ForeignKey(Store, on_delete=models.CASCADE)
     name = models.CharField(max_length=255)
     task_id = models.CharField(max_length=255, blank=True, null=True)
@@ -76,6 +84,7 @@ class Campaign(models.Model):
                 purchases_diff = self.purchases - old_instance.purchases
                 
                 if messages_diff != 0 or purchases_diff != 0:
+                    self.store.subscription_message_count += messages_diff
                     self.store.total_messages_sent += messages_diff
                     self.store.total_purchases += purchases_diff
                     self.store.save()
@@ -128,9 +137,11 @@ class Flow(models.Model):
                 
                 # Update store totals
                 messages_diff = self.messages_sent - old_instance.messages_sent
+            
                 purchases_diff = self.purchases - old_instance.purchases
                 
                 if messages_diff != 0 or purchases_diff != 0:
+                    self.store.subscription_message_count += messages_diff
                     self.store.total_messages_sent += messages_diff
                     self.store.total_purchases += purchases_diff
                     self.store.save()

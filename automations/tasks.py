@@ -5,6 +5,7 @@ import requests
 from time import sleep
 from django.db import transaction
 from base.apis import get_customer_count
+from datetime import datetime, timedelta, timezone
 
 
 from base.models import Store, Campaign, UserStoreLink, User, Flow, FlowStep, TextConfig, TimeDelayConfig
@@ -96,7 +97,7 @@ def send_whatsapp_message_task(self, data):
             failed_count += 1
 
     # Update campaign status
-    campaign.status = 'completed' if failed_count == 0 else 'failed'
+    campaign.status = 'sent' if failed_count == 0 else 'failed'
     campaign.save(update_fields=['status'])
 
     # Schedule next batch if there's more messages and a schedule_next_in is provided
@@ -227,3 +228,45 @@ def update_total_customers(batch_size=10):
         
         # Optional: Sleep between batches to avoid overloading the system
         time.sleep(60)  # Sleep for 1 minute between batches
+        
+@shared_task
+def reset_monthly_quota(store_id):
+    store = Store.objects.get(id=store_id)
+    time_since_insertion = datetime.now(timezone.utc) - store.subscription_date
+    try:
+        if time_since_insertion >= timedelta(days=30):
+            with transaction.atomic():
+                store.subscription_message_count = 0
+                store.subscription_date = datetime.now(timezone.utc)
+                store.save(update_fields=['subscription_date', 'subscription_message_count'])
+                logging.info(f"Updated subscription for store {store.id} to {store.subscription_message_count} at {store.subscription_date}")
+            return True, "Successfully Updated"
+        else:
+            logging.info(f"Period less than 30 days at {datetime.now(timezone.utc)}. Customer store date {store.subscription_date}")
+            return True, "Still not 30 days"
+    except Exception as e:
+        logging.error(f"Error occurred when updating store {store_id}: {e}")
+        return False, f"Error occurred when updating store {store_id}: {e}"
+
+
+@shared_task
+def update_store_subscription(batch_size=10):
+    stores = Store.objects.all()
+    batches = [stores[i:i + batch_size] for i in range(0, len(stores), batch_size)]
+
+    for batch in batches:
+        for store in batch:
+            task = reset_monthly_quota.apply_async(args=[store.id])  # Schedule with apply_async to check results later
+            task_result = task.get(timeout=10)  # Adjust timeout if needed
+
+            success, message = task_result
+            if success:
+                logging.info(f"Successfully updated subscription for store {store.id}: {message}")
+            else:
+                logging.error(f"Failed to update subscription for store {store.id}: {message}")
+
+        # Optionally, delay the next batch to avoid overloading
+        time.sleep(60)  # Sleep for 1 minute between batches
+            
+
+    

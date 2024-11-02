@@ -202,4 +202,11 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'automations.tasks.update_total_customers',  # Adjust this to match your task path
         'schedule': crontab(minute='*/30'),  # Runs every 30 minutes
     },
+    
+    'update-customer-subscription-daily': {
+        'task': 'automations.tasks.update_store_subscription',  # Adjust this to match your task path
+        'schedule': crontab(hour=0, minute=0),  # Runs daily at midnight
+    },
+
+    
 }

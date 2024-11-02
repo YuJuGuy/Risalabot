@@ -181,6 +181,8 @@ img {
 }
 
 .popup-content-flow{
+  display: flex;
+  flex-direction: column;
   background-color: white;
   margin: 10% auto;
   padding: 20px;
@@ -1292,6 +1294,63 @@ td i {
   position: relative;
 }
 
+
+#trigger-fields {
+  width: 100%;
+}
+
+.custom-select {
+  position: relative;
+  width: 100%;
+  font-family: inherit;
+}
+
+.select-selected {
+  background-color: #fff;
+  padding: 0.5rem 1rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: right;
+  font-size: 16px;
+}
+
+.select-items {
+  display: none;
+  position: absolute;
+  width: 100%;
+  background-color: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  margin-top: 5px;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 1000;
+}
+
+.select-option {
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  text-align: right;
+}
+
+.select-option:hover {
+  background-color: #f0f0f0;
+}
+
+.trigger-name {
+  font-weight: bold;
+  display: block;
+}
+
+.trigger-description {
+  font-size: 14px;
+  color: #666;
+  word-wrap: break-word;
+  white-space: normal;
+}
+
+
 .step-action input{
   padding: 0.5rem;
   border-radius: 4px;
@@ -1364,12 +1423,12 @@ td i {
   width: 40%;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Subtle shadow for depth */
   border-radius: 5px;
-  height: 100%;
+  height: auto;
 }
 
 .close {
   color: #aaa;
-  float: left;
+  float: right;
   font-size: 28px;
   font-weight: bold;
   cursor: pointer;
@@ -1407,6 +1466,7 @@ td i {
   flex-direction: row;
   justify-content: center;
   gap: 1rem;
+  margin-top: 1rem;
 }
 /* Save Button */
 #save-action-btn {
