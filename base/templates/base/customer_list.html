@@ -68,49 +68,23 @@
 </div>
 
 
-<div class="table-container">
-    <div class="table-header">
-        <div class="search-container">
-        <div class="table-search">
-            <input type="text" id="search" placeholder="بحث عن طريق الاسم, البريد, الهاتف, الدولة">
-        </div>
-    </div>
-    </div>
-    <div id="customers-loading" style="padding: 1rem;">جاري تحميل العملاء...</div>
-    <table id="customers-table" style="display: none;">
-        <thead>
-            <tr>
-                <th>الأسم</th>
-                <th>البريد الالكتروني</th>
-                <th>رقم الهاتف</th>
-                <th>الموقع</th>
-                <th>المجموعات</th>
-                <th>تاريخ المزامنة</th>
-            </tr>
-        </thead>
-        <tbody id="customers-body">
-            <!-- Customer data will be injected here by JavaScript -->
-        </tbody>
-    </table>
-    <div class="pagination-controls">
-        <div class="view-per-page">
-            <select id="rows-per-page">
-                <option value="25">25</option>
-                <option value="50">50</option>
-                <option value="100">100</option>
-            </select>
-        </div>
-        <div class="page-buttons">
-            <button id="next-page" class="square-button">
-                <i class="fa-solid fa-angle-right"></i>
-            </button>
-            <button id="prev-page" class="square-button">
-                <i class="fa-solid fa-angle-left"></i>
-            </button>
-        
-        </div>
-    </div>
+<div class="sync-container">
+    <button id="sync-button" class="sync-button">تحديث البيانات</button>
 </div>
+
+<table id="myTable" class="table table-striped hover" style="width:100%">
+    <thead>
+        <tr>
+            <th>الأسم</th>
+            <th>البريد الالكتروني</th>
+            <th>رقم الهاتف</th>
+            <th>الموقع</th>
+            <th>المجموعات</th>
+            <th>تاريخ المزامنة</th>
+        </tr>
+    </thead>
+
+</table>
 
 <div id="delete-group-popup" class="popup-overlay">
     <div class="delete-popup-content">
@@ -127,15 +101,72 @@
 <div id="data-urls" data-customers-url="{% url 'get_customers' %}"></div>
 
 <script>
-    let allCustomers = [];
-    let currentPage = 1;
-    let rowsPerPage = 25;
-    let totalCustomers = 0;
+
+    document.getElementById('sync-button').addEventListener('click', function() {
+        fetch('/sync_data/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === "success") {
+                alert(data.message);
+                // Refresh the customer and group data display
+                fetchAllCustomers();  // Ensure this function reloads the table and group data
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(error => console.error('Error syncing data:', error));
+    });
+
+    
+    const customersUrl = document.getElementById('data-urls').dataset.customersUrl;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const myTable = document.getElementById('myTable');
+        if (myTable) {
+            $(myTable).DataTable({
+                data: [],  // Start with an empty array, data will be added dynamically
+                columns: [
+                    { data: 'name' },
+                    { data: 'email' },
+                    { data: 'phone' },
+                    { data: 'location' },
+                    { data: 'groups' },
+                    { data: 'updated_at' },
+                ],
+                paging: true,
+                pageLength: 25,
+                layout: {
+                    topStart: {
+                        features: {
+                            search: {
+                                placeholder: 'ابحث'
+                            }
+                        }
+                    },
+                    topEnd: null,       // Places the search box at the top right
+                    bottomStart: 'pageLength',    // Places "info" (e.g., "Showing 1 to 10 of 57 entries") at the bottom left
+                    bottomEnd: 'paging'     // Places pagination controls at the bottom right
+                },
+                language: { search: '',
+                lengthMenu: '_MENU_',
+                zeroRecords:    "لا توجد سجلات متاحة",
+                
+            }
+            });
+        }
+    
+        fetchAllCustomers();
+    });
+    
     
     document.addEventListener("DOMContentLoaded", function() {
         setupPopup();
-        setupPagination();
-        setupSearch();
         setupConditions();
         setupDeleteGroupPopup();
         fetchAllCustomers();
@@ -189,20 +220,23 @@
         popupClose.addEventListener('click', () => popup.classList.remove('show'));
     }
     
-    function setupSearch() {
-        const searchInput = document.getElementById('search');
-        searchInput.addEventListener('keypress', function(event) {
-            if (event.key === 'Enter') {
-                event.preventDefault();
-                currentPage = 1;
-                filterCustomers();
-            }
-        });
+    function showError(message) {
+        // Option 1: Display error message in an alert (simple approach)
+        alert(message);
+    
+        // Option 2: Display error in a specific UI element (more user-friendly)
+        const errorContainer = document.querySelector('.error-container');
+        if (errorContainer) {
+            errorContainer.textContent = message;
+            errorContainer.style.display = 'block'; // Make sure the error container is visible
+        } else {
+            console.error("Error container not found. Showing error in console:", message);
+        }
     }
     
-    function fetchAllCustomers() {
-        const customersUrl = document.getElementById('data-urls').dataset.customersUrl;
     
+    
+    function fetchAllCustomers() {    
         fetch(customersUrl, {
             method: 'GET',
             headers: { 'Content-Type': 'application/json' }
@@ -210,125 +244,66 @@
         .then(response => response.json())
         .then(data => {
             if (data.customers) {
-                allCustomers = data.customers;
-                totalCustomers = allCustomers.length;
-                displayCustomers(allCustomers.slice(0, rowsPerPage));
-                updateGroupCounts(data.group_counts, data.group_id_to_name);
-                updatePaginationControls();
+                const allCustomers = data.customers;
+                const totalCustomers = allCustomers.length;
+    
+                document.querySelector('.customers-count-number').textContent = totalCustomers;
+    
+                // Update the table
+                const table = $('#myTable').DataTable();
+                table.clear().rows.add(allCustomers).draw();
+    
+                // Process group data and update the UI
+                updateGroupCounts(data.group_data);
             } else {
                 showError('Failed to load customers.');
             }
-    
-            document.querySelector('.customers-count-number').innerHTML = totalCustomers;
         })
         .catch(error => showError('Error fetching customers: ' + error));
     }
     
-    function showError(message) {
-        document.getElementById('customers-loading').innerHTML = message;
-    }
-    
-    function filterCustomers() {
-        const searchInput = document.getElementById('search').value.toLowerCase();
-        const filteredCustomers = allCustomers.filter(customer =>
-            customer.name.toLowerCase().includes(searchInput) ||
-            customer.email.toLowerCase().includes(searchInput) ||
-            customer.phone.toLowerCase().includes(searchInput) ||
-            customer.location.toLowerCase().includes(searchInput) ||
-            (customer.groups && customer.groups.some(group => group.toLowerCase().includes(searchInput)))
-        );
-        totalCustomers = filteredCustomers.length;
-        displayCustomers(filteredCustomers.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage));
-        updatePaginationControls();
-    }
-    
-    
-    
-    
-    function displayCustomers(customers) {
-        const customersBody = document.getElementById('customers-body');
-        const customersTable = document.getElementById('customers-table');
-        const loadingDiv = document.getElementById('customers-loading');
-    
-        customersBody.innerHTML = '';
-        loadingDiv.style.display = 'none';
-    
-        if (customers.length > 0) {
-            customers.forEach(customer => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${customer.name}</td>
-                    <td>${customer.email}</td>
-                    <td>${customer.phone}</td>
-                    <td>${customer.location}</td>
-                    <td>${customer.groups.length ? customer.groups.join(', ') : 'No groups'}</td>
-                    <td>${customer.updated_at}</td>
-                `;
-                customersBody.appendChild(row);
-            });
-            customersTable.style.display = 'table';
-        } else {
-            showError('No customers found.');
-        }
-    }
-    
-    function setupPagination() {
-        const rowsPerPageSelect = document.getElementById('rows-per-page');
-        const prevPageButton = document.getElementById('prev-page');
-        const nextPageButton = document.getElementById('next-page');
-    
-        rowsPerPageSelect.addEventListener('change', function() {
-            rowsPerPage = parseInt(this.value);
-            currentPage = 1;
-            filterCustomers();
-        });
-    
-        prevPageButton.addEventListener('click', () => changePage(-1));
-        nextPageButton.addEventListener('click', () => changePage(1));
-    }
-    
-    function changePage(delta) {
-        const newPage = currentPage + delta;
-        if (newPage > 0 && newPage <= Math.ceil(totalCustomers / rowsPerPage)) {
-            currentPage = newPage;
-            filterCustomers();
-        }
-    }
-    
-    function updatePaginationControls() {
-        const prevPageButton = document.getElementById('prev-page');
-        const nextPageButton = document.getElementById('next-page');
-    
-        prevPageButton.disabled = currentPage === 1;
-        nextPageButton.disabled = currentPage >= Math.ceil(totalCustomers / rowsPerPage);
-    }
-    
-    function updateGroupCounts(groupCounts, groupIdToName) {
+    function updateGroupCounts(groupData) {
         const groupCardsContainer = document.getElementById('group-cards-container');
-        const existingCards = Array.from(groupCardsContainer.children);
     
-        existingCards.forEach(card => {
-            const groupId = card.getAttribute('data-group-id');
-            if (groupCounts[groupId] !== undefined) {
-                card.querySelector(`#group-${groupId}`).textContent = groupCounts[groupId];
-            }
-        });
+        // Update existing cards or create new ones based on groupData
+        groupData.forEach(group => {
+            const { name, customer_count } = group;
     
-        for (const [group_id, group_count] of Object.entries(groupCounts)) {
-            if (!existingCards.some(card => card.getAttribute('data-group-id') === group_id)) {
-                const groupCard = createGroupCard(group_id, groupIdToName[group_id], group_count);
+            // Check if a card already exists for this group name
+            const existingCard = Array.from(groupCardsContainer.children).find(
+                card => {
+                    const titleElement = card.querySelector('.customers-count-title');
+                    return titleElement && titleElement.textContent === name;
+                }
+            );
+    
+            if (existingCard) {
+                // Update count for existing card if it exists
+                const countElement = existingCard.querySelector('.customers-count-number');
+                if (countElement) countElement.textContent = customer_count;
+            } else {
+                // Create new card if it doesn't exist
+                const groupCard = createGroupCard(name, customer_count);
                 groupCardsContainer.appendChild(groupCard);
             }
-        }
+        });
+    
+        // Remove cards that are no longer in groupData
+        Array.from(groupCardsContainer.children).forEach(card => {
+            const cardTitle = card.querySelector('.customers-count-title');
+            const cardName = cardTitle ? cardTitle.textContent : null;
+            if (cardName && !groupData.some(group => group.name === cardName)) {
+                groupCardsContainer.removeChild(card);
+            }
+        });
     }
     
-    function createGroupCard(groupId, groupName, groupCount) {
+    function createGroupCard(groupName, groupCount) {
         const groupCard = document.createElement('div');
         groupCard.classList.add('customers-card-container');
-        groupCard.setAttribute('data-group-id', groupId);
         groupCard.innerHTML = `
             <div class="space">
-                <a href="#" class="delete-group-link" data-group-id="${groupId}">
+                <a href="#" class="delete-group-link" data-group-name="${groupName}">
                     <i class="fa-solid fa-xmark"></i>
                 </a>
             </div>
@@ -337,11 +312,14 @@
             </div>
             <div class="customers-count">
                 <span class="customers-count-title">${groupName}</span>
-                <span class="customers-count-number" id="group-${groupId}">${groupCount}</span>
+                <span class="customers-count-number">${groupCount}</span>
             </div>
         `;
         return groupCard;
     }
+    
+    
+    
     
     function setupConditions() {
         const addConditionButton = document.getElementById('add-condition-button');

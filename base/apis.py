@@ -112,12 +112,14 @@ def get_customer_data(user):
     group_counts = {}
     group_id_to_name = {}
     
+    # Map group_id to name for each group from API
     for group in groups_data.get('data', []):
-        group_id = group['id']
+        group_id = int(group['id'])  # Ensure group_id is an integer
         group_name = group['name']
         group_counts[group_id] = 0
         group_id_to_name[group_id] = group_name
     
+    # Process each customer
     for customer in customers_data.get('data', []):
         customer_id = customer.get('id')
         first_name = customer.get('first_name', "No first name")
@@ -125,13 +127,12 @@ def get_customer_data(user):
         email = customer.get('email', "No email")
         phone = f"{customer.get('mobile_code', '')}{customer.get('mobile', 'No phone')}"
         
-        group_ids = customer.get('groups', [])
-        customer_groups = []
+        # Use group IDs as integers, not names
+        group_ids = [int(group_id) for group_id in customer.get('groups', []) if group_id in group_id_to_name]
         
+        # Update counts for each group_id
         for group_id in group_ids:
-            if group_id in group_counts:
-                group_counts[group_id] += 1
-                customer_groups.append(group_id_to_name[group_id])
+            group_counts[group_id] += 1
         
         updated_at = customer.get('updated_at', "No update time")
         updated_at = datetime.strptime(updated_at['date'], "%Y-%m-%d %H:%M:%S.%f").strftime("%Y-%m-%d %H:%M:%S")
@@ -147,10 +148,12 @@ def get_customer_data(user):
             'phone': phone,
             'updated_at': updated_at,
             'location': location,
-            'groups': customer_groups
+            'groups': group_ids  # Pass group IDs as integers
         })
+        
     
     return {'success': True, 'customers': customers, 'group_counts': group_counts, 'group_id_to_name': group_id_to_name}
+
 
 
 def create_customer_group(user, group_name, condtion=None):

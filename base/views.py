@@ -10,7 +10,7 @@ from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.utils.timezone import make_aware
 from . forms import CreateUserForm, CampaignForm, GroupCreationForm, FlowForm
-from . models import User, Store, UserStoreLink,Trigger, Campaign, FlowActionTypes, Flow, FlowStep, SuggestedFlow, SuggestedFlowStep, TextConfig, TimeDelayConfig,SuggestedTextConfig, SuggestedTimeDelayConfig
+from . models import User, Store, UserStoreLink,Trigger, Campaign, FlowActionTypes, Flow, FlowStep, SuggestedFlow, SuggestedFlowStep, TextConfig, TimeDelayConfig,SuggestedTextConfig, SuggestedTimeDelayConfig, Customer, Group
 from django.http import JsonResponse
 from automations.tasks import send_whatsapp_message_task
 from . apis import get_customer_data, create_customer_group, delete_customer_group,group_campaign, get_customers_from_group
@@ -105,7 +105,8 @@ def dashboard(request):
         'message_count': 0,
         'purchases': 0,
         'total_customers': 0,
-        'active_automations': 0
+        'active_automations': 0,
+        'clicks': 0
     }
 
     try:
@@ -119,6 +120,7 @@ def dashboard(request):
             'message_count': store.total_messages_sent,
             'purchases': store.total_purchases,
             'total_customers': store.total_customers,
+            'clicks': store.total_clicks,
             'active_automations': Flow.objects.filter(owner=request.user, status='active').count() + Campaign.objects.filter(store=store, status='scheduled').count()
         })
     except UserStoreLink.DoesNotExist:
@@ -820,33 +822,105 @@ def customers_view(request):
     return render(request, 'base/customer_list.html',context)
 
 
+from django.db.models import Count
+from django.http import JsonResponse
+
 @login_required(login_url='login')
 def get_customers(request):
     try:
-        customer_data = get_customer_data(request.user)
-        
-        if not customer_data['success']:
-            return JsonResponse({'error': 'Failed to fetch customer data from API'}, status=500)
+        # Get the store associated with the logged-in user
+        store = UserStoreLink.objects.get(user=request.user).store
 
-        customers_list = customer_data['customers']
+        # Retrieve customers for the specific store
+        customers_list = Customer.objects.filter(store=store)
 
+        # Prepare customer data
         customers_data = [{
-            'name': customer['name'],
-            'email': customer['email'],
-            'phone': customer['phone'],
-            'location': customer['location'],
-            'groups': customer['groups'],
-            'updated_at': customer['updated_at'],
+            'name': customer.customer_name,
+            'email': customer.customer_email,
+            'phone': customer.customer_phone,
+            'location': customer.customer_location,
+            'groups': list(customer.customer_groups.values_list('name', flat=True)),  # Group IDs
+            'updated_at': customer.customer_updated_at,
         } for customer in customers_list]
+
+        # Calculate group counts
+
+        # Create a dictionary of group IDs to names
+        group_data = (
+            Group.objects.filter(store=store)
+            .annotate(customer_count=Count('customers'))  # Count related customers for each group
+            .values('name', customer_count=Count('customers'))  # Include group name and customer count
+        )
+
+        # Convert to list of dictionaries for easier JSON handling
+        group_data_list = list(group_data)
+        
+        print(group_data_list)
 
         return JsonResponse({
             'customers': customers_data,
-            'group_counts': customer_data.get('group_counts', {}),
-            'group_id_to_name': customer_data.get('group_id_to_name', {}),
+            'group_data': group_data_list,  # List of dictionaries with 'name' and 'customer_count'
             'total_count': len(customers_list),
         }, status=200)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+
+
+@login_required(login_url='login')
+@transaction.atomic
+def sync_data(request):
+    try:
+        # Fetch the latest customer data from the API
+        customer_data = get_customer_data(request.user)
+        if not customer_data.get('success', False):
+            logger.error("Failed to fetch customer data from API.")
+            return JsonResponse({'error': 'Failed to fetch customer data from API'}, status=500)
+
+        # Get the store associated with the logged-in user
+        store = Store.objects.get(userstorelink__user=request.user)
+
+        # Clear out existing customers for this store but keep groups intact
+        Customer.objects.filter(store=store).delete()
+
+        # Update or create groups based on the data received
+        group_id_to_name = customer_data.get('group_id_to_name', {})
+        print(group_id_to_name)
+        for group_id, group_name in group_id_to_name.items():
+            Group.objects.get_or_create(
+                group_id=group_id,
+                store=store,
+                defaults={'name': group_name}  # Corrected to ensure it's a dictionary
+            )
+
+        # Add new customers and associate them with groups
+        customers_list = customer_data['customers']
+        for customer in customers_list:
+    # Create the customer entry
+            customer_obj = Customer.objects.create(
+                store=store,
+                customer_name=customer['name'],
+                customer_email=customer['email'],
+                customer_phone=customer['phone'],
+                customer_location=customer['location'],
+                customer_updated_at=customer['updated_at'],
+            )
+
+            # Debug print: check group IDs for the customer
+            group_ids = customer.get('groups', [])
+            print(f"Customer: {customer['name']}, Group IDs: {group_ids}")
+
+            # Associate the customer with groups
+            groups = Group.objects.filter(group_id__in=group_ids, store=store)
+            print(f"Associating {customer['name']} with Groups: {[g.group_id for g in groups]}")  # Debug print for groups found
+            customer_obj.customer_groups.set(groups)
+
+        return JsonResponse({'status': 'success', 'message': 'Database updated successfully.'}, status=200)
+
+    except Exception as e:
+        logger.error("Error during sync: %s", e, exc_info=True)
+        return JsonResponse({'error': 'An error occurred during sync.'}, status=500)
 
     
     

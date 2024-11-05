@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import User, Subscription, Store, UserStoreLink, Campaign, FlowActionTypes, Flow, FlowStep, SuggestedFlow, SuggestedFlowStep, Trigger, TextConfig, TimeDelayConfig, SuggestedTextConfig, SuggestedTimeDelayConfig
+from .models import User, Subscription, Store, UserStoreLink, Campaign, FlowActionTypes, Flow, FlowStep, SuggestedFlow, SuggestedFlowStep, Trigger, TextConfig, TimeDelayConfig, SuggestedTextConfig, SuggestedTimeDelayConfig, Customer, Group
 
 # Customize User model admin
 @admin.register(User)
@@ -63,6 +63,9 @@ class TriggerAdmin(admin.ModelAdmin):
     list_display = ('name', 'event_type', 'description')
     search_fields = ('name', 'event_type')
     
+    
+admin.site.register(Customer)
+admin.site.register(Group)
 admin.site.register(Subscription)
 admin.site.register(UserStoreLink)
 admin.site.register(FlowActionTypes)

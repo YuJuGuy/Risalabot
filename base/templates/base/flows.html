@@ -12,48 +12,17 @@
     </div>
 
 
+    <table id="myTable" class="table table-striped hover" style="width:100%">
+        <thead>
+            <tr>
+                <th>الأتمتة</th>
+                <th>وقت الانشاء</th>
+                <th>الحالة</th>
+                <th>الرسائل المرسلة</th>
+            </tr>
+        </thead>
 
-    <div class="table-container">
-        <div class="table-header">
-            <div class="search-container">
-            <div class="table-search">
-                <input type="text" id="search" placeholder="بحث عن طريق اسم الحملة, الحالة, الوقت">
-            </div>
-            </div>
-        </div>
-        <table id="flows-table">
-            <thead>
-                <tr>
-                    <th>الحملة</th>
-                    <th>وقت الانشاء</th>
-                    <th>الحالة</th>
-                    <th>تم الاستلام</th>
-                  </tr>
-            </thead>
-            <tbody id="flows-body">
-                <!-- Flow data will be injected here by JavaScript -->
-            </tbody>
-        </table>
-        <div class="pagination-controls">
-            <div class="view-per-page">
-                <select id="rows-per-page">
-                    <option value="25">25</option>
-                    <option value="50">50</option>
-                    <option value="100">100</option>
-                </select>
-            </div>
-            <div class="page-buttons">
-                <button id="next-page" class="square-button">
-                    <i class="fa-solid fa-angle-right"></i>
-                </button>
-                <button id="prev-page" class="square-button">
-                    <i class="fa-solid fa-angle-left"></i>
-                </button>
-            
-            </div>
-        </div>
-
-    </div>
+    </table>
     
 
     
@@ -113,12 +82,13 @@
 
 
     <script>
-    var flowFormActionUrl = '{% url "flows" %}';
-    let allFlows = [];
-    let currentPage = 1;
-    let rowsPerPage = 25;
-    let totalFlows = 0;
 
+
+    const getFlowsUrl = document.getElementById('get-flows-url').dataset.getFlowsUrl;
+    var flowFormActionUrl = '{% url "flows" %}';
+
+
+    fetchAllFlows();
 
     document.addEventListener('DOMContentLoaded', function () {
         var selectedTrigger = document.getElementById('selected-trigger');
@@ -192,15 +162,7 @@
         
 
     });
-    document.addEventListener("DOMContentLoaded", function() {
 
-        setupPagination();
-        setupSearch()
-        fetchAllFlows();
-
-
-
-    });
 
     function openAddPopup() {
         const flowForm = document.getElementById("flowForm");
@@ -261,83 +223,76 @@
         });
     }
 
-    function setupSearch() {
-        const searchInput = document.getElementById('search');
-        searchInput.addEventListener('keypress', function(event) {
-            if (event.key === 'Enter') {
-                event.preventDefault();
-                currentPage = 1;
-                filterFlows();
-            }
-        });
-    }
 
-    function filterFlows() {
-        const searchInput = document.getElementById('search').value.toLowerCase();
-        const filteredFlows = allFlows.filter(flow =>
-            flow.name.toLowerCase().includes(searchInput) ||
-            flow.updated_at.toLowerCase().includes(searchInput) ||
-            flow.status.toLowerCase().includes(searchInput) ||
-            flow.messages_sent.toString().includes(searchInput)
-
-        );
-        totalFlows = filteredFlows.length;
-        displayFlows(filteredFlows.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage));
-        updatePaginationControls();
-    }
-
-    function setupPagination() {
-        const rowsPerPageSelect = document.getElementById('rows-per-page');
-        const prevPageButton = document.getElementById('prev-page');
-        const nextPageButton = document.getElementById('next-page');
-    
-        rowsPerPageSelect.addEventListener('change', function() {
-            rowsPerPage = parseInt(this.value);
-            currentPage = 1;
-            filterFlows();
-        });
-    
-        prevPageButton.addEventListener('click', () => changePage(-1));
-        nextPageButton.addEventListener('click', () => changePage(1));
-    }
-    
-    function changePage(delta) {
-        const newPage = currentPage + delta;
-        if (newPage > 0 && newPage <= Math.ceil(totalFlows / rowsPerPage)) {
-            currentPage = newPage;
-            filterFlows();
-        }
-    }
-    
-    function updatePaginationControls() {
-        const prevPageButton = document.getElementById('prev-page');
-        const nextPageButton = document.getElementById('next-page');
-    
-        prevPageButton.disabled = currentPage === 1;
-        nextPageButton.disabled = currentPage >= Math.ceil(totalFlows / rowsPerPage);
-    }
 
 
     function fetchAllFlows() {
-        const getFlowsUrl = document.getElementById('get-flows-url').dataset.getFlowsUrl;
-
         fetch(getFlowsUrl, {
             method: 'GET',
             headers: { 'Content-Type': 'application/json' }
         })
         .then(response => response.json())
         .then(data => {
-            allFlows = data.flows;
-            totalFlows = data.flows.length;
-            displayFlows(data.flows.slice(0, rowsPerPage));
             displaySuggestedFlows(data.suggestions);
-            updatePaginationControls();
         })
         .catch(error => {
             console.error('Error fetching flows:', error);
             showError('An error occurred while fetching flows.');
         });
     }
+
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const myTable = document.getElementById('myTable');
+        if (myTable) {
+            $(myTable).DataTable({
+                ajax: {
+                    url: getFlowsUrl,
+                    dataSrc: 'flows'
+                },
+                columns: [
+                    { data: 'name' },
+                    { data: 'updated_at' },
+                    { data: 'status' },
+                    { data: 'messages_sent' },
+                    { 
+                        data: null,
+                        render: function (data, type, row) {
+                            return `
+                                <div class="dropdown-icon">
+                                    <i class="fa-solid fa-ellipsis-vertical"></i>
+                                    <div class="dropdown-content">
+                                        <a href="/flow/${row.id}/" class="edit-button">تعديل</a>
+                                        <a href="/flow/delete/${row.id}/" class="delete-button">حذف</a>
+                                    </div>
+                                </div>`;
+                        }
+                    }
+                ],
+                paging: true,
+                pageLength: 25,
+                layout: {
+                    topStart: {
+                        features: {
+                            search: {
+                                placeholder: 'ابحث'
+                            }
+                        }
+                    },
+                    topEnd: null,       // Places the search box at the top right
+                    bottomStart: 'pageLength',    // Places "info" (e.g., "Showing 1 to 10 of 57 entries") at the bottom left
+                    bottomEnd: 'paging'     // Places pagination controls at the bottom right
+                },
+                language: { search: '',
+                lengthMenu: '_MENU_',
+                zeroRecords:    "لا توجد سجلات متاحة",
+                
+            }
+            });
+        }
+    });
+    
+    
 
     function displaySuggestedFlows(flows) {
         const recommendedFlowsContainer = document.getElementById('recommended-flows-container');
@@ -370,38 +325,6 @@
     }
 
     
-
-
-    function displayFlows(flows) {
-        const flowsBody = document.getElementById('flows-body');
-        const flowsTable = document.getElementById('flows-table');
-
-        flowsBody.innerHTML = '';
-
-        if (flows && flows.length > 0) {
-            flows.forEach(flow => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${flow.name}</td>
-                    <td>${flow.updated_at}</td>
-                    <td>${flow.status}</td>
-                    <td>${flow.messages_sent}</td>
-                    <td><div class="dropdown-icon">
-                                <i class="fa-solid fa-ellipsis-vertical"></i>
-                                <div class="dropdown-content">
-                                    <a href="/flow/${flow.id}/" class="edit-button">تعديل</a>
-                                    <a href="/flow/delete/${flow.id}/" class="delete-button">حذف</a>
-                                </div>
-                            </div>
-                    </td>
-                `;
-                flowsBody.appendChild(row);
-            });
-            flowsTable.style.display = 'table';
-        } else {
-            flowsBody.innerHTML = '<tr><td colspan="4">لا توجد حملات</td></tr>';
-        }
-    }
     </script>
 
 {% endblock %}

@@ -37,6 +37,7 @@ urlpatterns = [
     path('customers/', views.customers_view, name='customers'),
     path('get-customers/', views.get_customers, name='get_customers'),
     path('delete-group/<int:group_id>/', views.delete_customer_list, name='delete_group'),
+    path('sync_data/', views.sync_data, name='sync_data'),
     
     path('authstore/', authview.authstore, name="authstore"),
     path('callback/', authview.callback, name="callback"),

@@ -36,6 +36,7 @@ class Store(models.Model):
     subscription_message_count = models.IntegerField(default=0)
     total_customers = models.IntegerField(default=0)
     total_purchases = models.IntegerField(default=0)
+    total_clicks = models.IntegerField(default=0)
     total_messages_sent = models.IntegerField(default=0)
     subscription_date = models.DateTimeField(default=timezone.now)
 
@@ -48,6 +49,32 @@ class UserStoreLink(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     def __str__(self):
         return f'{self.user.email} : {self.store.store_name} : {self.store.store_id}'
+    
+    
+class Group(models.Model):
+    store = models.ForeignKey(Store, on_delete=models.CASCADE)
+    group_id = models.IntegerField()  # Removed unique=True
+    name = models.CharField(max_length=255)
+
+    class Meta:
+        unique_together = ('store', 'group_id')  # Enforces uniqueness within each store
+
+    def __str__(self):
+        return f"{self.store.store_name} : {self.name}, {self.group_id}"
+
+class Customer(models.Model):
+    store = models.ForeignKey(Store, on_delete=models.CASCADE)
+    customer_name = models.CharField(max_length=255)
+    customer_email = models.CharField(max_length=255)
+    customer_phone = models.CharField(max_length=255)
+    customer_location = models.CharField(max_length=255)
+    customer_groups = models.ManyToManyField(Group, related_name='customers')
+    customer_updated_at = models.DateTimeField()
+
+    def __str__(self):
+        return f'{self.store.store_name} : Customer {self.customer_name}'
+
+
 
 class Campaign(models.Model):
     status_choices = (
@@ -80,6 +107,7 @@ class Campaign(models.Model):
                     self.status_changed_at = timezone.now()
                 
                 # Update store totals
+                clicks_diff = self.clicks - old_instance.clicks
                 messages_diff = self.messages_sent - old_instance.messages_sent
                 purchases_diff = self.purchases - old_instance.purchases
                 
@@ -87,6 +115,7 @@ class Campaign(models.Model):
                     self.store.subscription_message_count += messages_diff
                     self.store.total_messages_sent += messages_diff
                     self.store.total_purchases += purchases_diff
+                    self.store.total_clicks += clicks_diff
                     self.store.save()
                 
             except Campaign.DoesNotExist:
@@ -127,6 +156,7 @@ class Flow(models.Model):
     trigger = models.ForeignKey('Trigger', on_delete=models.CASCADE, related_name='flows')
     messages_sent = models.IntegerField(default=0)
     purchases = models.IntegerField(default=0)
+    clicks = models.IntegerField(default=0)
     
     def save(self, *args, **kwargs):
         if self.pk is not None:
@@ -137,13 +167,14 @@ class Flow(models.Model):
                 
                 # Update store totals
                 messages_diff = self.messages_sent - old_instance.messages_sent
-            
+                clicks_diff = self.clicks - old_instance.clicks
                 purchases_diff = self.purchases - old_instance.purchases
                 
                 if messages_diff != 0 or purchases_diff != 0:
                     self.store.subscription_message_count += messages_diff
                     self.store.total_messages_sent += messages_diff
                     self.store.total_purchases += purchases_diff
+                    self.store.total_clicks += clicks_diff
                     self.store.save()
                 
             except Flow.DoesNotExist:

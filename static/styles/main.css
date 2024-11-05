@@ -389,6 +389,11 @@ img {
 /*Customer List*/
 
 
+.sync-container{
+  width: 100%;
+  padding: 0rem 2rem;
+}
+
 
 .fa-user {
   font-size: 30px; /* Change this value to resize the icon */
@@ -455,6 +460,36 @@ padding: 0.5rem 0.75rem;
 font-size: 0.875rem;
 
 }
+
+#myTable_wrapper{
+  margin: 2rem;
+  padding: 1rem;
+  border-radius: 4px;
+  background-color: var(--color-background-default-base);
+  box-sizing: border-box;
+  background-color: #fff;
+  box-shadow: rgba(55, 63, 71, 10%) 0px 0px 0px 1px, rgba(55, 63, 71, 16%) 0px 1px 4px;
+
+}
+
+.dt-column-order{
+  right: auto !important;
+  left: 12px !important;
+}
+
+.dt-column-title{
+  text-align: right !important;
+}
+
+#myTable th{
+  text-align: right !important;
+}
+
+.dt-layout-cell{
+  margin: 0 !important;
+}
+
+
 .customers-card-container,
 .group-card-container {
   display: flex;
@@ -972,7 +1007,7 @@ td i {
   font-weight: bold;
   margin:0;
 }
-.create-button, .button-row button{
+.create-button, .button-row button, .sync-button{
   padding: 0.5rem 1rem;
   border-radius: 4px;
   border: none;
@@ -980,7 +1015,7 @@ td i {
   font-family: inherit;
   margin: 0;
 }
-.create-button{
+.create-button, .sync-button{
   background-color: #21aa78;
   color: #fff;
 }
@@ -1544,6 +1579,8 @@ td i {
   font: inherit;
 
 }
+
+
 
 
 

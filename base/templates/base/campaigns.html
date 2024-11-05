@@ -89,62 +89,88 @@
             <span>إنشاء حملة</span>
         </button>
         </div>
-    <div class="table-container">
-        <div class="table-header">
-            <div class="search-container">
-            <div class="table-search">
-                <input type="text" id="search" placeholder="بحث عن طريق اسم الحملة, الحالة, الوقت">
-            </div>
-        </div>
-        </div>
-        <div id="campaigns-loading" style="padding: 1rem;">جاري تحميل الحملات...</div>
-        <table id="campaigns-table">
-            <thead>
-                <tr>
-                    <th>الحملة</th>
-                    <th>الوقت المجدول</th>
-                    <th>الحالة</th>
-                    <th>الرسائل المرسلة</th>
-                  </tr>
-            </thead>
-            <tbody id="campaigns-body">
-               
-            </tbody>
-        </table>
-        <div class="pagination-controls">
-            <div class="view-per-page">
-                <select id="rows-per-page">
-                    <option value="25">25</option>
-                    <option value="50">50</option>
-                    <option value="100">100</option>
-                </select>
-            </div>
-            <div class="page-buttons">
-                <button id="next-page" class="square-button">
-                    <i class="fa-solid fa-angle-right"></i>
-                </button>
-                <button id="prev-page" class="square-button">
-                    <i class="fa-solid fa-angle-left"></i>
-                </button>
-            
-            </div>
-        </div>
-    </div>
-    <script>
-      let allCampaigns = [];
-      let currentPage = 1;
-      let rowsPerPage = 25;
-      let totalCampaigns = 0;
 
+
+    <table id="myTable" class="table table-striped hover" style="width:100%">
+      <thead>
+          <tr>
+            <th>الحملة</th>
+            <th>الوقت المجدول</th>
+            <th>الحالة</th>
+            <th>الرسائل المرسلة</th>
+          </tr>
+      </thead>
+
+  </table>
+
+  <div id="get-campaigns-url" data-get-campaigns-url="{% url 'get_campaigns' %}"></div>
+
+
+
+    <script>
+      const getCampaignsUrl = document.getElementById('get-campaigns-url').dataset.getCampaignsUrl;
+
+      document.addEventListener('DOMContentLoaded', function() {
+        const myTable = document.getElementById('myTable');
+        if (myTable) {
+            $(myTable).DataTable({
+                ajax: {
+                    url: getCampaignsUrl,
+                    dataSrc: 'data'
+                },
+                columns: [
+                    { data: 'name' },
+                    { data: 'scheduled_time' },
+                    { data: 'status' },
+                    { data: 'messages_sent' },
+                    { 
+                        data: null,
+                        render: function (data, type, row) {
+                            return `
+                                <div class="dropdown-icon">
+                                    <i class="fa-solid fa-ellipsis-vertical"></i>
+                                    <div class="dropdown-content">
+                                        ${
+                                            row.status === "scheduled" || row.status === "draft" ? `
+                                                <a href="javascript:void(0);" onclick="showPopup('${row.id}');">تعديل</a>
+                                                <a href="${row.cancel_url}">الغاء</a>
+                                            ` : `
+                                                <a href="javascript:void(0);" onclick="showPopup('${row.id}');">اظهار</a>
+                                                <a href="${row.delete_url}">حذف</a>
+                                            `
+                                        }
+                                    </div>
+                                </div>`;
+                        }
+                    }
+                ],
+                paging: true,
+                pageLength: 25,
+                layout: {
+                    topStart: {
+                        features: {
+                            search: {
+                                placeholder: 'ابحث'
+                            }
+                        }
+                    },
+                    topEnd: null,       // Places the search box at the top right
+                    bottomStart: 'pageLength',    // Places "info" (e.g., "Showing 1 to 10 of 57 entries") at the bottom left
+                    bottomEnd: 'paging'     // Places pagination controls at the bottom right
+                },
+                language: { 
+                    search: '',
+                    lengthMenu: '_MENU_',
+                    zeroRecords: "لا توجد سجلات متاحة",
+                }
+            });
+        }
+    });
 
 
 
       document.addEventListener('DOMContentLoaded', function() {
         // Attach event listeners
-        setupPagination();
-        setupSearch();
-        fetchAllCampaigns();
-
     
         // Show popup
         const showPopupButton = document.getElementById('showPopupButton');
@@ -199,10 +225,7 @@
             visualMessage.innerText = this.value;
         });
 
-
-
     });
-
   
     document.getElementById('campaign-form').addEventListener('submit', function(e) {
       e.preventDefault();
@@ -218,17 +241,6 @@
   });
   
 
-
-
-
-
-      
-
-
-
-
-
-
     function addVariableToMessage(variable){
       const messageInput = document.getElementById('id_msg');
       const visualMessage = document.getElementById('visualization-message');
@@ -238,17 +250,8 @@
     }
 
 
+          
 
-      
-      // Function to close all dropdowns
-
-      
-      function closeAllDropdowns() {
-        const dropdowns = document.querySelectorAll('.dropdown-content');
-        dropdowns.forEach(function(dropdown) {
-            dropdown.classList.remove('show');
-        });
-    }
       
     function showPopup(campaignId) {
       const form = document.getElementById('campaign-form');
@@ -326,164 +329,16 @@
         document.getElementById('myPopup').style.display = 'none';
       }
       
-      // Search functionality
-      function setupSearch() {
-        const searchInput = document.getElementById('search');
-        if (searchInput) {
-          searchInput.addEventListener('keypress', function(event) {
-            if (event.key === 'Enter') {
-              event.preventDefault();
-              filterCampaigns(); // Filter campaigns when Enter key is pressed
-            }
-          });
-        }
-      }
-      
-      // Function to filter campaigns based on search input
-      function filterCampaigns() {
-        const searchInput = document.getElementById('search').value.toLowerCase();
-        const rows = document.querySelectorAll('#campaigns-body tr');
-        rows.forEach(function(row) {
-          const columns = row.querySelectorAll('td');
-          let shouldShow = false;
-          columns.forEach(function(column) {
-            if (column.textContent.toLowerCase().includes(searchInput)) {
-              shouldShow = true;
-            }
-          });
-          row.style.display = shouldShow ? '' : 'none'; // Show or hide rows based on search match
+
+      function closeAllDropdowns() {
+        const dropdowns = document.querySelectorAll('.dropdown-content');
+        dropdowns.forEach(function(dropdown) {
+            dropdown.classList.remove('show');
         });
-      }
-
-      function filterCampaigns() {
-        const searchInput = document.getElementById('search').value.toLowerCase();
-    
-        // Filter campaigns based on the search input
-        const filteredCampaigns = allCampaigns.filter(campaign => {
-            return campaign.name.toLowerCase().includes(searchInput) ||
-                   campaign.messages_sent.toLowerCase().includes(searchInput) ||
-                   campaign.status.toLowerCase().includes(searchInput) ||
-                   campaign.scheduled_time.toLowerCase().includes(searchInput);
-        });
-    
-        totalCampaigns = filteredCampaigns.length;
-    
-        // Ensure currentPage is within valid range
-        const totalPages = Math.ceil(totalCampaigns / rowsPerPage);
-        if (currentPage > totalPages) {
-            currentPage = totalPages || 1;
-        }
-    
-        // Paginate the filtered campaigns
-        const start = (currentPage - 1) * rowsPerPage;
-        const end = start + rowsPerPage;
-        const paginatedCampaigns = filteredCampaigns.slice(start, end);
-    
-        displayCampaigns(paginatedCampaigns);
-        updatePaginationControls();
     }
 
 
-
-      // fetching
-      function fetchAllCampaigns() {
-        const campaignsUrl = '/get_campaigns/';
-    
-        fetch(campaignsUrl, {
-            method: 'GET',
-            headers: { 'Content-Type': 'application/json' }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                allCampaigns = data.data;
-                totalCampaigns = allCampaigns.length;
-                filterCampaigns(allCampaigns.slice(0, rowsPerPage)); // Apply pagination immediately
-                updatePaginationControls();
-            } else {
-                showError('Failed to load campaigns.');
-            }
-        })
-        .catch(error => showError('Error fetching campaigns: ' + error));
-    }
-    
-
-    function displayCampaigns(campaigns) {
-      const campaignsBody = document.getElementById('campaigns-body');
-      const campaignsTable = document.getElementById('campaigns-table');
-      const loadingDiv = document.getElementById('campaigns-loading');
   
-      campaignsBody.innerHTML = '';
-      loadingDiv.style.display = 'none';
-  
-      if (campaigns.length > 0) {
-          campaigns.forEach(campaign => {
-              const row = document.createElement('tr');
-              row.innerHTML = `
-                  <td>${campaign.name}</td>
-                  <td>${campaign.scheduled_time}</td>
-                  <td>${campaign.status_display}</td>
-                  <td>${campaign.messages_sent}</td>
-                  <td>
-                      <div class="dropdown-icon">
-                          <i class="fa-solid fa-ellipsis-vertical"></i>
-                          ${
-                              campaign.status === "scheduled" || campaign.status === "draft" ? `
-                                  <div class="dropdown-content">
-                                      <a href="javascript:void(0);" onclick="showPopup('${campaign.id}');">تعديل</a>
-                                      <a href="${campaign.cancel_url}">الغاء</a>
-                                  </div>
-                              ` : `
-                                  <div class="dropdown-content">
-                                      <a href="javascript:void(0);" onclick="showPopup('${campaign.id}');">اظهار</a>
-                                      <a href="${campaign.delete_url}">حذف</a>
-                                  </div>
-                              `
-                          }
-                      </div>
-                  </td>
-              `;
-              campaignsBody.appendChild(row);
-          });
-          campaignsTable.style.display = 'table';
-      } else {
-          showError('No campaigns found.');
-      }
-  }
-  
-
-
-    function setupPagination() {
-      const rowsPerPageSelect = document.getElementById('rows-per-page');
-      const prevPageButton = document.getElementById('prev-page');
-      const nextPageButton = document.getElementById('next-page');
-  
-      rowsPerPageSelect.addEventListener('change', function() {
-          rowsPerPage = parseInt(this.value);
-          currentPage = 1;
-          filterCampaigns();
-      });
-  
-      prevPageButton.addEventListener('click', () => changePage(-1));
-      nextPageButton.addEventListener('click', () => changePage(1));
-  }
-
-
-    function changePage(delta) {
-      const newPage = currentPage + delta;
-      if (newPage > 0 && newPage <= Math.ceil(totalCampaigns  / rowsPerPage)) {
-          currentPage = newPage;
-          filterCampaigns();
-      }
-  }
-
-    function updatePaginationControls() {
-      const prevPageButton = document.getElementById('prev-page');
-      const nextPageButton = document.getElementById('next-page');
-  
-      prevPageButton.disabled = currentPage === 1;
-      nextPageButton.disabled = currentPage >= Math.ceil(totalCampaigns  / rowsPerPage);
-    }
 
 
   
