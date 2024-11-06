@@ -7,6 +7,10 @@ from django.dispatch import receiver
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 import uuid
+from django.utils.crypto import get_random_string
+from datetime import date, timedelta
+
+
 
 class User(AbstractUser):
     email = models.EmailField(max_length=200, unique=True)
@@ -204,21 +208,19 @@ class FlowActionTypes(models.Model):
 
 
 class FlowStep(models.Model):
-    flow = models.ForeignKey(Flow, on_delete=models.CASCADE, related_name='steps')
-    order = models.PositiveIntegerField(validators=[MinValueValidator(1)])  # Order must be 1 or above
+    flow = models.ForeignKey('Flow', on_delete=models.CASCADE, related_name='steps')
+    order = models.PositiveIntegerField(validators=[MinValueValidator(1)])
     action_type = models.ForeignKey(FlowActionTypes, on_delete=models.CASCADE)
-    
+
     class Meta:
         constraints = [
             models.UniqueConstraint(fields=['flow', 'order'], name='unique_order_per_flow')
         ]
 
     def save(self, *args, **kwargs):
-        # Ensure that the step only has one config (either TextConfig or TimeDelayConfig)
-        if hasattr(self, 'text_config') and hasattr(self, 'time_delay_config'):
-            raise ValidationError("A FlowStep cannot have both TextConfig and TimeDelayConfig.")
+        if hasattr(self, 'text_config') + hasattr(self, 'time_delay_config') + hasattr(self, 'coupon_config') > 1:
+            raise ValidationError("A FlowStep can have only one configuration.")
         super().save(*args, **kwargs)
-
 
     def __str__(self):
         return f"FlowStep in {self.flow.name} - Step {self.order}"
@@ -235,26 +237,26 @@ class SuggestedFlow(models.Model):
 
 class SuggestedFlowStep(models.Model):
     suggested_flow = models.ForeignKey(SuggestedFlow, on_delete=models.CASCADE, related_name='steps')
-    order = models.PositiveIntegerField(validators=[MinValueValidator(1)])  # Order must be 1 or above
+    order = models.PositiveIntegerField(validators=[MinValueValidator(1)])
     action_type = models.ForeignKey(FlowActionTypes, on_delete=models.CASCADE)
-    
+
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=['suggested_flow', 'order'], name='unique_order_per_suggestedflowstep')  # Unique name for SuggestedFlowStep
+            models.UniqueConstraint(fields=['suggested_flow', 'order'], name='unique_order_per_suggestedflowstep')
         ]
 
     def save(self, *args, **kwargs):
-        # Ensure that the step only has one config (either SuggestedTextConfig or SuggestedTimeDelayConfig)
-        if hasattr(self, 'suggested_text_config') and hasattr(self, 'suggested_time_delay_config'):
-            raise ValidationError("A SuggestedFlowStep cannot have both SuggestedTextConfig and SuggestedTimeDelayConfig.")
+        if hasattr(self, 'suggested_text_config') + hasattr(self, 'suggested_time_delay_config') + hasattr(self, 'suggested_coupon_config') > 1:
+            raise ValidationError("A SuggestedFlowStep can have only one configuration.")
         super().save(*args, **kwargs)
 
     def __str__(self):
         return f"SuggestedFlowStep in {self.suggested_flow.name} - Step {self.order}"
     
+    
 class TextConfig(models.Model):
     flow_step = models.OneToOneField(FlowStep, on_delete=models.CASCADE, related_name='text_config', limit_choices_to={
-        'time_delay_config__isnull': True  # Only show steps that don't have a TimeDelayConfig
+        'time_delay_config__isnull': True, 'coupon_config__isnull': True
     })
     message = models.TextField()
 
@@ -264,18 +266,36 @@ class TextConfig(models.Model):
 
 class TimeDelayConfig(models.Model):
     flow_step = models.OneToOneField(FlowStep, on_delete=models.CASCADE, related_name='time_delay_config', limit_choices_to={
-        'text_config__isnull': True  # Only show steps that don't have a TextConfig
+        'text_config__isnull': True, 'coupon_config__isnull': True
     })
-    delay_time = models.PositiveIntegerField()  # Delay in hours or days
+    delay_time = models.PositiveIntegerField()
     delay_type = models.CharField(max_length=50, choices=[('hours', 'Hours'), ('days', 'Days'), ('minutes', 'Minutes')])
 
     def __str__(self):
-        return f"TimeDelayConfig for {self.flow_step.flow.name} - Step {self.flow_step.order}"
+        return f"TimeDelayConfig for {self.flow_step.flow.name} - Step {self.flow_step.order}" 
+    
+class CouponConfig(models.Model):
+    flow_step = models.OneToOneField(FlowStep, on_delete=models.CASCADE, related_name='coupon_config', limit_choices_to={
+        'text_config__isnull': True, 'time_delay_config__isnull': True
+    })
+    coupon_code = models.CharField(max_length=12, unique=True, blank=True)
+    type = models.CharField(max_length=50, choices=[('fixed', 'مبلغ ثابت'), ('percentage', 'نسبة مئوية')])
+    amount = models.IntegerField()
+    expire_in = models.IntegerField()  # Date in the format "YYYY-MM-DD"
+    maximum_amount = models.IntegerField()
+    free_shipping = models.BooleanField()
+    exclude_sale_products = models.BooleanField()
 
+    def save(self, *args, **kwargs):
+        if not self.coupon_code:
+            self.coupon_code = get_random_string(12).upper()  # Generates a random 12-character code
+        super().save(*args, **kwargs)
+    def __str__(self):
+        return f"CouponConfig for {self.flow_step.flow.name} - Step {self.flow_step.order}"
 
 class SuggestedTextConfig(models.Model):
     suggested_flow_step = models.OneToOneField(SuggestedFlowStep, on_delete=models.CASCADE, related_name='suggested_text_config', limit_choices_to={
-        'suggested_time_delay_config__isnull': True  # Only show steps that don't have a SuggestedTimeDelayConfig
+        'suggested_time_delay_config__isnull': True, 'suggested_coupon_config__isnull': True
     })
     message = models.TextField()
 
@@ -285,32 +305,54 @@ class SuggestedTextConfig(models.Model):
 
 class SuggestedTimeDelayConfig(models.Model):
     suggested_flow_step = models.OneToOneField(SuggestedFlowStep, on_delete=models.CASCADE, related_name='suggested_time_delay_config', limit_choices_to={
-        'suggested_text_config__isnull': True  # Only show steps that don't have a SuggestedTextConfig
+        'suggested_text_config__isnull': True, 'suggested_coupon_config__isnull': True
     })
-    delay_time = models.PositiveIntegerField()  # Delay in hours or days
+    delay_time = models.PositiveIntegerField()
     delay_type = models.CharField(max_length=50, choices=[('hours', 'Hours'), ('days', 'Days'), ('minutes', 'Minutes')])
 
     def __str__(self):
         return f"Suggested TimeDelayConfig for {self.suggested_flow_step.suggested_flow.name} - Step {self.suggested_flow_step.order}"
+    
+class SuggestedCouponConfig(models.Model):
+    suggested_flow_step = models.OneToOneField(SuggestedFlowStep, on_delete=models.CASCADE, related_name='suggested_coupon_config', limit_choices_to={
+        'suggested_text_config__isnull': True, 'suggested_time_delay_config__isnull': True
+    })
+    coupon_code = models.CharField(max_length=12, unique=True, blank=True)
+    type = models.CharField(max_length=50, choices=[('fixed', 'مبلغ ثابت'), ('percentage', 'نسبة مئوية')])
+    amount = models.IntegerField()
+    expire_in = models.IntegerField()  # Date in the format "YYYY-MM-DD"
+    maximum_amount = models.IntegerField()
+    free_shipping = models.BooleanField()
+    exclude_sale_products = models.BooleanField()
+
+    def save(self, *args, **kwargs):
+        if not self.coupon_code:
+            self.coupon_code = get_random_string(12).upper()  # Generates a random 12-character code
+        super().save(*args, **kwargs)
+    def __str__(self):
+        return f"Suggested CouponConfig for {self.suggested_flow_step.suggested_flow.name} - Step {self.suggested_flow_step.order}"
 
 
 
 @receiver(post_save, sender=FlowStep)
 def create_config_for_flow_step(sender, instance, created, **kwargs):
     if created:
-        # Automatically create the appropriate config
         if instance.action_type.name == 'sms' and not hasattr(instance, 'text_config'):
             TextConfig.objects.create(flow_step=instance, message='Default SMS message')
         elif instance.action_type.name == 'delay' and not hasattr(instance, 'time_delay_config'):
             TimeDelayConfig.objects.create(flow_step=instance, delay_time=1, delay_type='hours')
+        elif instance.action_type.name == 'coupon' and not hasattr(instance, 'coupon_config'):
+            CouponConfig.objects.create(flow_step=instance, amount=10, type='fixed', expire_in=3, maximum_amount=10, free_shipping=True, exclude_sale_products=True)
+
 
 @receiver(post_save, sender=SuggestedFlowStep)
 def create_config_for_suggested_flow_step(sender, instance, created, **kwargs):
     if created:
-        # Automatically create the appropriate config for suggested steps
         if instance.action_type.name == 'sms' and not hasattr(instance, 'suggested_text_config'):
             SuggestedTextConfig.objects.create(suggested_flow_step=instance, message='Default SMS message')
         elif instance.action_type.name == 'delay' and not hasattr(instance, 'suggested_time_delay_config'):
             SuggestedTimeDelayConfig.objects.create(suggested_flow_step=instance, delay_time=1, delay_type='hours')
+        elif instance.action_type.name == 'coupon' and not hasattr(instance, 'suggested_coupon_config'):
+            SuggestedCouponConfig.objects.create(suggested_flow_step=instance, amount=10, type='fixed', expire_in=3, maximum_amount=10, free_shipping=True, exclude_sale_products=True)
 
 

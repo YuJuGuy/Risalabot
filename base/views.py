@@ -10,7 +10,7 @@ from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.utils.timezone import make_aware
 from . forms import CreateUserForm, CampaignForm, GroupCreationForm, FlowForm
-from . models import User, Store, UserStoreLink,Trigger, Campaign, FlowActionTypes, Flow, FlowStep, SuggestedFlow, SuggestedFlowStep, TextConfig, TimeDelayConfig,SuggestedTextConfig, SuggestedTimeDelayConfig, Customer, Group
+from . models import User, Store, UserStoreLink,Trigger, Campaign, FlowActionTypes, Flow, FlowStep, SuggestedFlow, SuggestedFlowStep, TextConfig, TimeDelayConfig,SuggestedTextConfig, SuggestedTimeDelayConfig, Customer, Group, CouponConfig, SuggestedCouponConfig
 from django.http import JsonResponse
 from automations.tasks import send_whatsapp_message_task
 from . apis import get_customer_data, create_customer_group, delete_customer_group,group_campaign, get_customers_from_group
@@ -298,6 +298,7 @@ def flow_builder(request, flow_id):
         flow_form = FlowForm(request.POST, instance=flow)
         if flow_form.is_valid():
             steps_data = request.POST.get('steps', '')
+            print(steps_data)
             
 
             
@@ -334,6 +335,7 @@ def flow_builder(request, flow_id):
                             if step.action_type != action_type_obj:
                                 TextConfig.objects.filter(flow_step=step).delete()
                                 TimeDelayConfig.objects.filter(flow_step=step).delete()
+                                CouponConfig.objects.filter(flow_step=step).delete()
                                 step.action_type = action_type_obj
                             step.save()
                         else:
@@ -363,6 +365,25 @@ def flow_builder(request, flow_id):
                                 defaults={
                                     'delay_time': content.get('delay_time', 1),
                                     'delay_type': content.get('delay_type', 'hours')
+                                }
+                            )
+                        elif action_type == 'coupon':
+                            if not content.get('type'):
+                                raise ValidationError('Coupon action requires a coupon type.')
+                            if not content.get('amount') or not str(content.get('amount')).isdigit():
+                                raise ValidationError('Coupon action requires a valid amount.')
+                            if content.get('type') not in ['fixed', 'percentage']:
+                                raise ValidationError('Invalid coupon type. Choose either "fixed" or "percentage".')
+                            TextConfig.objects.filter(flow_step=step).delete()
+                            CouponConfig.objects.update_or_create(
+                                flow_step=step,
+                                defaults={
+                                    'coupon_type': content.get('type'),
+                                    'amount': content.get('amount'),
+                                    'max_discount': content.get('maximum_amount', 0),
+                                    'expiry_days': content.get('expire_in', 0),
+                                    'free_shipping': content.get('free_shipping', False),
+                                    'exclude_sale_products': content.get('exclude_sale_products', False)
                                 }
                             )
 
@@ -434,7 +455,8 @@ def activate_suggested_flow(request, suggestion_id):
             # Get all suggested steps ordered by their sequence
             suggested_steps = SuggestedFlowStep.objects.select_related(
                 'suggested_text_config',
-                'suggested_time_delay_config'
+                'suggested_time_delay_config',
+                'suggested_coupon_config'  # Added comma to fix syntax
             ).filter(
                 suggested_flow=suggested_flow
             ).order_by('order')
@@ -454,8 +476,9 @@ def activate_suggested_flow(request, suggestion_id):
                 # Check for existing configurations before creating new ones
                 existing_text_config = TextConfig.objects.filter(flow_step=new_step).exists()
                 existing_delay_config = TimeDelayConfig.objects.filter(flow_step=new_step).exists()
+                existing_coupon_config = CouponConfig.objects.filter(flow_step=new_step).exists()  # Check for coupon config
                 
-                if existing_text_config or existing_delay_config:
+                if existing_text_config or existing_delay_config or existing_coupon_config:
                     logger.warning(f"Configuration already exists for step {new_step.id}")
                     continue
                 
@@ -478,8 +501,22 @@ def activate_suggested_flow(request, suggestion_id):
                             delay_time=delay_config.delay_time,
                             delay_type=delay_config.delay_type
                         )
+                    
+                    # Try to get the coupon config
+                    coupon_config = SuggestedCouponConfig.objects.filter(suggested_flow_step=suggested_step).first()
+                    if coupon_config:
+                        logger.info(f"Creating coupon config for step {new_step.id}")
+                        CouponConfig.objects.create(
+                            flow_step=new_step,
+                            type=coupon_config.type,
+                            amount=coupon_config.amount,
+                            expire_in=coupon_config.expire_in,
+                            maximum_amount=coupon_config.maximum_amount,
+                            free_shipping=coupon_config.free_shipping,
+                            exclude_sale_products=coupon_config.exclude_sale_products
+                        )
                         
-                    if not text_config and not delay_config:
+                    if not text_config and not delay_config and not coupon_config:
                         logger.warning(f"No configuration found for step {suggested_step.id}")
                         
                 except Exception as step_error:
@@ -856,7 +893,6 @@ def get_customers(request):
         # Convert to list of dictionaries for easier JSON handling
         group_data_list = list(group_data)
         
-        print(group_data_list)
 
         return JsonResponse({
             'customers': customers_data,

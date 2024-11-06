@@ -48,6 +48,19 @@
                                     </select>
                                 </div>
 
+                            {% elif step.action_type.name == 'coupon' %}
+                                <div class="step-action" style="display:none">
+                                    <input type="text" class="coupon-type" placeholder="أدخل نوع القسيمة" value="{{ step.coupon_config.type }}">
+                                    <input type="number" class="coupon-amount" placeholder="أدخل المبلغ" value="{{ step.coupon_config.amount }}">
+                                    <input type="number" class="max-amount" placeholder="أدخل الحد الأقصى للخصم" value="{{ step.coupon_config.maximum_amount }}">
+                                    <input type="number" class="coupon-expiry" placeholder="أدخل عدد أيام انتهاء الصلاحية" value="{{ step.coupon_config.expire_in }}">
+                                    <label>
+                                        <input type="checkbox" class="free-shipping" {% if step.coupon_config.free_shipping %}checked{% endif %}> شحن مجاني
+                                    </label>
+                                    <label>
+                                        <input type="checkbox" class="exclude-sale-products" {% if step.coupon_config.exclude_sale_products %}checked{% endif %}> استبعاد المنتجات المخفضة
+                                    </label>
+                                </div>
                             {% endif %}
 
                         </div>
@@ -99,7 +112,9 @@
     <div class="popup-group">
     <div class="modal-content" id="modal-content">
         <span class="close">&times;</span>
-            <div id="trigger-fields" style="position: none;">
+
+
+            <div id="trigger-fields" style="display: none;">
                 <label>المشغل:</label>
                 <div class="custom-select">
                     <div id="selected-trigger" class="select-selected">اختر المشغل</div>
@@ -115,59 +130,78 @@
             </div>
             
         <!-- SMS Action Fields -->
-        <div id="sms-fields" style="display:none;">
-            <label>الرسالة:</label>
-            <textarea placeholder="أدخل نص الرسالة هنا" id="modal-sms-message" class="sms-message"></textarea>
-            <div class="available-variables">
-                <div class="variable-item-container">
-                    <div class="variable-item" onclick="addVariableToMessage('{اسم العميل}')">
-                        <p>اسم العميل</p>
+            <div id="sms-fields" style="display:none;">
+                <label>الرسالة:</label>
+                <textarea placeholder="أدخل نص الرسالة هنا" id="modal-sms-message" class="sms-message"></textarea>
+                <div class="available-variables">
+                    <div class="variable-item-container">
+                        <div class="variable-item" onclick="addVariableToMessage('{اسم العميل}')">
+                            <p>اسم العميل</p>
+                        </div>
+                        <div class="variable-item" onclick="addVariableToMessage('{الاسم الاول}')">
+                            <p>الاسم الاول</p>
+                        </div>
+                        <div class="variable-item" onclick="addVariableToMessage('{الايميل}')">
+                            <p>الايميل</p>
+                        </div>
+                        <div class="variable-item" onclick="addVariableToMessage('{رقم العميل}')">
+                            <p>رقم العميل</p>
+                        </div>
+                        <div class="variable-item" onclick="addVariableToMessage('{الدولة}')">
+                            <p>الدولة</p>
+                        </div>
+                        <div class="variable-item" onclick="addVariableToMessage('{رقم التتبع}')">
+                            <p>رقم التتبع</p>
+                        </div>
+                        <div class="variable-item" onclick="addVariableToMessage('{الحالة}')">
+                            <p>الحالة</p>
+                        </div>
+                        <div class="variable-item" onclick="addVariableToMessage('{السعر}')">
+                            <p>السعر</p>
+                        </div>
+                        <div class="variable-item" onclick="addVariableToMessage('{رابط التقييم}')">
+                            <p>رابط التقييم</p>
+                        </div>
                     </div>
-                    <div class="variable-item" onclick="addVariableToMessage('{الاسم الاول}')">
-                        <p>الاسم الاول</p>
-                    </div>
-                    <div class="variable-item" onclick="addVariableToMessage('{الايميل}')">
-                        <p>الايميل</p>
-                    </div>
-                    <div class="variable-item" onclick="addVariableToMessage('{رقم العميل}')">
-                        <p>رقم العميل</p>
-                    </div>
-                    <div class="variable-item" onclick="addVariableToMessage('{الدولة}')">
-                        <p>الدولة</p>
-                    </div>
-                    <div class="variable-item" onclick="addVariableToMessage('{رقم التتبع}')">
-                        <p>رقم التتبع</p>
-                    </div>
-                    <div class="variable-item" onclick="addVariableToMessage('{الحالة}')">
-                        <p>الحالة</p>
-                    </div>
-                    <div class="variable-item" onclick="addVariableToMessage('{السعر}')">
-                        <p>السعر</p>
-                    </div>
-                    <div class="variable-item" onclick="addVariableToMessage('{رابط التقييم}')">
-                        <p>رابط التقييم</p>
-                    </div>
+                    <p>المتغيرات سوف تستبدل بالقيم المناسبة للعميل المرسل له</p>
                 </div>
-                <p>المتغيرات سوف تستبدل بالقيم المناسبة للعميل المرسل له</p>
             </div>
-        </div>
 
         <!-- Delay Action Fields -->
-        <div id="delay-fields" style="display:none;">
-            <label>التأخير:</label>
-            <input type="number" id="modal-delay-time" class="delay-time" value="1">
-            <select id="modal-delay-type" class="delay-type">
-                <option value="hours">ساعات</option>
-                <option value="days">أيام</option>
-                <option value="minutes">دقائق</option>
-            </select>
-        </div>
+            <div id="delay-fields" style="display:none;">
+                <label>التأخير:</label>
+                <input type="number" id="modal-delay-time" class="delay-time" value="1">
+                <select id="modal-delay-type" class="delay-type">
+                    <option value="hours">ساعات</option>
+                    <option value="days">أيام</option>
+                    <option value="minutes">دقائق</option>
+                </select>
+            </div>
 
-        <div class="modal-footer">
-            <button id="save-action-btn">حفظ</button>
-            <button id="delete-step-btn" style="display:none;">حذف</button>
-        </div>
+            <div id="coupon-fields" style="display:none;">
+                <label>الكوبون:</label>
+                <select id="modal-coupon-type" class="coupon-type">
+                    <option value="fixed">مبلغ ثابت</option>
+                    <option value="percentage">نسبة مئوية</option>
+                </select>
+                <label>المبلغ او النسبة</label>
+                <input type="number" id="modal-coupon-amount" class="coupon-amount" min="1">
+                <label>الحد الاعلى للخصم</label>
+                <input type="number" id="modal-coupon-max" class="max-amount" min="1">
+                <label>الايام المتبقية على انتهاء الكوبون</label>
+                <input type="number" id="modal-coupon-expiry" class="coupon-expiry" min="1">
+                <label>شحن مجاني:</label>
+                <input type="checkbox" id="modal-free-shipping" class="free-shipping">
+                <label>استبعاد المنتجات المخفضة:</label>
+                <input type="checkbox" id="modal-exclude-sale-products" class="exclude-sale-products">
+            </div>
+
+            <div class="modal-footer">
+                <button id="save-action-btn">حفظ</button>
+                <button id="delete-step-btn" style="display:none;">حذف</button>
+            </div>
     </div>
+
     <div class="campaign-visualization" id="sms-visualization" style="display:none;">
         <div class="wallpaper">
           <img src="{% static 'images/wallpaper.png' %}" alt="wallpaper">
@@ -180,6 +214,8 @@
           </div>
         </div>
     </div>
+
+
     </div>
 
 </div>
@@ -311,7 +347,7 @@ new Sortable(document.getElementById('canvas-steps'), {
             newStep.innerHTML += `
                  <div class="step-action" style="display:none">
                     <label>الرسالة:</label>
-                    <textarea placeholder="أدخل نص الرسالة هنا"class="sms-message"></textarea>
+                    <textarea placeholder="أدخل نص الرسالة هنا" class="sms-message"></textarea>
                             <div class="available-variables">
                                 <div class="variable-item-container">
                                     <div class="variable-item" onclick="addVariableToMessage('{اسم العميل}')">
@@ -346,7 +382,28 @@ new Sortable(document.getElementById('canvas-steps'), {
                     </select>
                 </div>
             `;
+        } else if (actionType === 'coupon') {
+            newStep.innerHTML += `
+                 <div class="step-action" style="display:none">
+                    <label>الكوبون:</label>
+                    <select class="coupon-type">
+                        <option value="fixed">مبلغ ثابت</option>
+                        <option value="percentage">نسبة مئوية</option>
+                    </select>
+                    <label>المبلغ او النسبة</label>
+                    <input type="number" class="coupon-amount" min="1">
+                    <label>الحد الاعلى للخصم</label>
+                    <input type="number" class="max-amount" min="1">
+                    <label>الايام المتبقية على انتهاء الكوبون</label>
+                    <input type="number" class="coupon-expiry" min="1">
+                    <label>شحن مجاني:</label>
+                    <input type="checkbox" class="free-shipping">
+                    <label>استبعاد المنتجات المخفضة:</label>
+                    <input type="checkbox" class="exclude-sale-products">
+                </div>
+            `;
         }
+        
 
         updateConnections();
     },
@@ -363,6 +420,7 @@ new Sortable(document.getElementById('canvas-steps'), {
 var modal = document.getElementById("action-modal");
 var smsFields = document.getElementById("sms-fields");
 var delayFields = document.getElementById("delay-fields");
+var couponFields = document.getElementById("coupon-fields");
 var triggerFields = document.getElementById("trigger-fields");
 var saveActionBtn = document.getElementById("save-action-btn");
 var smsVisualization = document.getElementById("sms-visualization");
@@ -375,9 +433,10 @@ var currentStep = null;
 
 document.getElementById('trigger').addEventListener('click', function() {
     modal.style.display = "flex";
+    triggerFields.style.display = "block";
+    couponFields.style.display = "none";
     smsFields.style.display = "none";
     delayFields.style.display = "none";
-    triggerFields.style.display = "block";
     smsVisualization.style.display = "none";
     modalContent.style.height = "auto";
 
@@ -397,12 +456,11 @@ document.getElementById('canvas-steps').addEventListener('click', function(event
         if (actionType === 'sms') {
             delayFields.style.display = "none";
             triggerFields.style.display = "none";
+            couponFields.style.display = "none";
             smsFields.style.display = "block";
             smsVisualization.style.display = "block";
             modalContent.style.height = "100%";
 
-        
-            
             const currentMessage = currentStep.querySelector('.sms-message').value;
             document.getElementById('modal-sms-message').value = currentMessage;
             // Update visualization immediately when modal opens
@@ -410,11 +468,27 @@ document.getElementById('canvas-steps').addEventListener('click', function(event
         } else if (actionType === 'delay') {
             smsFields.style.display = "none";
             triggerFields.style.display = "none";
+            couponFields.style.display = "none";
             smsVisualization.style.display = "none";
             delayFields.style.display = "block";
             modalContent.style.height = "auto";
             document.getElementById('modal-delay-time').value = currentStep.querySelector('.delay-time').value;
             document.getElementById('modal-delay-type').value = currentStep.querySelector('.delay-type').value;
+        } else if (actionType === 'coupon') {
+
+
+            smsFields.style.display = "none";
+            triggerFields.style.display = "none";
+            smsVisualization.style.display = "none";
+            delayFields.style.display = "none";
+            couponFields.style.display = "block";
+            modalContent.style.height = "auto";
+            document.getElementById('modal-coupon-amount').value = currentStep.querySelector('.coupon-amount').value;
+            document.getElementById('modal-coupon-type').value = currentStep.querySelector('.coupon-type').value;
+            document.getElementById('modal-coupon-max').value = currentStep.querySelector('.max-amount').value;
+            document.getElementById('modal-coupon-expiry').value = currentStep.querySelector('.coupon-expiry').value;
+            document.getElementById('modal-free-shipping').checked = currentStep.querySelector('.free-shipping').checked;
+            document.getElementById('modal-exclude-sale-products').checked = currentStep.querySelector('.exclude-sale-products').checked;
         }
     }
 });
@@ -437,6 +511,20 @@ saveActionBtn.addEventListener('click', function() {
             var updatedDelayType = document.getElementById("modal-delay-type").value;
             currentStep.querySelector('.delay-time').value = updatedDelayTime;
             currentStep.querySelector('.delay-type').value = updatedDelayType;
+        } else if (actionType === 'coupon') {
+            var updatedCouponType = document.getElementById("modal-coupon-type").value;
+            var updatedCouponAmount = document.getElementById("modal-coupon-amount").value;
+            var updatedCouponMax = document.getElementById("modal-coupon-max").value;
+            var updatedCouponExpiry = document.getElementById("modal-coupon-expiry").value;
+            var updatedFreeShipping = document.getElementById("modal-free-shipping").checked;
+            var updatedExcludeSaleProducts = document.getElementById("modal-exclude-sale-products").checked;
+
+            currentStep.querySelector('.coupon-type').value = updatedCouponType;
+            currentStep.querySelector('.coupon-amount').value = updatedCouponAmount;
+            currentStep.querySelector('.max-amount').value = updatedCouponMax;
+            currentStep.querySelector('.coupon-expiry').value = updatedCouponExpiry;
+            currentStep.querySelector('.free-shipping').checked = updatedFreeShipping;
+            currentStep.querySelector('.exclude-sale-products').checked = updatedExcludeSaleProducts;
         }
     } else {
         // Fetch selected trigger data before saving
@@ -511,6 +599,13 @@ document.getElementById('flow-form').addEventListener('submit', function(e) {
         } else if (actionType === 'delay') {
             stepData.content.delay_time = item.querySelector('.delay-time').value;
             stepData.content.delay_type = item.querySelector('.delay-type').value;
+        } else if (actionType === 'coupon') {
+            stepData.content.amount = item.querySelector('.coupon-amount').value;
+            stepData.content.type = item.querySelector('.coupon-type').value;
+            stepData.content.expire_in = item.querySelector('.coupon-expiry').value;
+            stepData.content.maximum_amount = item.querySelector('.max-amount').value;
+            stepData.content.free_shipping = item.querySelector('.free-shipping').checked;
+            stepData.content.exclude_sale_products = item.querySelector('.exclude-sale-products').checked;
         }
 
         updatedSteps.push(stepData);

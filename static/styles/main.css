@@ -626,6 +626,10 @@ select{
   font-family: inherit;
 }
 
+select{
+  padding: 0.5rem 1rem !important;
+}
+
 
 .available-variables{
   padding: 0.5rem;
@@ -844,6 +848,10 @@ select{
 .content-container{
   height: 100%;
   display: flex;
+  margin: 2rem;
+  gap: 2rem
+
+
 }
 
 
@@ -851,13 +859,43 @@ select{
 
 .session-container{
   height: 100%;
-  min-width: 340px  ;
-  padding: 1rem;
   display: flex;
   flex-direction: column;
-  width: fit-content;
+  width: 60%;
+  justify-content: center;
+  box-shadow: rgba(0, 0, 0, 0.1) 0px 10px 15px -3px, rgba(0, 0, 0, 0.05) 0px 4px 6px -2px;
+  border-radius: 8px;
+  padding: 1rem;
   
 }
+
+.how-to-scan{
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  width: 40%;
+  box-shadow: rgba(0, 0, 0, 0.1) 0px 10px 15px -3px, rgba(0, 0, 0, 0.05) 0px 4px 6px -2px;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.how-to-scan img{
+  width: 100%;
+}
+
+.how-to-scan ol {
+  padding-left: 20px; /* Add padding to the left for indentation */
+  list-style-type: decimal; /* Use decimal numbers for the list */
+  margin: 1rem 0; /* Add margin for spacing */
+}
+
+.how-to-scan li {
+  margin-bottom: 0.5rem; /* Add space between list items */
+  color: #555; /* Change text color for better readability */
+  font-size: 1rem; /* Set a base font size */
+  line-height: 1.5; /* Improve line height for readability */
+}
+
 
 .nameElement{
   font-size: 1.5rem;
@@ -884,7 +922,7 @@ select{
   height: 100%;
 }
 .image-container{
-  width: 150px;
+  width: 250px;
   align-self: center;
 }
 .image-container img{

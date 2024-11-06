@@ -126,7 +126,7 @@
     
     const customersUrl = document.getElementById('data-urls').dataset.customersUrl;
 
-    document.addEventListener('DOMContentLoaded', function() {
+    $(document).ready(function() {
         const myTable = document.getElementById('myTable');
         if (myTable) {
             $(myTable).DataTable({
@@ -163,7 +163,6 @@
     
         fetchAllCustomers();
     });
-    
     
     document.addEventListener("DOMContentLoaded", function() {
         setupPopup();

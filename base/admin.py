@@ -1,6 +1,6 @@
 from django.contrib import admin
 from .models import User, Subscription, Store, UserStoreLink, Campaign, FlowActionTypes, Flow, FlowStep, SuggestedFlow, SuggestedFlowStep, Trigger, TextConfig, TimeDelayConfig, SuggestedTextConfig, SuggestedTimeDelayConfig, Customer, Group
-
+from .models import CouponConfig, SuggestedCouponConfig
 # Customize User model admin
 @admin.register(User)
 class UserAdmin(admin.ModelAdmin):
@@ -73,6 +73,9 @@ admin.site.register(TextConfig)
 admin.site.register(TimeDelayConfig)
 admin.site.register(SuggestedTextConfig)
 admin.site.register(SuggestedTimeDelayConfig)
+admin.site.register(CouponConfig)
+admin.site.register(SuggestedCouponConfig)
+
 
 
 admin.site.site_header = "Risalabot Admin"
