@@ -1,23 +1,15 @@
 from celery import shared_task, chain
-
-from django.core.mail import send_mail
 import requests
-from time import sleep
 from django.db import transaction
-from base.apis import get_customer_count
+from base.apis import create_coupon
 from datetime import datetime, timedelta, timezone
-
-
-from base.models import Store, Campaign, UserStoreLink, User, Flow, FlowStep, TextConfig, TimeDelayConfig
+from django.utils.crypto import get_random_string
+from base.models import Store, Campaign, UserStoreLink, Flow, FlowStep, TextConfig, TimeDelayConfig, CouponConfig
 import logging
-import time
 
 logging.basicConfig(level=logging.INFO)
 
 
-def clean_number(number):
-    #remove the + and spaces from the number
-    return number.replace('+', '').replace(' ', '')
 
 def send_whatsapp_message(store, number, msg, session):
     """
@@ -120,6 +112,7 @@ def process_flows_task(self, flow_ids, flow_data, current_step_index=0):
     
     try:
         store = Store.objects.get(store_id=flow_data['store_id'])
+        user = UserStoreLink.objects.filter(store=store).first().user
     except Store.DoesNotExist:
         logging.info(f"Store with id {flow_data['store_id']} does not exist.")
         return None
@@ -150,6 +143,7 @@ def process_flows_task(self, flow_ids, flow_data, current_step_index=0):
                         # Apply all replacements in one loop
                         for placeholder, value in replacements.items():
                             text_config.message = text_config.message.replace(placeholder, value)
+                            
                     
                 
                             
@@ -162,6 +156,33 @@ def process_flows_task(self, flow_ids, flow_data, current_step_index=0):
                     else:
                         logging.info(f"Failed to send message to {flow_data['customer_phone']}: {message}")
                 
+                elif flow_step.action_type.name == 'coupon':
+                    coupon_config = CouponConfig.objects.get(flow_step=flow_step)
+                    code = get_random_string(12).upper()
+                    coupondata = {
+                        'code': code,
+                        'type': coupon_config.type,
+                        'amount': coupon_config.amount,
+                        'maximum_amount': coupon_config.maximum_amount,
+                        'start_date': datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+                        'expiry_date': (datetime.today() + timedelta(days=coupon_config.expire_in)).strftime("%Y-%m-%d"),
+                        'free_shipping': coupon_config.free_shipping,
+                        'exclude_sale_products': coupon_config.exclude_sale_products
+                    }
+                    print(coupondata)
+                    
+                    result = create_coupon(user, coupondata)
+
+                    if result['success']:
+                        # Handle success, coupon creation was successful
+                        logging.info("Coupon created successfully:", result['data'])
+                        send_whatsapp_message(store, flow_data['customer_phone'],code, session)
+                        print(code)
+                    else:
+                        # Handle failure, coupon creation failed
+                        logging.error("Failed to create coupon: %s", result['message'])
+                                        
+
                 elif flow_step.action_type.name == 'delay':
                     time_delay_config = TimeDelayConfig.objects.get(flow_step=flow_step)
                     delay_seconds = convert_delay_to_seconds(time_delay_config.delay_time, time_delay_config.delay_type)
@@ -173,14 +194,13 @@ def process_flows_task(self, flow_ids, flow_data, current_step_index=0):
                             countdown=delay_seconds
                         )
                         return  # Exit the task to wait for the delayed execution
+                
             
         # Log when the flow is fully executed
 
         logging.info(f"Flow {flow.id} for store {store.store_id} has been fully executed.")
     
     return None
-
-
 
 
 
@@ -199,78 +219,12 @@ def convert_delay_to_seconds(delay_time, delay_type):
         return None  # If invalid delay type
     
     
+
+def clean_number(number):
+    #remove the + and spaces from the number
+    return number.replace('+', '').replace(' ', '')
     
-@shared_task
-def update_store_customers(store_id):
-    store = Store.objects.get(id=store_id)
-    store_link = UserStoreLink.objects.filter(store=store).first()
-    if not store_link:
-        logging.error(f"No UserStoreLink found for store {store.store_id}")
-        return
     
-    customer_count = get_customer_count(store_link.user)
-    if customer_count['success']:
-        with transaction.atomic():
-            store.total_customers = customer_count['customer_count']
-            store.save(update_fields=['total_customers'])
-            logging.info(f"Updated total customers for store {store.store_id} to {store.total_customers}")
-    else:
-        logging.error(f"Failed to update total customers for store {store.store_id}: {customer_count['message']}")
-
-
-
-@shared_task
-def update_total_customers(batch_size=10):
-    stores = Store.objects.all()
-    # Split stores into batches
-    batches = [stores[i:i + batch_size] for i in range(0, len(stores), batch_size)]
-
-    for batch in batches:
-        for store in batch:
-            logging.info(f"Updating total customers for store {store.store_id}")
-            update_store_customers.delay(store.id)  # Schedule each store update as an individual task
-        
-        # Optional: Sleep between batches to avoid overloading the system
-        time.sleep(60)  # Sleep for 1 minute between batches
-        
-@shared_task
-def reset_monthly_quota(store_id):
-    store = Store.objects.get(id=store_id)
-    time_since_insertion = datetime.now(timezone.utc) - store.subscription_date
-    try:
-        if time_since_insertion >= timedelta(days=30):
-            with transaction.atomic():
-                store.subscription_message_count = 0
-                store.subscription_date = datetime.now(timezone.utc)
-                store.save(update_fields=['subscription_date', 'subscription_message_count'])
-                logging.info(f"Updated subscription for store {store.id} to {store.subscription_message_count} at {store.subscription_date}")
-            return True, "Successfully Updated"
-        else:
-            logging.info(f"Period less than 30 days at {datetime.now(timezone.utc)}. Customer store date {store.subscription_date}")
-            return True, "Still not 30 days"
-    except Exception as e:
-        logging.error(f"Error occurred when updating store {store_id}: {e}")
-        return False, f"Error occurred when updating store {store_id}: {e}"
-
-
-@shared_task
-def update_store_subscription(batch_size=10):
-    stores = Store.objects.all()
-    batches = [stores[i:i + batch_size] for i in range(0, len(stores), batch_size)]
-
-    for batch in batches:
-        for store in batch:
-            task = reset_monthly_quota.apply_async(args=[store.id])  # Schedule with apply_async to check results later
-            task_result = task.get(timeout=10)  # Adjust timeout if needed
-
-            success, message = task_result
-            if success:
-                logging.info(f"Successfully updated subscription for store {store.id}: {message}")
-            else:
-                logging.error(f"Failed to update subscription for store {store.id}: {message}")
-
-        # Optionally, delay the next batch to avoid overloading
-        time.sleep(60)  # Sleep for 1 minute between batches
-            
-
     
+
+

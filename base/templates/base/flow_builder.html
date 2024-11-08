@@ -54,12 +54,16 @@
                                     <input type="number" class="coupon-amount" placeholder="أدخل المبلغ" value="{{ step.coupon_config.amount }}">
                                     <input type="number" class="max-amount" placeholder="أدخل الحد الأقصى للخصم" value="{{ step.coupon_config.maximum_amount }}">
                                     <input type="number" class="coupon-expiry" placeholder="أدخل عدد أيام انتهاء الصلاحية" value="{{ step.coupon_config.expire_in }}">
-                                    <label>
-                                        <input type="checkbox" class="free-shipping" {% if step.coupon_config.free_shipping %}checked{% endif %}> شحن مجاني
-                                    </label>
-                                    <label>
-                                        <input type="checkbox" class="exclude-sale-products" {% if step.coupon_config.exclude_sale_products %}checked{% endif %}> استبعاد المنتجات المخفضة
-                                    </label>
+                                    <label>شحن مجاني</label>
+                                    <select class="free-shipping" name="free_shipping">
+                                        <option value="True" {% if step.coupon_config.free_shipping %}selected{% endif %}>نعم</option>
+                                        <option value="False" {% if not step.coupon_config.free_shipping %}selected{% endif %}>لا</option>
+                                    </select>
+                                    <label>استبعاد المنتجات المخفضة</label>
+                                    <select class="exclude-sale-products" name="exclude_sale_products">
+                                        <option value="True" {% if step.coupon_config.exclude_sale_products %}selected{% endif %}>نعم</option>
+                                        <option value="False" {% if not step.coupon_config.exclude_sale_products %}selected{% endif %}>لا</option>
+                                    </select>
                                 </div>
                             {% endif %}
 
@@ -191,9 +195,15 @@
                 <label>الايام المتبقية على انتهاء الكوبون</label>
                 <input type="number" id="modal-coupon-expiry" class="coupon-expiry" min="1">
                 <label>شحن مجاني:</label>
-                <input type="checkbox" id="modal-free-shipping" class="free-shipping">
+                <select id="modal-free-shipping" class="free-shipping">
+                    <option value="True">نعم</option>
+                    <option value="False">لا</option>
+                </select>
                 <label>استبعاد المنتجات المخفضة:</label>
-                <input type="checkbox" id="modal-exclude-sale-products" class="exclude-sale-products">
+                <select id="modal-exclude-sale-products" class="exclude-sale-products">
+                    <option value="True">نعم</option>
+                    <option value="False">لا</option>
+                </select>
             </div>
 
             <div class="modal-footer">
@@ -487,8 +497,8 @@ document.getElementById('canvas-steps').addEventListener('click', function(event
             document.getElementById('modal-coupon-type').value = currentStep.querySelector('.coupon-type').value;
             document.getElementById('modal-coupon-max').value = currentStep.querySelector('.max-amount').value;
             document.getElementById('modal-coupon-expiry').value = currentStep.querySelector('.coupon-expiry').value;
-            document.getElementById('modal-free-shipping').checked = currentStep.querySelector('.free-shipping').checked;
-            document.getElementById('modal-exclude-sale-products').checked = currentStep.querySelector('.exclude-sale-products').checked;
+            document.getElementById('modal-free-shipping').value = currentStep.querySelector('.free-shipping').value;
+            document.getElementById('modal-exclude-sale-products').value = currentStep.querySelector('.exclude-sale-products').value;
         }
     }
 });
@@ -516,15 +526,15 @@ saveActionBtn.addEventListener('click', function() {
             var updatedCouponAmount = document.getElementById("modal-coupon-amount").value;
             var updatedCouponMax = document.getElementById("modal-coupon-max").value;
             var updatedCouponExpiry = document.getElementById("modal-coupon-expiry").value;
-            var updatedFreeShipping = document.getElementById("modal-free-shipping").checked;
-            var updatedExcludeSaleProducts = document.getElementById("modal-exclude-sale-products").checked;
+            var updatedFreeShipping = document.getElementById("modal-free-shipping").value;
+            var updatedExcludeSaleProducts = document.getElementById("modal-exclude-sale-products").value;
 
             currentStep.querySelector('.coupon-type').value = updatedCouponType;
             currentStep.querySelector('.coupon-amount').value = updatedCouponAmount;
             currentStep.querySelector('.max-amount').value = updatedCouponMax;
             currentStep.querySelector('.coupon-expiry').value = updatedCouponExpiry;
-            currentStep.querySelector('.free-shipping').checked = updatedFreeShipping;
-            currentStep.querySelector('.exclude-sale-products').checked = updatedExcludeSaleProducts;
+            currentStep.querySelector('.free-shipping').value = updatedFreeShipping;
+            currentStep.querySelector('.exclude-sale-products').value = updatedExcludeSaleProducts;
         }
     } else {
         // Fetch selected trigger data before saving
@@ -604,8 +614,8 @@ document.getElementById('flow-form').addEventListener('submit', function(e) {
             stepData.content.type = item.querySelector('.coupon-type').value;
             stepData.content.expire_in = item.querySelector('.coupon-expiry').value;
             stepData.content.maximum_amount = item.querySelector('.max-amount').value;
-            stepData.content.free_shipping = item.querySelector('.free-shipping').checked;
-            stepData.content.exclude_sale_products = item.querySelector('.exclude-sale-products').checked;
+            stepData.content.free_shipping = item.querySelector('.free-shipping').value;
+            stepData.content.exclude_sale_products = item.querySelector('.exclude-sale-products').value;
         }
 
         updatedSteps.push(stepData);

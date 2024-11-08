@@ -37,6 +37,7 @@ class Store(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     subscription = models.ForeignKey(Subscription, on_delete=models.SET_NULL, null=True, blank=True)
     token_valid = models.BooleanField(default=True)
+    token_refresh_date = models.DateTimeField(default=timezone.now)
     subscription_message_count = models.IntegerField(default=0)
     total_customers = models.IntegerField(default=0)
     total_purchases = models.IntegerField(default=0)
@@ -278,18 +279,14 @@ class CouponConfig(models.Model):
     flow_step = models.OneToOneField(FlowStep, on_delete=models.CASCADE, related_name='coupon_config', limit_choices_to={
         'text_config__isnull': True, 'time_delay_config__isnull': True
     })
-    coupon_code = models.CharField(max_length=12, unique=True, blank=True)
     type = models.CharField(max_length=50, choices=[('fixed', 'مبلغ ثابت'), ('percentage', 'نسبة مئوية')])
     amount = models.IntegerField()
     expire_in = models.IntegerField()  # Date in the format "YYYY-MM-DD"
-    maximum_amount = models.IntegerField()
+    maximum_amount = models.IntegerField(null=True)
     free_shipping = models.BooleanField()
     exclude_sale_products = models.BooleanField()
 
-    def save(self, *args, **kwargs):
-        if not self.coupon_code:
-            self.coupon_code = get_random_string(12).upper()  # Generates a random 12-character code
-        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"CouponConfig for {self.flow_step.flow.name} - Step {self.flow_step.order}"
 
@@ -317,18 +314,14 @@ class SuggestedCouponConfig(models.Model):
     suggested_flow_step = models.OneToOneField(SuggestedFlowStep, on_delete=models.CASCADE, related_name='suggested_coupon_config', limit_choices_to={
         'suggested_text_config__isnull': True, 'suggested_time_delay_config__isnull': True
     })
-    coupon_code = models.CharField(max_length=12, unique=True, blank=True)
     type = models.CharField(max_length=50, choices=[('fixed', 'مبلغ ثابت'), ('percentage', 'نسبة مئوية')])
     amount = models.IntegerField()
     expire_in = models.IntegerField()  # Date in the format "YYYY-MM-DD"
-    maximum_amount = models.IntegerField()
+    maximum_amount = models.IntegerField(null=True)
     free_shipping = models.BooleanField()
     exclude_sale_products = models.BooleanField()
 
-    def save(self, *args, **kwargs):
-        if not self.coupon_code:
-            self.coupon_code = get_random_string(12).upper()  # Generates a random 12-character code
-        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"Suggested CouponConfig for {self.suggested_flow_step.suggested_flow.name} - Step {self.suggested_flow_step.order}"
 

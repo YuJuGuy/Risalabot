@@ -164,6 +164,7 @@ CELERY_TASK_ACKS_LATE = True
 
 CELERY_IMPORTS = [
     'automations.tasks',
+    'automations.recurring_tasks'
 ]
 
 LOGGING = {
@@ -199,14 +200,18 @@ LOGGING = {
 
 CELERY_BEAT_SCHEDULE = {
     'update-total-customers-every-30-minutes': {
-        'task': 'automations.tasks.update_total_customers',  # Adjust this to match your task path
+        'task': 'automations.recurring_tasks.update_total_customers',  # Adjust this to match your task path
         'schedule': crontab(minute='*/30'),  # Runs every 30 minutes
     },
     
     'update-customer-subscription-daily': {
-        'task': 'automations.tasks.update_store_subscription',  # Adjust this to match your task path
+        'task': 'automations.recurring_tasks.update_store_subscription',  # Adjust this to match your task path
         'schedule': crontab(hour=0, minute=0),  # Runs daily at midnight
     },
-
     
+    'refresh-store-tokens-every-six-hours': {
+            'task': 'automations.recurring_tasks.recurring_refresh',  # Adjust this to match your task path
+            'schedule': crontab(hour='*/6', minute=0),  # Runs every 6 hours
+        },
+        
 }

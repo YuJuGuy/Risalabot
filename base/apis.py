@@ -1,8 +1,68 @@
 import requests
 from datetime import datetime
-from .models import UserStoreLink
+from .models import UserStoreLink, Store
 import base64
 import time
+import logging
+import os
+from django.db import transaction
+from django.utils import timezone
+
+
+
+logging.basicConfig(level=logging.INFO)
+
+def store_refresh_token(store_id):
+    try:
+        store = Store.objects.filter(store_id=store_id).first()
+        if not store:
+            return {
+                'success': False,
+                'message': 'Store does not exist for the given store ID.'
+            }
+        access_token = store.access_token
+        refresh_token = store.refresh_token
+        url = 'https://accounts.salla.sa/oauth2/token'
+        headers = {
+            'Authorization': f'Bearer {access_token}',
+            'Content-Type': 'application/x-www-form-urlencoded'
+        }
+
+        data = {
+            'client_id': os.getenv('CLIENT_ID'),
+            'client_secret': os.getenv('CLIENT_SECRET'),
+            'refresh_token': refresh_token,
+            'grant_type': 'refresh_token'
+        }
+
+        response = requests.post(url=url, headers=headers, data=data)
+        if response.ok:  # This checks if the status code is in the range 200-299
+            store_info = response.json()
+            store.access_token = store_info.get('access_token')
+            store.refresh_token = store_info.get('refresh_token')
+            store.token_refresh_date = timezone.now()
+            store.save()  # Save the updated store information to the database
+            return {
+                'success': True,
+            }
+        else:
+            print("API error:", response.text.encode('utf-8').decode('unicode_escape'))
+            return {
+                'success': False,
+                'message': response.json().get('message', 'Failed to refresh token')
+            }
+
+    except requests.RequestException as e:
+        return {
+            'success': False,
+            'message': str(e)
+        }
+    except Exception as e:
+        return {
+            'success': False,
+            'message': str(e)
+        }
+
 
 
 def get_customer_count(user):
@@ -196,6 +256,68 @@ def delete_customer_group(user,group_id):
     response = requests.delete(groups_url, headers=headers)
     
     return response.json()
+
+
+
+
+def create_coupon(user, coupondata):
+    try:
+        store = UserStoreLink.objects.get(user=user).store
+        access_token = store.access_token
+        
+        headers = {
+            'User-Agent': 'Apidog/1.0.0 (https://apidog.com)',
+            'Authorization': f'Bearer {access_token}',
+            'Content-Type': 'application/json'
+        }
+        
+        url = "https://api.salla.dev/admin/v2/coupons"
+        
+        # Prepare the data for the coupon
+        data = {
+                    "code": coupondata['code'],
+                    "type": coupondata['type'],
+                    "amount": coupondata['amount'],
+                    "free_shipping": coupondata['free_shipping'],
+                    "start_date": coupondata['start_date'],
+                    "expiry_date": coupondata['expiry_date'],
+                    "exclude_sale_products": coupondata['exclude_sale_products']
+                }
+        
+        if coupondata['type'] == 'percentage':
+            data["maximum_amount"] = coupondata['maximum_amount']
+        
+        # Make the API request
+        response = requests.post(url, headers=headers, json=data)
+
+        # Check if the response was successful
+        if response.status_code >= 200 and response.status_code < 300:
+            print(response.json())
+            return {
+                'success': True,
+                'data': response.json()
+            }
+        else:
+            print("API error:", response.text.encode('utf-8').decode('unicode_escape'))
+            return {
+                'success': False,
+                'message': response.json().get('message', 'Failed to create coupon')
+            }
+    except UserStoreLink.DoesNotExist:
+        return {
+            'success': False,
+            'message': 'UserStoreLink does not exist for the given user.'
+        }
+    except requests.RequestException as e:
+        return {
+            'success': False,
+            'message': str(e)
+        }
+    except Exception as e:
+        return {
+            'success': False,
+            'message': str(e)
+        }
 
 
 

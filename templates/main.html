@@ -24,14 +24,13 @@
 
             
             <div class="content">
+                {% if token_invalid %}
+                    {{ token_message }}
+                {% endif %}
                 {% if messages %}
                     <div id="message-container">
                         {% for message in messages %}
-                            {% if message.tags == 'error' %}
-                                <div class="message error">{{ message }}</div>
-                            {% else %}
-                                <div class="message success">{{ message }}</div>
-                            {% endif %}
+                            <div class="message {{ message.tags }}">{{ message }}</div>
                         {% endfor %}
                     </div>
                 {% endif %}
@@ -44,7 +43,6 @@
     </body>
     <script src="https://kit.fontawesome.com/985ffc9040.js" crossorigin="anonymous"></script>
     <script src="{% static 'js/main.js' %}"></script>
-    <script src="https://cdn.datatables.net/v/dt/jq-3.7.0/dt-2.1.8/datatables.min.js"></script>
 
 
 </html>

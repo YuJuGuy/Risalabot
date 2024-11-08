@@ -1,6 +1,4 @@
 from django.shortcuts import render,redirect
-import random
-import string
 from django.contrib.auth import authenticate
 from celery.exceptions import CeleryError
 from django.core.exceptions import PermissionDenied
@@ -18,15 +16,15 @@ from django.utils.crypto import get_random_string
 from Risalabot.celery import app as celery_app
 from datetime import datetime
 from django.db.models import F
-from django.db import models
 from django.shortcuts import get_object_or_404
 import json
 from django.core.exceptions import ValidationError
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 from django.db import IntegrityError
-from automations.tasks import reset_monthly_quota
 from datetime import datetime, timezone, timedelta
+from . decorators import check_token_validity
+
 
 import logging
 
@@ -37,8 +35,11 @@ __all__ = ('celery_app',)
 
 
 
+
+
 def home(request):
     return render(request, 'base/home.html')
+
 
 def loginPage(request):
     page = 'login'
@@ -98,16 +99,20 @@ def registerPage(request):
 
 
 @login_required(login_url='login')
-def dashboard(request):
+@check_token_validity
+def dashboard(request, context=None):
     # Initialize default values
-    context = {
+    if context is None:
+        context = {}
+    
+    context.update({
         'store': None,
         'message_count': 0,
         'purchases': 0,
         'total_customers': 0,
         'active_automations': 0,
         'clicks': 0
-    }
+    })
 
     try:
         # Get store data if it exists
@@ -129,9 +134,8 @@ def dashboard(request):
         logger.error(f"Error in dashboard view: {str(e)}")
         messages.error(request, 'An error occurred while loading dashboard data.')
     
-
-
     return render(request, 'base/dashboard.html', context)
+
 
 # @login_required(login_url='login')
 # def manage_event(request, event_id=None):
@@ -280,6 +284,34 @@ def validate_steps_data(steps_data):
 
                 if delay_type not in ['hours', 'days', 'minutes']:
                     raise ValidationError("Invalid delay type. Choose either 'hours' or 'days'.")
+                
+                
+            # Coupon action validation
+            elif step['action_type'] == 'coupon':
+                coupon_type = step.get('content', {}).get('type')
+                amount = step.get('content', {}).get('amount')
+                expire_in = step.get('content', {}).get('expire_in')
+                maximum_amount = step.get('content', {}).get('maximum_amount')
+                free_shipping = step.get('content', {}).get('free_shipping')
+                exclude_sale_products = step.get('content', {}).get('exclude_sale_products')
+
+                if coupon_type not in ['fixed', 'percentage']:
+                    raise ValidationError("Invalid coupon type. Choose either 'fixed' or 'percentage'.")
+
+                if amount is None or amount <= 0:
+                    raise ValidationError("Coupon action requires a valid amount.")
+
+                if expire_in is None or expire_in <= 0:
+                    raise ValidationError("Coupon action requires a valid expiration period.")
+
+                if maximum_amount is not None and maximum_amount < 0:
+                    raise ValidationError("Maximum amount cannot be negative.")
+
+                if free_shipping not in [True, False]:
+                    raise ValidationError("Free shipping must be a boolean value.")
+
+                if exclude_sale_products not in [True, False]:
+                    raise ValidationError("Exclude sale products must be a boolean value.")
         
         return steps
     
@@ -375,12 +407,13 @@ def flow_builder(request, flow_id):
                             if content.get('type') not in ['fixed', 'percentage']:
                                 raise ValidationError('Invalid coupon type. Choose either "fixed" or "percentage".')
                             TextConfig.objects.filter(flow_step=step).delete()
+                            max_discount = content.get('maximum_amount', None) if content.get('type') == 'fixed' else None
                             CouponConfig.objects.update_or_create(
                                 flow_step=step,
                                 defaults={
                                     'coupon_type': content.get('type'),
                                     'amount': content.get('amount'),
-                                    'max_discount': content.get('maximum_amount', 0),
+                                    'max_discount': max_discount,
                                     'expiry_days': content.get('expire_in', 0),
                                     'free_shipping': content.get('free_shipping', False),
                                     'exclude_sale_products': content.get('exclude_sale_products', False)
@@ -506,12 +539,13 @@ def activate_suggested_flow(request, suggestion_id):
                     coupon_config = SuggestedCouponConfig.objects.filter(suggested_flow_step=suggested_step).first()
                     if coupon_config:
                         logger.info(f"Creating coupon config for step {new_step.id}")
+                        maximum_amount = None if coupon_config.type == 'percentage' else coupon_config.maximum_amount
                         CouponConfig.objects.create(
                             flow_step=new_step,
                             type=coupon_config.type,
                             amount=coupon_config.amount,
                             expire_in=coupon_config.expire_in,
-                            maximum_amount=coupon_config.maximum_amount,
+                            maximum_amount=maximum_amount,
                             free_shipping=coupon_config.free_shipping,
                             exclude_sale_products=coupon_config.exclude_sale_products
                         )
