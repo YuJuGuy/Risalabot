@@ -27,3 +27,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Function to update subcategory visibility based on event type selection
 });
+
+
+function showMessage(message) {
+    const messageDisplay = document.getElementById('message-display');
+    
+    messageDisplay.textContent = message; // Set message content
+    messageDisplay.classList.add('show'); // Show the message
+
+    // Hide the message after 3 seconds
+    setTimeout(() => {
+        messageDisplay.classList.remove('show'); // Hide the message
+    }, 3000);
+}

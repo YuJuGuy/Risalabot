@@ -640,12 +640,12 @@ document.getElementById('flow-form').addEventListener('submit', function(e) {
             window.location.href = data.redirect_url;
         } else {
             console.error('Error saving flow:', data.errors);
-            alert('Error saving flow: ' + data.errors);
+            showMessage('خطأ في حفظ التدفق: ' + data.errors);
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('An unexpected error occurred. Please try again.');
+        showMessage('حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى.');
     });
 });
 

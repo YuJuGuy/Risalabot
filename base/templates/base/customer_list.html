@@ -102,6 +102,14 @@
 <script src="https://cdn.datatables.net/v/dt/jq-3.7.0/dt-2.1.8/datatables.min.js"></script>
 <script>
 
+    document.addEventListener("DOMContentLoaded", function() {
+        setupPopup();
+        setupConditions();
+        setupDeleteGroupPopup();
+        fetchAllCustomers();
+    });
+    
+
     document.getElementById('sync-button').addEventListener('click', function() {
         fetch('/sync_data/', {
             method: 'POST',
@@ -113,19 +121,21 @@
         .then(response => response.json())
         .then(data => {
             if (data.status === "success") {
-                alert(data.message);
+                showMessage(data.message);
                 // Refresh the customer and group data display
                 fetchAllCustomers();  // Ensure this function reloads the table and group data
             } else {
-                alert('Error: ' + data.message);
+                showMessage('Error: ' + data.message);
             }
         })
         .catch(error => console.error('Error syncing data:', error));
     });
 
     
-    const customersUrl = document.getElementById('data-urls').dataset.customersUrl;
-
+    const customersUrl = document.getElementById('data-urls')?.dataset.customersUrl;
+    if (!customersUrl) {
+        console.error('Customer URL is not defined. Check if the data-urls element has the correct data attribute.');
+    }
     document.addEventListener('DOMContentLoaded', function() {
         const myTable = document.getElementById('myTable');
         if (myTable) {
@@ -161,16 +171,9 @@
             });
         }
     
-        fetchAllCustomers();
     });
     
-    document.addEventListener("DOMContentLoaded", function() {
-        setupPopup();
-        setupConditions();
-        setupDeleteGroupPopup();
-        fetchAllCustomers();
-    });
-    
+
     function setupDeleteGroupPopup() {
         const deleteGroupPopup = document.getElementById('delete-group-popup');
         const confirmDeleteButton = document.getElementById('confirm-delete-button');
@@ -221,7 +224,7 @@
     
     function showError(message) {
         // Option 1: Display error message in an alert (simple approach)
-        alert(message);
+        showMessage(message);
     
         // Option 2: Display error in a specific UI element (more user-friendly)
         const errorContainer = document.querySelector('.error-container');

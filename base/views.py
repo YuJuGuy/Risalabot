@@ -197,12 +197,16 @@ def dashboard(request, context=None):
 
 
 @login_required(login_url='login')
-def flows(request):
+@check_token_validity
+def flows(request, context=None):
     try:
         user = request.user
     except User.DoesNotExist:
         messages.error(request, 'No user found.')
         return redirect('dashboard')
+    
+    if context is None:
+        context = {}
     
     if request.method == 'POST':
         form = FlowForm(request.POST)
@@ -221,10 +225,10 @@ def flows(request):
         form = FlowForm()
     
     
-    context = {
+    context.update({
         'form': form,
         'triggers': Trigger.objects.all(),
-    }
+    })
     return render(request, 'base/flows.html', context)
 
 
@@ -317,7 +321,8 @@ def validate_steps_data(steps_data):
     
 @login_required(login_url='login')
 @require_http_methods(["GET", "POST"])
-def flow_builder(request, flow_id):
+@check_token_validity
+def flow_builder(request, flow_id, context=None):
     try:
         flow = Flow.objects.get(id=flow_id, owner=request.user)
     except Flow.DoesNotExist:
@@ -326,6 +331,8 @@ def flow_builder(request, flow_id):
         messages.error(request, 'Flow not found.')
         return redirect('flows')
 
+    if context is None:
+        context = {}
     if request.method == 'POST':
         flow_form = FlowForm(request.POST, instance=flow)
         if flow_form.is_valid():
@@ -446,8 +453,7 @@ def flow_builder(request, flow_id):
 
     flow_steps = FlowStep.objects.filter(flow=flow).order_by('order')
     action_types = FlowActionTypes.objects.all()
-
-    return render(request, 'base/flow_builder.html', {
+    context.update({
         'flow': flow,
         'triggers': Trigger.objects.all(),
         'form': FlowForm(instance=flow),
@@ -455,6 +461,8 @@ def flow_builder(request, flow_id):
         'action_types': action_types,
         'redirect_url': reverse('flows'),
     })
+
+    return render(request, 'base/flow_builder.html', context)
 
 
 @login_required(login_url='login')
@@ -573,7 +581,10 @@ def activate_suggested_flow(request, suggestion_id):
 
 
 @login_required(login_url='login')
-def campaign(request):
+@check_token_validity
+def campaign(request, context=None):
+    if context is None:
+        context = {}
     try:
         store = UserStoreLink.objects.get(user=request.user).store
         store_groups_response = group_campaign(request.user)
@@ -587,7 +598,7 @@ def campaign(request):
     except UserStoreLink.DoesNotExist:
         messages.error(request, 'No store linked. Please link a store first.')
         return redirect('dashboard')
-    
+
     if request.method == 'POST':
         form = CampaignForm(request.POST, store_groups=store_groups)
         if form.is_valid():
@@ -648,9 +659,9 @@ def campaign(request):
     else:
         form = CampaignForm(store_groups=store_groups)
     
-    context = {
+    context.update({
         'form': form,
-    }
+    })
     
     return render(request, 'base/campaigns.html', context)
         
@@ -855,13 +866,17 @@ def delete_campaign(request, campaign_id):
 
 #Customer Views
 @login_required(login_url='login')
-def customers_view(request):
+@check_token_validity
+def customers_view(request, context=None):
     try:
         store = UserStoreLink.objects.get(user=request.user).store
         
     except UserStoreLink.DoesNotExist:
         messages.error(request, 'No store linked. Please link a store first.')
         return redirect('dashboard')
+    
+    if context is None:
+        context = {}
     
     form = GroupCreationForm()
     if request.method == 'POST':
@@ -886,9 +901,9 @@ def customers_view(request):
             messages.error(request, 'Error creating group. Please correct the form errors 2.')
             return redirect('customers')
     
-    context = {
+    context.update({
         'form': form,
-    }
+    })
     
     return render(request, 'base/customer_list.html',context)
 
@@ -946,7 +961,7 @@ def sync_data(request):
         customer_data = get_customer_data(request.user)
         if not customer_data.get('success', False):
             logger.error("Failed to fetch customer data from API.")
-            return JsonResponse({'error': 'Failed to fetch customer data from API'}, status=500)
+            return JsonResponse({'error': 'فشل في جلب بيانات العملاء من واجهة برمجة التطبيقات'}, status=500)
 
         # Get the store associated with the logged-in user
         store = Store.objects.get(userstorelink__user=request.user)
@@ -986,11 +1001,11 @@ def sync_data(request):
             print(f"Associating {customer['name']} with Groups: {[g.group_id for g in groups]}")  # Debug print for groups found
             customer_obj.customer_groups.set(groups)
 
-        return JsonResponse({'status': 'success', 'message': 'Database updated successfully.'}, status=200)
+        return JsonResponse({'status': 'success', 'message': 'تم تحديث قاعدة البيانات بنجاح.'}, status=200)
 
     except Exception as e:
         logger.error("Error during sync: %s", e, exc_info=True)
-        return JsonResponse({'error': 'An error occurred during sync.'}, status=500)
+        return JsonResponse({'error': 'حدث خطأ أثناء المزامنة.'}, status=500)
 
     
     

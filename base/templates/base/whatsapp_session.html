@@ -140,11 +140,11 @@
                         if (data.success) {
                             window.location.reload();
                         } else {
-                            alert('Failed to logout from WhatsApp.');
+                            showMessage('فشل تسجيل الخروج من واتساب.');
                         }
                     })
                     .catch(error => {
-                        alert('An error occurred while logging out from WhatsApp.');
+                        showMessage('حدث خطأ أثناء تسجيل الخروج من واتساب.');
                     });
                 }
             });

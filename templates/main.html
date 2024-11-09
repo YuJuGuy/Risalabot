@@ -16,27 +16,36 @@
 
     </head>
     <body>
-        
-        {% include 'navbar.html'%}
-        <div class="divider">
-            
-            {% include 'sidemenu.html'%}
 
+
+
+        {% if token_invalid %}
+        <div class="overlay-content">
+            <div class="overlay-container">
+                <h2>{{ token_message }}</h2>
+                <button class="reauth-button" onclick="window.location.href='{% url 'authstore' %}'">أعد الاتصال</button>
+            </div>
+        </div>
+        {% endif %}
+
+        <div id="content-wrapper" class="{% if token_invalid %}blurred{% endif %}">
+            {% include 'navbar.html'%}
+            <div class="divider">
+                {% include 'sidemenu.html'%}
+                <div class="content">
+                    <div class='message-display' id='message-display'>
             
-            <div class="content">
-                {% if token_invalid %}
-                    {{ token_message }}
-                {% endif %}
-                {% if messages %}
-                    <div id="message-container">
-                        {% for message in messages %}
-                            <div class="message {{ message.tags }}">{{ message }}</div>
-                        {% endfor %}
                     </div>
-                {% endif %}
-
-                {% block content %}
-                {% endblock %}
+                    {% if messages %}
+                        <div id="message-container">
+                            {% for message in messages %}
+                                <div class="message {{ message.tags }}">{{ message }}</div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                    {% block content %}
+                    {% endblock %}
+                </div>
             </div>
         </div>
 

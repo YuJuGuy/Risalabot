@@ -12,7 +12,7 @@ def check_token_validity(view_func):
             if user_store_link and not user_store_link.store.token_valid:
                 context.update({
                     'token_invalid': True,
-                    'token_message': "Your store connection has expired. Please reconnect your store to continue using our services."
+                    'token_message': "لقد انتهت صلاحية اتصال متجرك. يرجى إعادة الاتصال بمتجرك للاستمرار في استخدام خدماتنا."
                 })
         # Pass context explicitly to the response
         response = view_func(request, *args, context=context, **kwargs)

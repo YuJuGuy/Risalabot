@@ -68,14 +68,27 @@ html, body {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.logo-container{
-  width: 200px;
-  height: auto;
+.logo-container {
+  height: var(--header-height); /* Constrain the logo container to the header height */
+  width: auto; /* The width will be determined by the image or can be set if needed */
+  display: flex;
+  align-items: center;
+  justify-content: center; /* Center the logo vertically and horizontally */
+  padding: 0.5rem;
 }
-.logo{
-  color : #fff;
-  font-weight: 800;
+
+.logo-container a{
+  height: 100%;
+  width: 100%;
 }
+
+.logo-image {
+  max-height: 100%; /* Ensure the image height does not exceed the header height */
+  width: auto; /* Maintain aspect ratio */
+  object-fit: contain; /* Fit the image within the container without cropping */
+}
+
+
 .right-container{
   display: flex;
   align-items: center;
@@ -100,47 +113,97 @@ html, body {
 
 /* Overlay content */
 
+.message-display {
+  display: none; /* Start hidden */
+  position: fixed;
+  top: 30%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 25%;
+  height: 15%;
+  padding: 1em;
+  background-color: #ffffff;
+  color: #333333;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  border-radius: 12px;
+  box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.15);
+  font: inherit;
+  font-size: 1.25em;
+  text-align: center;
+  transition: opacity 0.3s ease, transform 0.3s ease; /* Smooth fade-in/out */
+  opacity: 0; /* Hidden by default */
+  font-weight: bold;
+  
+}
+
+.message-display.show {
+  display: flex; /* Show when 'show' class is added */
+  opacity: 1; /* Visible */
+  transform: translateX(-50%) translateY(0); /* Subtle pop-in */
+}
+
+
 .overlay-content {
-    width: 100%;
-    height: 100vh;
-    background-color: #a7d7c5; /* Full screen white */
-    display: flex;
-    justify-content: center;
-    align-items: center;
+  position: fixed; /* Make it cover the whole page */
+  top: 0; /* Align to the top */
+  left: 0; /* Align to the left */
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5); /* Semi-transparent background to darken everything */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000; /* Make sure it's above all other content */
 }
 
+/* Container for the reauth message */
 .overlay-container {
-    display: flex;
-    flex-direction: column;
-    justify-self: center;
-    width: auto; /* Mid width */
-    padding: 20px;
-    background-color: #fff;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Shadow effect */
-    border-radius: 8px; /* Rounded corners */
+  display: flex;
+  flex-direction: column;
+  justify-self: center;
+  width: auto; /* Mid width */
+  padding: 20px;
+  background-color: #fff;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Shadow effect */
+  border-radius: 8px; /* Rounded corners */
+  text-align: center;
 }
 
+/* Style for the heading inside the overlay */
 .overlay-container h2 {
-    font-size: 24px; /* Nice font size */
-    color: #333; /* Darker text color */
-    margin-bottom: 20px; /* Spacing below the heading */
-    text-align: center; /* Centered text */
+  font-size: 24px; /* Nice font size */
+  color: #333; /* Darker text color */
+  margin-bottom: 20px; /* Spacing below the heading */
 }
 
-.overlay-container button {
-    background-color: #84c7ae; /* Button color */
-    color: #fff; /* Button text color */
-    border: none; /* No border */
-    padding: 10px 20px; /* Padding for button */
-    border-radius: 5px; /* Rounded corners */
-    cursor: pointer; /* Pointer cursor on hover */
-    transition: background-color 0.3s; /* Smooth transition */
-    font-family: inherit;
+/* Optional reauth button styling */
+.reauth-button {
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  margin: 0;
+  background-color: #21aa78; /* Green background */
+  color: #fff;
+  align-self: center;
 }
 
-.overlay-container button:hover {
-    background-color: #8bdfc0; /* Darker shade on hover */
+.reauth-button:hover {
+  background-color: #1e8e5f; /* Darker green on hover */
+  transform: scale(1.05); /* Slightly enlarge the button */
+  transition: background-color 0.3s, transform 0.3s; /* Smooth transition */
 }
+
+/* Blurred effect for the content */
+.blurred {
+  filter: blur(5px);
+  pointer-events: none; /* Prevent interactions with blurred elements */
+}
+
+
 
 /* Main content */
 .content {
