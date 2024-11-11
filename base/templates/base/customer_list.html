@@ -2,9 +2,9 @@
 {% load static %}
 {% block content %}
 
-<div class="popup-group2" id="popup-group">
-    <div class="popup-content2">
-        <form method="post" id="group-creation-form2">
+<div class="popup-group-group" id="popup-group">
+    <div class="popup-content-group">
+        <form method="post" id="group-creation-form">
             {% csrf_token %}
             {{ form.name }}
             <div id="conditions-container"></div>
@@ -42,19 +42,19 @@
     </div>
 </template>
 
-<div class="cards-container" id = "group-cards-container">
-    <div class="customers-card-container">
+<div class="cards-container" id ="group-cards-container">
+    <div class="customers-card-container" id="total-customers-card">
         <div class="space"></div>
         <div class="all-customers">
             <i class="fa-solid fa-user"></i>
         </div>
         <div class="customers-count">
             <span class="customers-count-title">عدد العملاء</span>
-            <span class="customers-count-number">Loading</span>
+            <span class="customers-count-number" id="total-customers-count">Loading</span>
         </div>
     </div>
 
-    <div class="group-card-container" id="group-card">
+    <div class="group-card-container" id="new-group-card">
         <div class="space"></div>
         <div class="all-customers"> 
             <i class="fa-solid fa-user-plus"></i>
@@ -107,10 +107,48 @@
         setupConditions();
         setupDeleteGroupPopup();
         fetchAllCustomers();
+        const groupCreationForm = document.getElementById('group-creation-form');
+        groupCreationForm.addEventListener('submit', function(event) {
+            event.preventDefault(); // Prevent the default form submission
+    
+            const formData = new FormData(groupCreationForm);
+            fetch('/customers/', { // replace with the actual URL
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showMessage(data.message); // Show success message
+                    syncData()
+                    closePopup(); // Close the popup after successful creation
+                } else {
+                    showMessage(data.message || 'Error creating group.');
+                    if (data.errors) {
+                        // Handle specific field errors if available
+                        for (const [field, messages] of Object.entries(data.errors)) {
+                            messages.forEach(message => showMessage(`${field}: ${message}`));
+                        }
+                    }
+                }
+            })
+            .catch(error => console.error('Error creating group:', error));
+        });
     });
+
     
 
-    document.getElementById('sync-button').addEventListener('click', function() {
+    function closePopup() {
+        document.getElementById('popup-group').classList.remove('show');
+    }
+    
+
+    document.getElementById('sync-button').addEventListener('click', syncData);
+
+    function syncData() {
         fetch('/sync_data/', {
             method: 'POST',
             headers: {
@@ -129,7 +167,7 @@
             }
         })
         .catch(error => console.error('Error syncing data:', error));
-    });
+    }
 
     
     const customersUrl = document.getElementById('data-urls')?.dataset.customersUrl;
@@ -182,16 +220,38 @@
     
         // Use event delegation to handle delete link clicks
         document.body.addEventListener('click', function(event) {
-            if (event.target.closest('.delete-group-link')) {
+            const deleteLink = event.target.closest('.delete-group-link');
+            if (deleteLink) {
                 event.preventDefault();
-                groupIdToDelete = event.target.closest('.delete-group-link').dataset.groupId;
+                groupIdToDelete = deleteLink.dataset.groupId; // Ensure `data-group-id` is in the HTML
                 deleteGroupPopup.style.display = 'flex';
             }
         });
     
         confirmDeleteButton.addEventListener('click', function() {
             if (groupIdToDelete) {
-                window.location.href = `/delete-group/${groupIdToDelete}/`;
+                // Perform AJAX request to delete group
+                fetch(`/delete-group/${groupIdToDelete}/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        showMessage(data.message);
+                        syncData(); // Refresh the data immediately
+                        deleteGroupPopup.style.display = 'none'; // Close the popup
+                    } else {
+                        showMessage(data.message || 'Error deleting group.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error deleting group:', error);
+                    showMessage('An error occurred while deleting the group.');
+                });
             }
         });
     
@@ -208,17 +268,42 @@
         });
     }
     
+    
+    
     function setupPopup() {
         const popup = document.getElementById('popup-group');
-        const customersCard = document.getElementById('group-card');
+        const customersCard = document.getElementById('new-group-card');
         const popupClose = document.getElementById('closePopup');
+
     
         if (!popup || !customersCard || !popupClose) {
             console.error('Popup or necessary elements not found.');
             return;
         }
     
-        customersCard.addEventListener('click', () => popup.classList.add('show'));
+        // Function to clear form elements in the popup
+        function clearPopupFields() {
+
+            const formElements = popup.querySelectorAll('input, select, textarea');
+            const conditionsContainer = document.getElementById('conditions-container');
+            conditionsContainer.innerHTML = '';
+
+            formElements.forEach(element => {
+                if (element.type === 'checkbox' || element.type === 'radio') {
+                    element.checked = false;
+                } else {
+                    element.value = '';
+                }
+            });
+        }
+    
+        // Show the popup and clear fields each time it’s opened
+        customersCard.addEventListener('click', () => {
+            clearPopupFields();
+            popup.classList.add('show');
+        });
+    
+        // Close the popup
         popupClose.addEventListener('click', () => popup.classList.remove('show'));
     }
     
@@ -249,9 +334,15 @@
                 const allCustomers = data.customers;
                 const totalCustomers = allCustomers.length;
     
-                document.querySelector('.customers-count-number').textContent = totalCustomers;
+                // Update total customer count element
+                const totalCustomersCountElement = document.getElementById('total-customers-count');
+                if (totalCustomersCountElement) {
+                    totalCustomersCountElement.textContent = totalCustomers;
+                } else {
+                    console.error('Total customers count element not found.');
+                }
     
-                // Update the table
+                // Update the table with customer data
                 const table = $('#myTable').DataTable();
                 table.clear().rows.add(allCustomers).draw();
     
@@ -264,20 +355,28 @@
         .catch(error => showError('Error fetching customers: ' + error));
     }
     
+    
     function updateGroupCounts(groupData) {
         const groupCardsContainer = document.getElementById('group-cards-container');
     
+        if (groupData.length === 0) {
+            // Remove all dynamic group cards if no groups are left, except total and new group cards
+            Array.from(groupCardsContainer.children).forEach(card => {
+                if (!card.id.includes('total-customers-card') && !card.id.includes('new-group-card')) {
+                    groupCardsContainer.removeChild(card);
+                }
+            });
+            return; // Exit early since there are no groups to display
+        }
+    
         // Update existing cards or create new ones based on groupData
+        const existingGroupNames = groupData.map(group => group.name);
+    
         groupData.forEach(group => {
-            const { name, customer_count } = group;
+            const { group_id, name, customer_count } = group;
     
             // Check if a card already exists for this group name
-            const existingCard = Array.from(groupCardsContainer.children).find(
-                card => {
-                    const titleElement = card.querySelector('.customers-count-title');
-                    return titleElement && titleElement.textContent === name;
-                }
-            );
+            const existingCard = document.querySelector(`[data-group-id="${group_id}"]`);
     
             if (existingCard) {
                 // Update count for existing card if it exists
@@ -285,27 +384,29 @@
                 if (countElement) countElement.textContent = customer_count;
             } else {
                 // Create new card if it doesn't exist
-                const groupCard = createGroupCard(name, customer_count);
+                const groupCard = createGroupCard(group_id, name, customer_count);
                 groupCardsContainer.appendChild(groupCard);
             }
         });
     
-        // Remove cards that are no longer in groupData
+        // Remove any cards that are no longer in groupData
         Array.from(groupCardsContainer.children).forEach(card => {
-            const cardTitle = card.querySelector('.customers-count-title');
-            const cardName = cardTitle ? cardTitle.textContent : null;
-            if (cardName && !groupData.some(group => group.name === cardName)) {
+            const titleElement = card.querySelector('.customers-count-title');
+            const cardName = titleElement ? titleElement.textContent : null;
+            if (cardName && !existingGroupNames.includes(cardName) && !card.id.includes('total-customers-card') && !card.id.includes('new-group-card')) {
                 groupCardsContainer.removeChild(card);
             }
         });
     }
     
-    function createGroupCard(groupName, groupCount) {
+    
+    
+    function createGroupCard(groupID, groupName, groupCount) {
         const groupCard = document.createElement('div');
         groupCard.classList.add('customers-card-container');
         groupCard.innerHTML = `
             <div class="space">
-                <a href="#" class="delete-group-link" data-group-name="${groupName}">
+                <a href="#" class="delete-group-link" data-group-id="${groupID}">
                     <i class="fa-solid fa-xmark"></i>
                 </a>
             </div>

@@ -52,7 +52,7 @@
                                 <div class="step-action" style="display:none">
                                     <input type="text" class="coupon-type" placeholder="أدخل نوع القسيمة" value="{{ step.coupon_config.type }}">
                                     <input type="number" class="coupon-amount" placeholder="أدخل المبلغ" value="{{ step.coupon_config.amount }}">
-                                    <input type="number" class="max-amount" placeholder="أدخل الحد الأقصى للخصم" value="{{ step.coupon_config.maximum_amount }}">
+                                    <input type="number" class="max-amount" placeholder="أدخل الحد الأقصى للخصم" value="{{ step.coupon_config.maximum_amount|default_if_none:'' }}" min="0">
                                     <input type="number" class="coupon-expiry" placeholder="أدخل عدد أيام انتهاء الصلاحية" value="{{ step.coupon_config.expire_in }}">
                                     <label>شحن مجاني</label>
                                     <select class="free-shipping" name="free_shipping">
@@ -64,6 +64,7 @@
                                         <option value="True" {% if step.coupon_config.exclude_sale_products %}selected{% endif %}>نعم</option>
                                         <option value="False" {% if not step.coupon_config.exclude_sale_products %}selected{% endif %}>لا</option>
                                     </select>
+                                    <textarea class="coupon-message" placeholder="أدخل نص الرسالة هنا">{{ step.coupon.message }}</textarea>
                                 </div>
                             {% endif %}
 
@@ -114,8 +115,8 @@
 
 <div id="action-modal" class="modal" style="display:none;">
     <div class="popup-group">
-    <div class="modal-content" id="modal-content">
         <span class="close">&times;</span>
+    <div class="modal-content" id="modal-content">
 
 
             <div id="trigger-fields" style="display: none;">
@@ -132,9 +133,20 @@
                     </div>
                 </div>
             </div>
+
+                    <!-- Delay Action Fields -->
+            <div id="delay-fields" style="display:none;">
+                <label>التأخير:</label>
+                <input type="number" id="modal-delay-time" class="delay-time" value="1">
+                <select id="modal-delay-type" class="delay-type">
+                    <option value="hours">ساعات</option>
+                    <option value="days">أيام</option>
+                    <option value="minutes">دقائق</option>
+                </select>
+            </div>
             
         <!-- SMS Action Fields -->
-            <div id="sms-fields" style="display:none;">
+            <div id="sms-fields" class="sms-fields" style="display:none;">
                 <label>الرسالة:</label>
                 <textarea placeholder="أدخل نص الرسالة هنا" id="modal-sms-message" class="sms-message"></textarea>
                 <div class="available-variables">
@@ -171,18 +183,9 @@
                 </div>
             </div>
 
-        <!-- Delay Action Fields -->
-            <div id="delay-fields" style="display:none;">
-                <label>التأخير:</label>
-                <input type="number" id="modal-delay-time" class="delay-time" value="1">
-                <select id="modal-delay-type" class="delay-type">
-                    <option value="hours">ساعات</option>
-                    <option value="days">أيام</option>
-                    <option value="minutes">دقائق</option>
-                </select>
-            </div>
 
-            <div id="coupon-fields" style="display:none;">
+
+            <div id="coupon-fields" style="display:none;" data-action-type="coupon">
                 <label>الكوبون:</label>
                 <select id="modal-coupon-type" class="coupon-type">
                     <option value="fixed">مبلغ ثابت</option>
@@ -190,8 +193,10 @@
                 </select>
                 <label>المبلغ او النسبة</label>
                 <input type="number" id="modal-coupon-amount" class="coupon-amount" min="1">
-                <label>الحد الاعلى للخصم</label>
-                <input type="number" id="modal-coupon-max" class="max-amount" min="1">
+                <div id="coupon-max-field">
+                    <label>الحد الاعلى للخصم</label>
+                    <input type="number" id="modal-coupon-max" class="max-amount" min="1">
+                </div>
                 <label>الايام المتبقية على انتهاء الكوبون</label>
                 <input type="number" id="modal-coupon-expiry" class="coupon-expiry" min="1">
                 <label>شحن مجاني:</label>
@@ -204,6 +209,7 @@
                     <option value="True">نعم</option>
                     <option value="False">لا</option>
                 </select>
+                <textarea placeholder="أدخل نص الرسالة هنا" id="modal-coupon-message" class="coupon-message"></textarea>
             </div>
 
             <div class="modal-footer">
@@ -316,18 +322,6 @@ flowCanvas.addEventListener('panzoomzoom', debouncedUpdateConnections);
 
 
 
-const messageInput = document.getElementById('modal-sms-message');
-const visualMessage = document.getElementById('visualization-message');
-
-// Set initial message
-visualMessage.innerText = messageInput.value;
-
-// Update message as user types
-messageInput.addEventListener('input', function() {
-    visualMessage.innerText = this.value;
-});
-
-
 // Initialize Sortable.js for the available steps (left list)
 new Sortable(document.getElementById('steps-list'), {
     group: { name: 'shared', pull: 'clone', put: false },
@@ -410,6 +404,8 @@ new Sortable(document.getElementById('canvas-steps'), {
                     <input type="checkbox" class="free-shipping">
                     <label>استبعاد المنتجات المخفضة:</label>
                     <input type="checkbox" class="exclude-sale-products">
+                    <textarea placeholder="أدخل نص الرسالة هنا" class="coupon-message"></textarea>
+
                 </div>
             `;
         }
@@ -434,13 +430,13 @@ var couponFields = document.getElementById("coupon-fields");
 var triggerFields = document.getElementById("trigger-fields");
 var saveActionBtn = document.getElementById("save-action-btn");
 var smsVisualization = document.getElementById("sms-visualization");
-var modalContent = document.getElementById("modal-content")
+var modalContent = document.getElementById("modal-content");
 var selectedTrigger = document.getElementById('selected-trigger');
 var optionsList = document.getElementById('options-list');
 var options = document.querySelectorAll('.select-option');
 var currentStep = null;
 
-
+// Trigger click to open modal and display trigger fields
 document.getElementById('trigger').addEventListener('click', function() {
     modal.style.display = "flex";
     triggerFields.style.display = "block";
@@ -448,60 +444,132 @@ document.getElementById('trigger').addEventListener('click', function() {
     smsFields.style.display = "none";
     delayFields.style.display = "none";
     smsVisualization.style.display = "none";
-    modalContent.style.height = "auto";
-
-    // Hide delete button for trigger
     document.getElementById('delete-step-btn').style.display = 'none';
 });
 
+// Canvas steps click handler to set currentStep and display modal fields
 document.getElementById('canvas-steps').addEventListener('click', function(event) {
     if (event.target.closest('.step')) {
         currentStep = event.target.closest('.step');
         var actionType = currentStep.getAttribute('data-action-type');
         modal.style.display = "flex";
-
-        // Show delete button in modal for steps
         document.getElementById('delete-step-btn').style.display = 'inline-block';
 
+        // Show relevant fields based on action type
         if (actionType === 'sms') {
-            delayFields.style.display = "none";
-            triggerFields.style.display = "none";
-            couponFields.style.display = "none";
-            smsFields.style.display = "block";
-            smsVisualization.style.display = "block";
-            modalContent.style.height = "100%";
-
-            const currentMessage = currentStep.querySelector('.sms-message').value;
-            document.getElementById('modal-sms-message').value = currentMessage;
-            // Update visualization immediately when modal opens
-            document.getElementById('visualization-message').innerText = currentMessage;
+            displaySMSFields();
         } else if (actionType === 'delay') {
-            smsFields.style.display = "none";
-            triggerFields.style.display = "none";
-            couponFields.style.display = "none";
-            smsVisualization.style.display = "none";
-            delayFields.style.display = "block";
-            modalContent.style.height = "auto";
-            document.getElementById('modal-delay-time').value = currentStep.querySelector('.delay-time').value;
-            document.getElementById('modal-delay-type').value = currentStep.querySelector('.delay-type').value;
+            displayDelayFields();
         } else if (actionType === 'coupon') {
-
-
-            smsFields.style.display = "none";
-            triggerFields.style.display = "none";
-            smsVisualization.style.display = "none";
-            delayFields.style.display = "none";
-            couponFields.style.display = "block";
-            modalContent.style.height = "auto";
-            document.getElementById('modal-coupon-amount').value = currentStep.querySelector('.coupon-amount').value;
-            document.getElementById('modal-coupon-type').value = currentStep.querySelector('.coupon-type').value;
-            document.getElementById('modal-coupon-max').value = currentStep.querySelector('.max-amount').value;
-            document.getElementById('modal-coupon-expiry').value = currentStep.querySelector('.coupon-expiry').value;
-            document.getElementById('modal-free-shipping').value = currentStep.querySelector('.free-shipping').value;
-            document.getElementById('modal-exclude-sale-products').value = currentStep.querySelector('.exclude-sale-products').value;
+            displayCouponFields();
         }
     }
 });
+
+// Function to update the visualization height with forced reflow
+function updateVisualizationHeight() {
+    smsVisualization.style.height = modalContent.offsetHeight + 'px';
+    // Force reflow to ensure the height change is applied
+    requestAnimationFrame(() => {
+        smsVisualization.style.height = modalContent.offsetHeight + 'px';
+    });
+}
+
+
+// Call this function initially to set the height when the modal opens
+updateVisualizationHeight();
+
+// Listen for window resize events to adjust height dynamically
+window.addEventListener('resize', updateVisualizationHeight);
+
+// Function to display SMS fields
+function displaySMSFields() {
+    delayFields.style.display = "none";
+    triggerFields.style.display = "none";
+    couponFields.style.display = "none";
+    smsFields.style.display = "flex";
+    smsVisualization.style.display = "block";
+
+    updateVisualizationHeight();
+
+
+    const messageInput = document.getElementById('modal-sms-message');
+    const visualMessage = document.getElementById('visualization-message');
+    
+    // Set the initial value of the visualization message
+    const currentMessage = currentStep.querySelector('.sms-message').value;
+    messageInput.value = currentMessage;
+    visualMessage.innerText = currentMessage;
+    
+    // Update visualization message as user types
+    messageInput.addEventListener('input', function updateVisualization() {
+        visualMessage.innerText = this.value;
+    });
+}
+
+// Function to display Delay fields
+function displayDelayFields() {
+    smsFields.style.display = "none";
+    triggerFields.style.display = "none";
+    couponFields.style.display = "none";
+    smsVisualization.style.display = "none";
+    delayFields.style.display = "block";
+
+    document.getElementById('modal-delay-time').value = currentStep.querySelector('.delay-time').value;
+    document.getElementById('modal-delay-type').value = currentStep.querySelector('.delay-type').value;
+}
+
+// Function to display Coupon fields
+function displayCouponFields() {
+    const couponTypeElement = document.getElementById('modal-coupon-type');
+    const couponMaxField = document.getElementById('coupon-max-field');
+    
+    // Set the initial display of the coupon max field based on the current coupon type
+    const couponType = currentStep.querySelector('.coupon-type').value;
+    couponMaxField.style.display = (couponType === "percentage") ? 'none' : 'block';
+
+    smsFields.style.display = "none";
+    triggerFields.style.display = "none";
+    delayFields.style.display = "none";
+    couponFields.style.display = "block";
+    smsVisualization.style.display = "block";
+
+    // Update visualization height initially to match modal content
+    updateVisualizationHeight();
+
+    const messageInput = document.getElementById('modal-coupon-message');
+    const visualMessage = document.getElementById('visualization-message');
+
+    // Set the initial values for coupon fields
+    document.getElementById('modal-coupon-amount').value = currentStep.querySelector('.coupon-amount').value;
+    couponTypeElement.value = couponType;
+    document.getElementById('modal-coupon-max').value = currentStep.querySelector('.max-amount').value;
+    document.getElementById('modal-coupon-expiry').value = currentStep.querySelector('.coupon-expiry').value;
+    document.getElementById('modal-free-shipping').value = currentStep.querySelector('.free-shipping').value;
+    document.getElementById('modal-exclude-sale-products').value = currentStep.querySelector('.exclude-sale-products').value;
+
+    const currentMessage = currentStep.querySelector('.coupon-message').value;
+    messageInput.value = currentMessage;
+    visualMessage.innerText = currentMessage;
+
+    // Update visualization message as user types
+    messageInput.addEventListener('input', function updateVisualization() {
+        visualMessage.innerText = this.value;
+    });
+
+    // Add event listener to update the display of coupon-max-field based on coupon type
+    couponTypeElement.addEventListener('change', function() {
+        couponMaxField.style.display = (this.value === "percentage") ? 'none' : 'block';
+        
+        // Call updateVisualizationHeight to adjust visualization size after change
+        updateVisualizationHeight();
+    });
+}
+
+
+
+
+
 
 document.querySelector(".close").onclick = function() {
     modal.style.display = "none";
@@ -522,12 +590,17 @@ saveActionBtn.addEventListener('click', function() {
             currentStep.querySelector('.delay-time').value = updatedDelayTime;
             currentStep.querySelector('.delay-type').value = updatedDelayType;
         } else if (actionType === 'coupon') {
+            var updatedMessage = document.getElementById("modal-coupon-message").value;
+            currentStep.querySelector('.coupon-message').value = updatedMessage;
+
+
             var updatedCouponType = document.getElementById("modal-coupon-type").value;
             var updatedCouponAmount = document.getElementById("modal-coupon-amount").value;
             var updatedCouponMax = document.getElementById("modal-coupon-max").value;
             var updatedCouponExpiry = document.getElementById("modal-coupon-expiry").value;
             var updatedFreeShipping = document.getElementById("modal-free-shipping").value;
             var updatedExcludeSaleProducts = document.getElementById("modal-exclude-sale-products").value;
+    
 
             currentStep.querySelector('.coupon-type').value = updatedCouponType;
             currentStep.querySelector('.coupon-amount').value = updatedCouponAmount;
@@ -613,7 +686,7 @@ document.getElementById('flow-form').addEventListener('submit', function(e) {
             stepData.content.amount = item.querySelector('.coupon-amount').value;
             stepData.content.type = item.querySelector('.coupon-type').value;
             stepData.content.expire_in = item.querySelector('.coupon-expiry').value;
-            stepData.content.maximum_amount = item.querySelector('.max-amount').value;
+            stepData.content.maximum_amount = item.querySelector('.max-amount').value || 0;
             stepData.content.free_shipping = item.querySelector('.free-shipping').value;
             stepData.content.exclude_sale_products = item.querySelector('.exclude-sale-products').value;
         }
@@ -650,7 +723,12 @@ document.getElementById('flow-form').addEventListener('submit', function(e) {
 });
 
 function addVariableToMessage(variable){
-    const messageInput = document.getElementById('modal-sms-message');
+    let messageInput;
+    if (currentStep && currentStep.getAttribute('data-action-type') === 'coupon') {
+        messageInput = document.getElementById('modal-coupon-message');
+    } else {
+        messageInput = document.getElementById('modal-sms-message');
+    }
     const visualMessage = document.getElementById('visualization-message');
     messageInput.value += variable;
     visualMessage.innerText = messageInput.value;

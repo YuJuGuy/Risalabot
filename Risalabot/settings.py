@@ -211,7 +211,7 @@ CELERY_BEAT_SCHEDULE = {
     
     'refresh-store-tokens-every-six-hours': {
             'task': 'automations.recurring_tasks.recurring_refresh',  # Adjust this to match your task path
-            'schedule': crontab(hour='*/6', minute=0),  # Runs every 6 hours
+            'schedule': crontab(minute=0, hour='*/6'),  # Runs every 6 hours
         },
         
 }

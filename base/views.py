@@ -23,6 +23,7 @@ from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 from django.db import IntegrityError
 from datetime import datetime, timezone, timedelta
+from django.db.models import Count
 from . decorators import check_token_validity
 
 
@@ -302,19 +303,22 @@ def validate_steps_data(steps_data):
                 if coupon_type not in ['fixed', 'percentage']:
                     raise ValidationError("Invalid coupon type. Choose either 'fixed' or 'percentage'.")
 
-                if amount is None or amount <= 0:
+                if amount is None or not str(amount).isdigit() or int(amount) <= 0:
                     raise ValidationError("Coupon action requires a valid amount.")
 
-                if expire_in is None or expire_in <= 0:
+                if expire_in is None or not str(expire_in).isdigit() or int(expire_in) <= 0:
                     raise ValidationError("Coupon action requires a valid expiration period.")
 
-                if maximum_amount is not None and maximum_amount < 0:
+                if maximum_amount is not None and (maximum_amount != "" and (not str(maximum_amount).isdigit() or int(maximum_amount) < 0)) and coupon_type != "percentage":
                     raise ValidationError("Maximum amount cannot be negative.")
+                
+                if coupon_type == "percentage" and (amount is None or int(amount) > 100):
+                    raise ValidationError("Maximum amount percentage can't be more than 100")
 
-                if free_shipping not in [True, False]:
+                if free_shipping not in ['True', 'False']:
                     raise ValidationError("Free shipping must be a boolean value.")
-
-                if exclude_sale_products not in [True, False]:
+                
+                if exclude_sale_products not in ['True', 'False']:
                     raise ValidationError("Exclude sale products must be a boolean value.")
         
         return steps
@@ -418,12 +422,12 @@ def flow_builder(request, flow_id, context=None):
                             CouponConfig.objects.update_or_create(
                                 flow_step=step,
                                 defaults={
-                                    'coupon_type': content.get('type'),
+                                    'type': content.get('type'),
                                     'amount': content.get('amount'),
-                                    'max_discount': max_discount,
-                                    'expiry_days': content.get('expire_in', 0),
-                                    'free_shipping': content.get('free_shipping', False),
-                                    'exclude_sale_products': content.get('exclude_sale_products', False)
+                                    'maximum_amount': max_discount,
+                                    'expire_in': content.get('expire_in'),
+                                    'free_shipping': content.get('free_shipping'),
+                                    'exclude_sale_products': content.get('exclude_sale_products')
                                 }
                             )
 
@@ -646,12 +650,13 @@ def campaign(request, context=None):
                 'campaign_id': campaign.id
             }
 
-            # Schedule the task only if the status is 'active'
+            # Schedule the task only if the status is 'scheduled'
             if status == 'scheduled':
-                task = send_whatsapp_message_task.apply_async(args=[data])
+                # Schedule the task to send messages at the scheduled time
+                task = send_whatsapp_message_task.apply_async(args=[data], eta=scheduled_time)
                 campaign.task_id = task.id
                 campaign.save()
-                messages.success(request, 'Campaign created and sent successfully.')
+                messages.success(request, 'Campaign created and scheduled successfully.')
             else:
                 messages.success(request, 'Campaign saved as draft.')
             
@@ -672,28 +677,40 @@ def edit_campaign(request, campaign_id):
         store = UserStoreLink.objects.get(user=request.user).store
         campaign = Campaign.objects.get(id=campaign_id, store=store)
         
-        # Only allow editing if the campaign is 'scheduled' or 'failed'
+        # Only allow editing if the campaign is 'scheduled' or 'draft'
         if campaign.status not in ['scheduled', 'draft']:
-            messages.error(request, 'This campaign cannot be updated as it is not scheduled.')
+            messages.error(request, 'This campaign cannot be updated as it is not scheduled or draft.')
             return redirect('campaigns')
         
+        # Store the original status before handling the form submission
+        original_status = campaign.status
+
         store_groups_response = group_campaign(request.user)
         store_groups = store_groups_response.get('data', [])
 
         if request.method == 'POST':
             form = CampaignForm(request.POST, instance=campaign, store_groups=store_groups)
             if form.is_valid():
-                status = form.cleaned_data['status']
+                # Update campaign with form data but don't save yet
+                campaign = form.save(commit=False)
+                new_status = form.cleaned_data['status']
                 scheduled_time = form.cleaned_data['scheduled_time']
                 group_id = form.cleaned_data['customers_group']
                 msg = form.cleaned_data['msg']
-                
-                # If the campaign is 'scheduled', validate and reschedule
-                if status == 'scheduled':
-                    # Revoke the old task if there is one
-                    if campaign.task_id:
-                        celery_app.control.revoke(campaign.task_id, terminate=True)
 
+                # If the new status is 'draft' and the original status was 'scheduled', revoke the task
+                if new_status == 'draft' and original_status == 'scheduled' and campaign.task_id:
+                    celery_app.control.revoke(campaign.task_id, terminate=True)
+                    campaign.task_id = None  # Clear the task ID if the campaign is no longer scheduled
+                    messages.success(request, 'Campaign task canceled, and campaign saved as draft.')
+                    
+
+                # If the status is 'scheduled', validate and reschedule
+                elif new_status == 'scheduled':
+                    # Revoke the old task if it exists
+                    if original_status == 'scheduled' and campaign.task_id:
+                        celery_app.control.revoke(campaign.task_id, terminate=True)
+                    
                     # Ensure scheduled_time is timezone-aware and in the future
                     if scheduled_time.tzinfo is None or scheduled_time.tzinfo.utcoffset(scheduled_time) is None:
                         scheduled_time = make_aware(scheduled_time)
@@ -709,10 +726,6 @@ def edit_campaign(request, campaign_id):
                         messages.error(request, 'No customers in the selected group.')
                         return redirect('campaigns')
                     
-                    if len(customers_data) == 0:
-                        messages.error(request, 'No customers in the selected group.')
-                        return redirect('campaigns')
-
                     # Check if the message limit is sufficient
                     if len(customers_numbers) > store.subscription.messages_limit - store.subscription_message_count:
                         messages.error(request, 'Insufficient message balance.')
@@ -732,16 +745,11 @@ def edit_campaign(request, campaign_id):
                     campaign.task_id = task.id
                     campaign.status = 'scheduled'
                     campaign.scheduled_time = scheduled_time
-                    campaign.save(update_fields=['task_id', 'status', 'scheduled_time'])
-                    messages.success(request, 'Campaign updated and rescheduled successfully.')
-                
-                # If status is 'draft' or any other, just save without scheduling
-                else:
-                    campaign.status = status
-                    campaign.scheduled_time = scheduled_time
-                    campaign.save(update_fields=['status', 'scheduled_time'])
-                    messages.success(request, 'Campaign updated successfully as a draft.')
 
+                    messages.success(request, 'Campaign updated and rescheduled successfully.')
+
+                # Save the campaign changes, including the message and other fields
+                campaign.save()
                 return redirect('campaigns')
             else:
                 messages.error(request, 'Form is invalid.')
@@ -865,51 +873,48 @@ def delete_campaign(request, campaign_id):
 
 
 #Customer Views
+
 @login_required(login_url='login')
 @check_token_validity
 def customers_view(request, context=None):
     try:
         store = UserStoreLink.objects.get(user=request.user).store
-        
     except UserStoreLink.DoesNotExist:
         messages.error(request, 'No store linked. Please link a store first.')
         return redirect('dashboard')
-    
+
     if context is None:
         context = {}
-    
+
     form = GroupCreationForm()
     if request.method == 'POST':
         form = GroupCreationForm(request.POST)
-        
+
         if form.is_valid():
             group_name = form.cleaned_data['name']
             conditions = form.cleaned_data['conditions']
             response = create_customer_group(request.user, group_name, conditions)
-            if response.get('success') == True:
-                messages.success(request, 'Group created successfully.')
-                return redirect('customers')
+            
+            if response.get('success'):
+                # Return a JSON response on successful creation
+                return JsonResponse({'status': 'success', 'message': 'Group created successfully.'}, status=200)
             else:
-                #get the field name and the error message
+                # Return JSON with error messages
                 error_message = response.get('error', {}).get('message', 'An error occurred')
                 error_fields = response.get('error', {}).get('fields', {})
-                for field, messages_list in error_fields.items():
-                    for field_error in messages_list:
-                        messages.error(request, f"{error_message} - {field}: {field_error}")
-                return redirect('customers')
+                errors = {field: messages_list for field, messages_list in error_fields.items()}
+                return JsonResponse({'status': 'error', 'message': error_message, 'errors': errors}, status=400)
         else:
-            messages.error(request, 'Error creating group. Please correct the form errors 2.')
-            return redirect('customers')
-    
+            return JsonResponse({'status': 'error', 'message': 'Form validation failed.'}, status=400)
+
     context.update({
         'form': form,
     })
     
-    return render(request, 'base/customer_list.html',context)
+    return render(request, 'base/customer_list.html', context)
 
 
-from django.db.models import Count
-from django.http import JsonResponse
+
 
 @login_required(login_url='login')
 def get_customers(request):
@@ -927,8 +932,9 @@ def get_customers(request):
             'phone': customer.customer_phone,
             'location': customer.customer_location,
             'groups': list(customer.customer_groups.values_list('name', flat=True)),  # Group IDs
-            'updated_at': customer.customer_updated_at,
+            'updated_at': customer.customer_updated_at.strftime('%Y-%m-%d %H:%M')
         } for customer in customers_list]
+        
 
         # Calculate group counts
 
@@ -936,7 +942,7 @@ def get_customers(request):
         group_data = (
             Group.objects.filter(store=store)
             .annotate(customer_count=Count('customers'))  # Count related customers for each group
-            .values('name', customer_count=Count('customers'))  # Include group name and customer count
+            .values('group_id', 'name', customer_count=Count('customers'))  # Include group ID, name, and customer count
         )
 
         # Convert to list of dictionaries for easier JSON handling
@@ -968,6 +974,7 @@ def sync_data(request):
 
         # Clear out existing customers for this store but keep groups intact
         Customer.objects.filter(store=store).delete()
+        Group.objects.filter(store=store).delete()
 
         # Update or create groups based on the data received
         group_id_to_name = customer_data.get('group_id_to_name', {})
@@ -1011,11 +1018,11 @@ def sync_data(request):
     
 @login_required(login_url='login')
 def delete_customer_list(request, group_id):
-    response = delete_customer_group(request.user, group_id)
-    if response.get('success'):
-        messages.success(request, 'Group deleted successfully.')
-        return redirect('customers')
-    else:
-        messages.error(request, 'Error deleting group.')
-        return redirect('customers')
+    if request.method == "POST":
+        response = delete_customer_group(request.user, group_id)
+        if response.get('success'):
+            return JsonResponse({'status': 'success', 'message': 'Group deleted successfully.'})
+        else:
+            return JsonResponse({'status': 'error', 'message': 'Error deleting group.'}, status=400)
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method.'}, status=405)
 
