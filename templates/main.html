@@ -35,7 +35,10 @@
                 {% include 'sidemenu.html'%}
                 <div class="content">
                     <div class='message-display' id='message-display'>
-            
+                        <div id="message-display-content">
+                            <div class="message-icon" id="message-icon"></div>
+                            <p id="message-content"></p>
+                        </div>
                     </div>
                     {% if messages %}
                         <div id="message-container">

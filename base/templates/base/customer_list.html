@@ -108,35 +108,37 @@
         setupDeleteGroupPopup();
         fetchAllCustomers();
         const groupCreationForm = document.getElementById('group-creation-form');
-        groupCreationForm.addEventListener('submit', function(event) {
-            event.preventDefault(); // Prevent the default form submission
-    
-            const formData = new FormData(groupCreationForm);
-            fetch('/customers/', { // replace with the actual URL
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-                },
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    showMessage(data.message); // Show success message
-                    syncData()
-                    closePopup(); // Close the popup after successful creation
-                } else {
-                    showMessage(data.message || 'Error creating group.');
-                    if (data.errors) {
-                        // Handle specific field errors if available
-                        for (const [field, messages] of Object.entries(data.errors)) {
-                            messages.forEach(message => showMessage(`${field}: ${message}`));
+        if (groupCreationForm) {
+            groupCreationForm.addEventListener('submit', function(event) {
+                event.preventDefault(); // Prevent the default form submission
+        
+                const formData = new FormData(groupCreationForm);
+                fetch('/customers/', { // replace with the actual URL
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': document.querySelector('[name=csrf-token]').content
+                    },
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        showMessage(data.message, 'success'); // Show success message
+                        syncData();
+                        closePopup(); // Close the popup after successful creation
+                    } else {
+                        showMessage(data.message || 'Error creating group.', 'error');
+                        if (data.errors) {
+                            // Handle specific field errors if available
+                            for (const [field, messages] of Object.entries(data.errors)) {
+                                messages.forEach(message => showMessage(`${field}: ${message}`, 'error'));
+                            }
                         }
                     }
-                }
-            })
-            .catch(error => console.error('Error creating group:', error));
-        });
+                })
+                .catch(error => console.error('Error creating group:', error));
+            });
+        }
     });
 
     
@@ -152,18 +154,18 @@
         fetch('/sync_data/', {
             method: 'POST',
             headers: {
-                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                'X-CSRFToken': document.querySelector('[name=csrf-token]').content,
                 'Content-Type': 'application/json'
             }
         })
         .then(response => response.json())
         .then(data => {
             if (data.status === "success") {
-                showMessage(data.message);
+                showMessage(data.message, 'success');
                 // Refresh the customer and group data display
                 fetchAllCustomers();  // Ensure this function reloads the table and group data
             } else {
-                showMessage('Error: ' + data.message);
+                showMessage('Error: ' + data.message, 'error');
             }
         })
         .catch(error => console.error('Error syncing data:', error));
@@ -241,16 +243,16 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.status === 'success') {
-                        showMessage(data.message);
+                        showMessage(data.message, 'success');
                         syncData(); // Refresh the data immediately
                         deleteGroupPopup.style.display = 'none'; // Close the popup
                     } else {
-                        showMessage(data.message || 'Error deleting group.');
+                        showMessage(data.message || 'Error deleting group.', 'error');
                     }
                 })
                 .catch(error => {
                     console.error('Error deleting group:', error);
-                    showMessage('An error occurred while deleting the group.');
+                    showMessage('An error occurred while deleting the group.', 'error');
                 });
             }
         });
@@ -307,20 +309,6 @@
         popupClose.addEventListener('click', () => popup.classList.remove('show'));
     }
     
-    function showError(message) {
-        // Option 1: Display error message in an alert (simple approach)
-        showMessage(message);
-    
-        // Option 2: Display error in a specific UI element (more user-friendly)
-        const errorContainer = document.querySelector('.error-container');
-        if (errorContainer) {
-            errorContainer.textContent = message;
-            errorContainer.style.display = 'block'; // Make sure the error container is visible
-        } else {
-            console.error("Error container not found. Showing error in console:", message);
-        }
-    }
-    
     
     
     function fetchAllCustomers() {    
@@ -349,10 +337,10 @@
                 // Process group data and update the UI
                 updateGroupCounts(data.group_data);
             } else {
-                showError('Failed to load customers.');
+                showMessage('Failed to load customers.', 'error');
             }
         })
-        .catch(error => showError('Error fetching customers: ' + error));
+        .catch(error => showMessage('Error fetching customers: ' + error, 'error'));
     }
     
     

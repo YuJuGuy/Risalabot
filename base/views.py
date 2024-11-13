@@ -591,13 +591,14 @@ def campaign(request, context=None):
         context = {}
     try:
         store = UserStoreLink.objects.get(user=request.user).store
-        store_groups_response = group_campaign(request.user)
+        # get all groups for the store
+        store_groups = Group.objects.filter(store=store)
+        print(store_groups)
         
-        if not store_groups_response.get('success'):
+        if not store_groups:
             messages.error(request, 'Failed to fetch store groups.')
             return redirect('dashboard')
         
-        store_groups = store_groups_response.get('data', [])
 
     except UserStoreLink.DoesNotExist:
         messages.error(request, 'No store linked. Please link a store first.')
@@ -620,8 +621,8 @@ def campaign(request, context=None):
                     return redirect('campaigns')
 
                 # Fetch customers only for active campaigns
-                customers_data = get_customers_from_group(request.user, group_id)
-                customers_numbers = [customer['customer_number'] for customer in customers_data]
+                customers_data = Customer.objects.filter(customer_groups__group_id=group_id)
+                customers_numbers = [customer.customer_phone for customer in customers_data]
 
                 if len(customers_data) == 0:
                     messages.error(request, 'No customers in the selected group.')
@@ -685,8 +686,7 @@ def edit_campaign(request, campaign_id):
         # Store the original status before handling the form submission
         original_status = campaign.status
 
-        store_groups_response = group_campaign(request.user)
-        store_groups = store_groups_response.get('data', [])
+        store_groups = Group.objects.filter(store=store)
 
         if request.method == 'POST':
             form = CampaignForm(request.POST, instance=campaign, store_groups=store_groups)
@@ -719,8 +719,8 @@ def edit_campaign(request, campaign_id):
                         return redirect('campaigns')
                     
                     # Fetch customers for the selected group
-                    customers_data = get_customers_from_group(request.user, group_id)
-                    customers_numbers = [customer['customer_number'] for customer in customers_data]
+                    customers_data = Customer.objects.filter(customer_groups__group_id=group_id)
+                    customers_numbers = [customer.customer_phone for customer in customers_data]
 
                     if len(customers_numbers) == 0:
                         messages.error(request, 'No customers in the selected group.')
@@ -897,15 +897,15 @@ def customers_view(request, context=None):
             
             if response.get('success'):
                 # Return a JSON response on successful creation
-                return JsonResponse({'status': 'success', 'message': 'Group created successfully.'}, status=200)
+                return JsonResponse({'status': 'success', 'message': 'تم إنشاء المجموعة بنجاح.'}, status=200)
             else:
                 # Return JSON with error messages
-                error_message = response.get('error', {}).get('message', 'An error occurred')
+                error_message = response.get('error', {}).get('message', 'حدث خطأ ما.')
                 error_fields = response.get('error', {}).get('fields', {})
                 errors = {field: messages_list for field, messages_list in error_fields.items()}
                 return JsonResponse({'status': 'error', 'message': error_message, 'errors': errors}, status=400)
         else:
-            return JsonResponse({'status': 'error', 'message': 'Form validation failed.'}, status=400)
+            return JsonResponse({'status': 'error', 'message': 'فشل التحقق من صحة النموذج.'}, status=400)
 
     context.update({
         'form': form,
@@ -1021,8 +1021,8 @@ def delete_customer_list(request, group_id):
     if request.method == "POST":
         response = delete_customer_group(request.user, group_id)
         if response.get('success'):
-            return JsonResponse({'status': 'success', 'message': 'Group deleted successfully.'})
+            return JsonResponse({'status': 'success', 'message': 'تم حذف المجموعة بنجاح.'})
         else:
-            return JsonResponse({'status': 'error', 'message': 'Error deleting group.'}, status=400)
-    return JsonResponse({'status': 'error', 'message': 'Invalid request method.'}, status=405)
+            return JsonResponse({'status': 'error', 'message': 'فشل حذف المجموعة.'}, status=400)
+    return JsonResponse({'status': 'error', 'message': 'طريقة الطلب غير صالحة.'}, status=405)
 

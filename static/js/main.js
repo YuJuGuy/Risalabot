@@ -29,14 +29,26 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 
-function showMessage(message) {
+function showMessage(message, type) {
     const messageDisplay = document.getElementById('message-display');
+    const messageTitle = document.getElementById('message-title');
+    const messageIcon = document.getElementById('message-icon');
+    const messageContent = document.getElementById('message-content');
+
+    if (type === 'error') {
+        messageIcon.innerHTML = '<i class="fa-solid fa-circle-exclamation" style="color: red;"></i>';
+    } else if (type === 'success') {
+        messageIcon.innerHTML = '<i class="fa-solid fa-circle-check" style="color: green;"></i>';
+    } else {
+        messageIcon.innerHTML = '<i class="fa-solid fa-circle-info" style="color: yellow;"></i>';
+    }
     
-    messageDisplay.textContent = message; // Set message content
+    messageContent.textContent = message;
     messageDisplay.classList.add('show'); // Show the message
 
-    // Hide the message after 3 seconds
     setTimeout(() => {
         messageDisplay.classList.remove('show'); // Hide the message
     }, 3000);
+
+
 }

@@ -38,7 +38,7 @@ class CampaignForm(forms.ModelForm):
         store_groups = kwargs.pop('store_groups', [])
         super(CampaignForm, self).__init__(*args, **kwargs)
         self.fields['customers_group'].widget = forms.Select(
-            choices=[('', 'اختر مجموعة العملاء')] + [(group['id'], group['name']) for group in store_groups]
+            choices=[('', 'اختر مجموعة العملاء')] + [(group.id, group.name) for group in store_groups]
         )
         # Optional: Set HTML attributes for 'customers_group'
         self.fields['customers_group'].widget.attrs.update({'class': 'custom-select'})

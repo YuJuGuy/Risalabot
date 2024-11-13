@@ -120,22 +120,44 @@ html, body {
   left: 50%;
   transform: translateX(-50%);
   width: 25%;
-  height: 15%;
+  height: auto;
   padding: 1em;
   background-color: #ffffff;
-  color: #333333;
   justify-content: center;
   align-items: center;
   z-index: 1000;
-  border-radius: 12px;
-  box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.15);
-  font: inherit;
-  font-size: 1.25em;
+  border-radius: 0.5rem;
   text-align: center;
-  transition: opacity 0.3s ease, transform 0.3s ease; /* Smooth fade-in/out */
   opacity: 0; /* Hidden by default */
-  font-weight: bold;
+  --tw-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --tw-shadow-colored: 0 20px 25px -5px var(--tw-shadow-color), 0 8px 10px -6px var(--tw-shadow-color);
+  box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
   
+}
+
+.message-display-content{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.message-icon{
+  width: 100%;
+  height: auto;
+}
+
+.message-icon i{
+  font-size: 2rem;
+}
+
+.message-content{
+  font-size: 1rem;
+}
+
+.message-title{
+  font-size: 1.5rem;
+  font-weight: bold;
 }
 
 .message-display.show {
@@ -268,7 +290,7 @@ img {
     display: none;
 }
 
-.popup-group{
+.popup-group, .campaign-popup-group{
   margin: 10%;
   display: flex;
   justify-content: center;
@@ -276,6 +298,10 @@ img {
   overflow: hidden;
   width: 100%;
   min-height: 40%;
+}
+
+.campaign-popup-group{
+  height: 80%;
 }
 .popup-content-campaign{
     background-color: white;
