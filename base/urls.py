@@ -26,11 +26,11 @@ urlpatterns = [
 
     
     path('campaigns/', views.campaign, name='campaigns'),
-    path('cancel-campaign/<int:campaign_id>/', views.campaign_cancel, name='campaign_cancel'),
-    path('delete-campaign/<int:campaign_id>/', views.delete_campaign, name='campaign_delete'),
-    path('edit_campaign/<int:campaign_id>/', views.edit_campaign, name='edit_campaign'),
+    path('cancel-campaign/<uuid:campaign_id>/', views.campaign_cancel, name='campaign_cancel'),
+    path('delete-campaign/<uuid:campaign_id>/', views.delete_campaign, name='campaign_delete'),
+    path('edit_campaign/<uuid:campaign_id>/', views.edit_campaign, name='edit_campaign'),
     path('get_campaigns/', views.get_campaign_data, name='get_campaigns'),
-    path('get_campaigns/<int:campaign_id>/', views.get_campaign_data, name='get_campaigns'),
+    path('get_campaigns/<uuid:campaign_id>/', views.get_campaign_data, name='get_campaigns'),
 
     
     

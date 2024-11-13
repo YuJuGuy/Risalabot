@@ -236,7 +236,7 @@
                 fetch(`/delete-group/${groupIdToDelete}/`, {
                     method: 'POST',
                     headers: {
-                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                        'X-CSRFToken': document.querySelector('[name=csrf-token]').content,
                         'Content-Type': 'application/json'
                     }
                 })

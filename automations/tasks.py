@@ -6,8 +6,10 @@ from datetime import datetime, timedelta, timezone
 from django.utils.crypto import get_random_string
 from base.models import Store, Campaign, UserStoreLink, Flow, FlowStep, TextConfig, TimeDelayConfig, CouponConfig
 import logging
+import pytz
 
 logging.basicConfig(level=logging.INFO)
+ksa_timezone = pytz.timezone("Asia/Riyadh")
 
 
 
@@ -159,25 +161,48 @@ def process_flows_task(self, flow_ids, flow_data, current_step_index=0):
                 elif flow_step.action_type.name == 'coupon':
                     coupon_config = CouponConfig.objects.get(flow_step=flow_step)
                     code = get_random_string(12).upper()
+                    maximum_amount = coupon_config.maximum_amount
                     coupondata = {
                         'code': code,
                         'type': coupon_config.type,
                         'amount': coupon_config.amount,
-                        'maximum_amount': coupon_config.maximum_amount,
-                        'start_date': datetime.now(timezone.utc).strftime("%Y-%m-%d"),
-                        'expiry_date': (datetime.today() + timedelta(days=coupon_config.expire_in)).strftime("%Y-%m-%d"),
+                        'maximum_amount': maximum_amount,
+                        'start_date': datetime.now(ksa_timezone).strftime("%Y-%m-%d"),
+                        'expiry_date': (datetime.now(ksa_timezone) + timedelta(days=coupon_config.expire_in)).strftime("%Y-%m-%d"),
                         'free_shipping': coupon_config.free_shipping,
-                        'exclude_sale_products': coupon_config.exclude_sale_products
+                        'exclude_sale_products': coupon_config.exclude_sale_products,
+                        'message': coupon_config.message
                     }
-                    print(coupondata)
+                        
                     
+                    if '{' in coupon_config.message:
+                        replacements = {
+                            '{اسم العميل}': flow_data['customer_full_name'],
+                            '{الاسم الاول}': flow_data['customer_first_name'],
+                            '{الايميل}': flow_data['customer_email'],
+                            '{رقم العميل}': flow_data['customer_phone'],
+                            '{الدولة}': flow_data['customer_country'],
+                            '{رقم التتبع}': flow_data['tracking_link'],
+                            '{الحالة}': flow_data['status_arabic'],
+                            '{السعر}': flow_data['total_amount'],
+                            '{رابط التقييم}': flow_data['rating_link'],
+                            '{الكوبون}': code
+                    }
+                        # Apply all replacements in one loop
+                        for placeholder, value in replacements.items():
+                            coupon_config.message = coupon_config.message.replace(placeholder, value)
+                           
+                    print(coupon_config.message)
                     result = create_coupon(user, coupondata)
 
                     if result['success']:
                         # Handle success, coupon creation was successful
                         logging.info("Coupon created successfully:", result['data'])
-                        send_whatsapp_message(store, flow_data['customer_phone'],code, session)
-                        print(code)
+                        success, message = send_whatsapp_message(store, flow_data['customer_phone'],coupon_config.message, session)
+                        if success:
+                            with transaction.atomic():
+                                flow.messages_sent += 1
+                                flow.save(update_fields=['messages_sent'])
                     else:
                         # Handle failure, coupon creation failed
                         logging.error("Failed to create coupon: %s", result['message'])

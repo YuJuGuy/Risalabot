@@ -260,24 +260,24 @@ def validate_steps_data(steps_data):
         try:
             steps = json.loads(steps_data)
         except json.JSONDecodeError:
-            raise ValidationError("Invalid steps data format. Ensure the data is valid JSON.")
+            raise ValidationError("بيانات الخطوات يجب أن تكون بتنسيق JSON صالح.")
 
         # Check if the steps_data is a list
         if not isinstance(steps, list):
-            raise ValidationError("Steps data should be a list.")
+            raise ValidationError("بيانات الخطوات يجب أن تكون قائمة.")
 
         valid_action_types = FlowActionTypes.objects.values_list('name', flat=True)
         
         # Validate each step's structure and content
         for step in steps:
             if 'action_type' not in step or step['action_type'] not in valid_action_types:
-                raise ValidationError(f"Invalid action type: {step.get('action_type')}")
+                raise ValidationError(f"نوع الاجراء غير صالح: {step.get('action_type')}")
 
             # SMS action validation
             if step['action_type'] == 'sms':
                 message = step.get('content', {}).get('message', '').strip()
                 if not message:
-                    raise ValidationError("SMS action requires a message.")
+                    raise ValidationError("اجراء الرسالة يتطلب رسالة.")
 
             # Delay action validation
             elif step['action_type'] == 'delay':
@@ -285,10 +285,10 @@ def validate_steps_data(steps_data):
                 delay_type = step.get('content', {}).get('delay_type')
 
                 if not delay_time or not str(delay_time).isdigit():
-                    raise ValidationError("Delay action requires a valid delay time.")
+                    raise ValidationError("اجراء التأخير يتطلب مدة تأخير صالحة.")
 
                 if delay_type not in ['hours', 'days', 'minutes']:
-                    raise ValidationError("Invalid delay type. Choose either 'hours' or 'days'.")
+                    raise ValidationError("اختيار نوع التأخير غير صالح. يجب أن يكون 'ساعات' أو 'أيام'.")
                 
                 
             # Coupon action validation
@@ -299,27 +299,31 @@ def validate_steps_data(steps_data):
                 maximum_amount = step.get('content', {}).get('maximum_amount')
                 free_shipping = step.get('content', {}).get('free_shipping')
                 exclude_sale_products = step.get('content', {}).get('exclude_sale_products')
+                message = step.get('content', {}).get('message')
 
                 if coupon_type not in ['fixed', 'percentage']:
-                    raise ValidationError("Invalid coupon type. Choose either 'fixed' or 'percentage'.")
+                    raise ValidationError("اختيار نوع الكوبون غير صالح. يجب أن يكون 'مبلغ ثابت' أو 'نسبة مئوية'.")
 
                 if amount is None or not str(amount).isdigit() or int(amount) <= 0:
-                    raise ValidationError("Coupon action requires a valid amount.")
+                    raise ValidationError("اجراء الكوبون يتطلب مبلغ صالح.")
 
                 if expire_in is None or not str(expire_in).isdigit() or int(expire_in) <= 0:
-                    raise ValidationError("Coupon action requires a valid expiration period.")
+                    raise ValidationError("اجراء الكوبون يتطلب مدة انتهاء صلاحية صالحة.")
 
-                if maximum_amount is not None and (maximum_amount != "" and (not str(maximum_amount).isdigit() or int(maximum_amount) < 0)) and coupon_type != "percentage":
-                    raise ValidationError("Maximum amount cannot be negative.")
+                if maximum_amount is not None and (maximum_amount != "" and (not str(maximum_amount).isdigit() or int(maximum_amount) < 1)):
+                    raise ValidationError("لا يمكن أن يكون المبلغ الأقصى أقل من 1.")
                 
                 if coupon_type == "percentage" and (amount is None or int(amount) > 100):
-                    raise ValidationError("Maximum amount percentage can't be more than 100")
+                    raise ValidationError("لا يمكن أن يكون المبلغ الأقصى أكبر من %100.")
 
                 if free_shipping not in ['True', 'False']:
-                    raise ValidationError("Free shipping must be a boolean value.")
+                    raise ValidationError("يجب أن تكون الشحن مجانية إما نعم أو لا.")
                 
                 if exclude_sale_products not in ['True', 'False']:
-                    raise ValidationError("Exclude sale products must be a boolean value.")
+                    raise ValidationError("استبعاد المنتجات المخفضة يجب أن تكون قيمة نعم أو لا.")
+                
+                if message is None or "{الكوبون}" not in message:
+                    raise ValidationError("اجراء الكوبون يتطلب رسالة تحتوي على الكوبون.")
         
         return steps
     
@@ -350,14 +354,14 @@ def flow_builder(request, flow_id, context=None):
             except ValidationError as e:
                 if request.headers.get('x-requested-with') == 'XMLHttpRequest':
                     return JsonResponse({'success': False, 'errors': str(e)}, status=400)
-                messages.error(request, f"Steps validation error: {e}")
+                messages.error(request, f"خطأ في تحقق الخطوات: {e}")
                 return redirect('flow', flow_id=flow_id)
             
+            # Check if steps are empty when status is 'active'
             if not steps and request.POST.get('status') == 'active':
                 if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                    return JsonResponse({'success': False, 'errors': 'You need to add at least one message.'}, status=400)
-                messages.error(request, 'You need to add at least one message.')
-                return redirect('flow', flow_id=flow_id)
+                    return JsonResponse({'success': False, 'errors': 'عليك اضافة خطوة على الاقل.'}, status=400)
+
             
             try:
                 with transaction.atomic():
@@ -399,9 +403,9 @@ def flow_builder(request, flow_id, context=None):
                             )
                         elif action_type == 'delay':
                             if not content.get('delay_time') or not str(content.get('delay_time')).isdigit():
-                                raise ValidationError('Delay action requires a valid delay time.')
+                                raise ValidationError('اجراء التأخير يتطلب مدة تأخير صالحة.')
                             if content.get('delay_type') not in ['hours', 'days', 'minutes']:
-                                raise ValidationError('Invalid delay type. Choose either "hours" or "days".')
+                                raise ValidationError('اختيار نوع التأخير غير صالح. يجب أن يكون "ساعات" أو "أيام".')
                             TextConfig.objects.filter(flow_step=step).delete()
                             TimeDelayConfig.objects.update_or_create(
                                 flow_step=step,
@@ -414,20 +418,20 @@ def flow_builder(request, flow_id, context=None):
                             if not content.get('type'):
                                 raise ValidationError('Coupon action requires a coupon type.')
                             if not content.get('amount') or not str(content.get('amount')).isdigit():
-                                raise ValidationError('Coupon action requires a valid amount.')
+                                raise ValidationError('اجراء الكوبون يتطلب مبلغ صالح.')
                             if content.get('type') not in ['fixed', 'percentage']:
-                                raise ValidationError('Invalid coupon type. Choose either "fixed" or "percentage".')
+                                raise ValidationError('اختيار نوع الكوبون غير صالح. يجب أن يكون "مبلغ ثابت" أو "نسبة مئوية".')
                             TextConfig.objects.filter(flow_step=step).delete()
-                            max_discount = content.get('maximum_amount', None) if content.get('type') == 'fixed' else None
                             CouponConfig.objects.update_or_create(
                                 flow_step=step,
                                 defaults={
                                     'type': content.get('type'),
                                     'amount': content.get('amount'),
-                                    'maximum_amount': max_discount,
+                                    'maximum_amount': content.get('maximum_amount'),
                                     'expire_in': content.get('expire_in'),
                                     'free_shipping': content.get('free_shipping'),
-                                    'exclude_sale_products': content.get('exclude_sale_products')
+                                    'exclude_sale_products': content.get('exclude_sale_products'),
+                                    'message': content.get('message')
                                 }
                             )
 
@@ -446,13 +450,13 @@ def flow_builder(request, flow_id, context=None):
             except (ValidationError, IntegrityError, PermissionDenied) as e:
                 if request.headers.get('x-requested-with') == 'XMLHttpRequest':
                     return JsonResponse({'success': False, 'errors': str(e)}, status=400)
-                messages.error(request, f"An error occurred while saving the flow: {str(e)}")
+                messages.error(request, f"حدث خطأ أثناء حفظ التسلسل: {str(e)}")
                 return redirect('flow', flow_id=flow_id)
         else:
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
                 return JsonResponse({'success': False, 'errors': flow_form.errors}, status=400)
             else:
-                messages.error(request, 'Form is invalid. Please correct the errors.')
+                messages.error(request, 'النموذج غير صالح. يرجى التصحيح.')
                 return redirect('flow', flow_id=flow_id)
 
     flow_steps = FlowStep.objects.filter(flow=flow).order_by('order')
@@ -473,7 +477,7 @@ def flow_builder(request, flow_id, context=None):
 def delete_flow(request, flow_id):
     flow = get_object_or_404(Flow, id=flow_id, owner=request.user)
     flow.delete()
-    messages.success(request, 'Flow deleted successfully.')
+    messages.success(request, 'تم حذف التسلسل بنجاح.')
     return redirect('flows')
 
 @login_required
@@ -551,15 +555,15 @@ def activate_suggested_flow(request, suggestion_id):
                     coupon_config = SuggestedCouponConfig.objects.filter(suggested_flow_step=suggested_step).first()
                     if coupon_config:
                         logger.info(f"Creating coupon config for step {new_step.id}")
-                        maximum_amount = None if coupon_config.type == 'percentage' else coupon_config.maximum_amount
                         CouponConfig.objects.create(
                             flow_step=new_step,
                             type=coupon_config.type,
                             amount=coupon_config.amount,
                             expire_in=coupon_config.expire_in,
-                            maximum_amount=maximum_amount,
+                            maximum_amount=coupon_config.maximum_amount,
                             free_shipping=coupon_config.free_shipping,
-                            exclude_sale_products=coupon_config.exclude_sale_products
+                            exclude_sale_products=coupon_config.exclude_sale_products,
+                            message=coupon_config.message
                         )
                         
                     if not text_config and not delay_config and not coupon_config:
@@ -592,14 +596,12 @@ def campaign(request, context=None):
     try:
         store = UserStoreLink.objects.get(user=request.user).store
         # get all groups for the store
-        store_groups = Group.objects.filter(store=store)
-        print(store_groups)
+        store_groups = Group.objects.filter(store=store).order_by('-group_id')
         
         if not store_groups:
             messages.error(request, 'Failed to fetch store groups.')
             return redirect('dashboard')
         
-
     except UserStoreLink.DoesNotExist:
         messages.error(request, 'No store linked. Please link a store first.')
         return redirect('dashboard')
@@ -624,6 +626,17 @@ def campaign(request, context=None):
                 customers_data = Customer.objects.filter(customer_groups__group_id=group_id)
                 customers_numbers = [customer.customer_phone for customer in customers_data]
 
+                # Convert customers_data to a list of dictionaries for JSON serialization
+                customers_data_serialized = [
+                    {
+                        'name': customer.customer_name,
+                        'email': customer.customer_email,
+                        'phone': customer.customer_phone,
+                        'location': customer.customer_location,
+                    }
+                    for customer in customers_data
+                ]
+
                 if len(customers_data) == 0:
                     messages.error(request, 'No customers in the selected group.')
                     return redirect('campaigns')
@@ -634,7 +647,7 @@ def campaign(request, context=None):
                     return redirect('campaigns')
             else:
                 # Set customers_data and customers_numbers to empty if it's a draft
-                customers_data = []
+                customers_data_serialized = []
                 customers_numbers = []
 
             # Save the campaign and get the campaign ID
@@ -645,7 +658,7 @@ def campaign(request, context=None):
             campaign.save()
             
             data = {
-                'customers_data': customers_data,
+                'customers_data': customers_data_serialized,  # Use the serialized data
                 'msg': msg,
                 'store_id': store.id,
                 'campaign_id': campaign.id
@@ -686,7 +699,7 @@ def edit_campaign(request, campaign_id):
         # Store the original status before handling the form submission
         original_status = campaign.status
 
-        store_groups = Group.objects.filter(store=store)
+        store_groups = Group.objects.filter(store=store).order_by('-group_id')
 
         if request.method == 'POST':
             form = CampaignForm(request.POST, instance=campaign, store_groups=store_groups)
@@ -722,6 +735,17 @@ def edit_campaign(request, campaign_id):
                     customers_data = Customer.objects.filter(customer_groups__group_id=group_id)
                     customers_numbers = [customer.customer_phone for customer in customers_data]
 
+                    # Convert customers_data to a list of dictionaries for JSON serialization
+                    customers_data_serialized = [
+                        {
+                            'name': customer.customer_name,
+                            'email': customer.customer_email,
+                            'phone': customer.customer_phone,
+                            'location': customer.customer_location,
+                        }
+                        for customer in customers_data
+                    ]
+
                     if len(customers_numbers) == 0:
                         messages.error(request, 'No customers in the selected group.')
                         return redirect('campaigns')
@@ -732,7 +756,7 @@ def edit_campaign(request, campaign_id):
                         return redirect('campaigns')
                     
                     data = {
-                        'customers_data': customers_data,
+                        'customers_data': customers_data_serialized,
                         'msg': msg,
                         'store_id': store.id,
                         'campaign_id': campaign.id
@@ -791,7 +815,7 @@ def get_campaign_data(request, campaign_id=None):
                 'edit_url': reverse('edit_campaign', args=[campaign.id]),  # Add edit URL
                 'delete_url': reverse('campaign_delete', args=[campaign.id])  # Add delete URL
             }
-            
+                        
 
                 
             return JsonResponse({'success': True, 'data': data})
@@ -940,15 +964,15 @@ def get_customers(request):
 
         # Create a dictionary of group IDs to names
         group_data = (
-            Group.objects.filter(store=store)
+            Group.objects.filter(store=store).exclude(name='جميع العملاء')
             .annotate(customer_count=Count('customers'))  # Count related customers for each group
             .values('group_id', 'name', customer_count=Count('customers'))  # Include group ID, name, and customer count
+
         )
 
         # Convert to list of dictionaries for easier JSON handling
         group_data_list = list(group_data)
         
-
         return JsonResponse({
             'customers': customers_data,
             'group_data': group_data_list,  # List of dictionaries with 'name' and 'customer_count'
@@ -1001,11 +1025,9 @@ def sync_data(request):
 
             # Debug print: check group IDs for the customer
             group_ids = customer.get('groups', [])
-            print(f"Customer: {customer['name']}, Group IDs: {group_ids}")
 
             # Associate the customer with groups
             groups = Group.objects.filter(group_id__in=group_ids, store=store)
-            print(f"Associating {customer['name']} with Groups: {[g.group_id for g in groups]}")  # Debug print for groups found
             customer_obj.customer_groups.set(groups)
 
         return JsonResponse({'status': 'success', 'message': 'تم تحديث قاعدة البيانات بنجاح.'}, status=200)

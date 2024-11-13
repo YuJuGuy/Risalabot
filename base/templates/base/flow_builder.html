@@ -64,7 +64,7 @@
                                         <option value="True" {% if step.coupon_config.exclude_sale_products %}selected{% endif %}>نعم</option>
                                         <option value="False" {% if not step.coupon_config.exclude_sale_products %}selected{% endif %}>لا</option>
                                     </select>
-                                    <textarea class="coupon-message" placeholder="أدخل نص الرسالة هنا">{{ step.coupon.message }}</textarea>
+                                    <textarea class="coupon-message" placeholder="أدخل نص الرسالة هنا">{{ step.coupon_config.message }}</textarea>
                                 </div>
                             {% endif %}
 
@@ -193,10 +193,8 @@
                 </select>
                 <label>المبلغ او النسبة</label>
                 <input type="number" id="modal-coupon-amount" class="coupon-amount" min="1">
-                <div id="coupon-max-field">
-                    <label>الحد الاعلى للخصم</label>
-                    <input type="number" id="modal-coupon-max" class="max-amount" min="1">
-                </div>
+                <label>الحد الاعلى للخصم</label>
+                <input type="number" id="modal-coupon-max" class="max-amount" min="1">
                 <label>الايام المتبقية على انتهاء الكوبون</label>
                 <input type="number" id="modal-coupon-expiry" class="coupon-expiry" min="1">
                 <label>شحن مجاني:</label>
@@ -210,6 +208,41 @@
                     <option value="False">لا</option>
                 </select>
                 <textarea placeholder="أدخل نص الرسالة هنا" id="modal-coupon-message" class="coupon-message"></textarea>
+                <div class="available-variables">
+                    <div class="variable-item-container">
+                        <div class="variable-item" onclick="addVariableToMessage('{اسم العميل}')">
+                            <p>اسم العميل</p>
+                        </div>
+                        <div class="variable-item" onclick="addVariableToMessage('{الاسم الاول}')">
+                            <p>الاسم الاول</p>
+                        </div>
+                        <div class="variable-item" onclick="addVariableToMessage('{الايميل}')">
+                            <p>الايميل</p>
+                        </div>
+                        <div class="variable-item" onclick="addVariableToMessage('{رقم العميل}')">
+                            <p>رقم العميل</p>
+                        </div>
+                        <div class="variable-item" onclick="addVariableToMessage('{الدولة}')">
+                            <p>الدولة</p>
+                        </div>
+                        <div class="variable-item" onclick="addVariableToMessage('{رقم التتبع}')">
+                            <p>رقم التتبع</p>
+                        </div>
+                        <div class="variable-item" onclick="addVariableToMessage('{الحالة}')">
+                            <p>الحالة</p>
+                        </div>
+                        <div class="variable-item" onclick="addVariableToMessage('{السعر}')">
+                            <p>السعر</p>
+                        </div>
+                        <div class="variable-item" onclick="addVariableToMessage('{رابط التقييم}')">
+                            <p>رابط التقييم</p>
+                        </div>
+                        <div class="variable-item coupon-variable" onclick="addVariableToMessage('{الكوبون}')">
+                            <p>الكوبون</p>
+                        </div>
+                    </div>
+                    <p>المتغيرات سوف تستبدل بالقيم المناسبة للعميل المرسل له</p>
+                </div>
             </div>
 
             <div class="modal-footer">
@@ -495,6 +528,7 @@ function displaySMSFields() {
 
     const messageInput = document.getElementById('modal-sms-message');
     const visualMessage = document.getElementById('visualization-message');
+    const modalContent = document.getElementById('modal-content');
     
     // Set the initial value of the visualization message
     const currentMessage = currentStep.querySelector('.sms-message').value;
@@ -505,10 +539,17 @@ function displaySMSFields() {
     messageInput.addEventListener('input', function updateVisualization() {
         visualMessage.innerText = this.value;
     });
+
+    // update the border radius to only top right and bottom right to have 5 px else 0
+    modalContent.style.borderTopRightRadius = '5px';
+    modalContent.style.borderBottomRightRadius = '5px';
+    modalContent.style.borderTopLeftRadius = '0px';
+    modalContent.style.borderBottomLeftRadius = '0px';
 }
 
 // Function to display Delay fields
 function displayDelayFields() {
+    const modalContent = document.getElementById('modal-content');
     smsFields.style.display = "none";
     triggerFields.style.display = "none";
     couponFields.style.display = "none";
@@ -517,22 +558,29 @@ function displayDelayFields() {
 
     document.getElementById('modal-delay-time').value = currentStep.querySelector('.delay-time').value;
     document.getElementById('modal-delay-type').value = currentStep.querySelector('.delay-type').value;
+
+    // all border radius to 5px
+    modalContent.style.borderRadius = '5px';
 }
 
 // Function to display Coupon fields
 function displayCouponFields() {
     const couponTypeElement = document.getElementById('modal-coupon-type');
-    const couponMaxField = document.getElementById('coupon-max-field');
+    const modalContent = document.getElementById('modal-content');
     
     // Set the initial display of the coupon max field based on the current coupon type
     const couponType = currentStep.querySelector('.coupon-type').value;
-    couponMaxField.style.display = (couponType === "percentage") ? 'none' : 'block';
 
     smsFields.style.display = "none";
     triggerFields.style.display = "none";
     delayFields.style.display = "none";
     couponFields.style.display = "block";
     smsVisualization.style.display = "block";
+
+    modalContent.style.borderTopRightRadius = '5px';
+    modalContent.style.borderBottomRightRadius = '5px';
+    modalContent.style.borderTopLeftRadius = '0px';
+    modalContent.style.borderBottomLeftRadius = '0px';
 
     // Update visualization height initially to match modal content
     updateVisualizationHeight();
@@ -542,7 +590,7 @@ function displayCouponFields() {
 
     // Set the initial values for coupon fields
     document.getElementById('modal-coupon-amount').value = currentStep.querySelector('.coupon-amount').value;
-    couponTypeElement.value = couponType;
+    document.getElementById('modal-coupon-type').value = currentStep.querySelector('.coupon-type').value;
     document.getElementById('modal-coupon-max').value = currentStep.querySelector('.max-amount').value;
     document.getElementById('modal-coupon-expiry').value = currentStep.querySelector('.coupon-expiry').value;
     document.getElementById('modal-free-shipping').value = currentStep.querySelector('.free-shipping').value;
@@ -555,14 +603,6 @@ function displayCouponFields() {
     // Update visualization message as user types
     messageInput.addEventListener('input', function updateVisualization() {
         visualMessage.innerText = this.value;
-    });
-
-    // Add event listener to update the display of coupon-max-field based on coupon type
-    couponTypeElement.addEventListener('change', function() {
-        couponMaxField.style.display = (this.value === "percentage") ? 'none' : 'block';
-        
-        // Call updateVisualizationHeight to adjust visualization size after change
-        updateVisualizationHeight();
     });
 }
 
@@ -590,8 +630,7 @@ saveActionBtn.addEventListener('click', function() {
             currentStep.querySelector('.delay-time').value = updatedDelayTime;
             currentStep.querySelector('.delay-type').value = updatedDelayType;
         } else if (actionType === 'coupon') {
-            var updatedMessage = document.getElementById("modal-coupon-message").value;
-            currentStep.querySelector('.coupon-message').value = updatedMessage;
+
 
 
             var updatedCouponType = document.getElementById("modal-coupon-type").value;
@@ -600,7 +639,9 @@ saveActionBtn.addEventListener('click', function() {
             var updatedCouponExpiry = document.getElementById("modal-coupon-expiry").value;
             var updatedFreeShipping = document.getElementById("modal-free-shipping").value;
             var updatedExcludeSaleProducts = document.getElementById("modal-exclude-sale-products").value;
-    
+
+            var updatedMessage = document.getElementById("modal-coupon-message").value;
+            currentStep.querySelector('.coupon-message').value = updatedMessage;
 
             currentStep.querySelector('.coupon-type').value = updatedCouponType;
             currentStep.querySelector('.coupon-amount').value = updatedCouponAmount;
@@ -689,6 +730,7 @@ document.getElementById('flow-form').addEventListener('submit', function(e) {
             stepData.content.maximum_amount = item.querySelector('.max-amount').value || 0;
             stepData.content.free_shipping = item.querySelector('.free-shipping').value;
             stepData.content.exclude_sale_products = item.querySelector('.exclude-sale-products').value;
+            stepData.content.message = item.querySelector('.coupon-message').value;
         }
 
         updatedSteps.push(stepData);

@@ -7,6 +7,8 @@ from django.dispatch import receiver
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 import uuid
+from django.db import models, transaction
+
 from django.utils.crypto import get_random_string
 from datetime import date, timedelta
 
@@ -70,7 +72,7 @@ class Group(models.Model):
 class Customer(models.Model):
     store = models.ForeignKey(Store, on_delete=models.CASCADE)
     customer_name = models.CharField(max_length=255)
-    customer_email = models.CharField(max_length=255)
+    customer_email = models.CharField(max_length=255, blank=True, null=True)
     customer_phone = models.CharField(max_length=255)
     customer_location = models.CharField(max_length=255)
     customer_groups = models.ManyToManyField(Group, related_name='customers')
@@ -79,9 +81,23 @@ class Customer(models.Model):
     def __str__(self):
         return f'{self.store.store_name} : Customer {self.customer_name}'
 
-
-
+@receiver(post_save, sender=Customer)
+def add_to_all_customers_group(sender, instance, created, **kwargs):
+    if created:  # Only add if the customer is newly created
+        # Ensure the 'جميع العملاء' group exists for the customer's store
+        all_customers_group, _ = Group.objects.get_or_create(
+            name='جميع العملاء',
+            store=instance.store,
+            defaults={'group_id': int(f"1111{instance.store.store_id}")}  # Use unique ID logic as needed
+        )
+        
+        # Use transaction.on_commit to ensure Many-to-Many relationship is added after the save
+        transaction.on_commit(lambda: instance.customer_groups.add(all_customers_group))
+        
+        
 class Campaign(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
     status_choices = (
         ('draft', 'مسودة'),
         ('scheduled', 'مجدولة'),
@@ -104,32 +120,52 @@ class Campaign(models.Model):
     def __str__(self):
         return self.name
     
-    def save(self, *args, **kwargs):
-        if self.pk is not None:
-            try:
-                old_instance = Campaign.objects.get(pk=self.pk)
-                if old_instance.status != self.status:
-                    self.status_changed_at = timezone.now()
-                
-                # Update store totals
-                clicks_diff = self.clicks - old_instance.clicks
-                messages_diff = self.messages_sent - old_instance.messages_sent
-                purchases_diff = self.purchases - old_instance.purchases
-                
-                if messages_diff != 0 or purchases_diff != 0:
-                    self.store.subscription_message_count += messages_diff
-                    self.store.total_messages_sent += messages_diff
-                    self.store.total_purchases += purchases_diff
-                    self.store.total_clicks += clicks_diff
-                    self.store.save()
-                
-            except Campaign.DoesNotExist:
+def save(self, *args, **kwargs):
+    if self.pk is not None:
+        try:
+            old_instance = Campaign.objects.get(pk=self.pk)
+            if old_instance.status != self.status:
                 self.status_changed_at = timezone.now()
-        else:
-            # New instance being created
-            self.status_changed_at = timezone.now()
             
-        super().save(*args, **kwargs)
+            # Calculate differences
+            clicks_diff = self.clicks - old_instance.clicks
+            messages_diff = self.messages_sent - old_instance.messages_sent
+            purchases_diff = self.purchases - old_instance.purchases
+            
+            # Update store totals and log activity
+            if messages_diff != 0:
+                self.store.subscription_message_count += messages_diff
+                self.store.total_messages_sent += messages_diff
+                self.store.save(update_fields=['subscription_message_count', 'total_messages_sent'])
+                
+                # Log message activity
+                log_activity(self.store, 'campaign', self.pk, 'message', messages_diff)
+                
+            if purchases_diff != 0:
+                self.store.total_purchases += purchases_diff
+                self.store.save(update_fields=['total_purchases'])
+                
+                # Log purchase activity
+                log_activity(self.store, 'campaign', self.pk, 'purchase', purchases_diff)
+                
+            if clicks_diff != 0:
+                self.store.total_clicks += clicks_diff
+                self.store.save(update_fields=['total_clicks'])
+                
+                # Log click activity
+                log_activity(self.store, 'campaign', self.pk, 'click', clicks_diff)
+                
+        except Campaign.DoesNotExist:
+            self.status_changed_at = timezone.now()
+    else:
+        # New instance being created
+        self.status_changed_at = timezone.now()
+        
+    super().save(*args, **kwargs)
+
+
+# Helper function to handle ActivityLog increment or creation
+
     
     
 class Trigger(models.Model):
@@ -169,25 +205,41 @@ class Flow(models.Model):
                 old_instance = Flow.objects.get(pk=self.pk)
                 if old_instance.status != self.status:
                     self.status_changed_at = timezone.now()
-                
-                # Update store totals
+            
+                # Calculate differences
                 messages_diff = self.messages_sent - old_instance.messages_sent
                 clicks_diff = self.clicks - old_instance.clicks
                 purchases_diff = self.purchases - old_instance.purchases
                 
-                if messages_diff != 0 or purchases_diff != 0:
+                # Update store totals and log activity
+                if messages_diff != 0:
                     self.store.subscription_message_count += messages_diff
                     self.store.total_messages_sent += messages_diff
+                    self.store.save(update_fields=['subscription_message_count', 'total_messages_sent'])
+                    
+                    # Log message activity
+                    log_activity(self.store, 'flow', self.pk, 'message', messages_diff)
+                
+                if purchases_diff != 0:
                     self.store.total_purchases += purchases_diff
+                    self.store.save(update_fields=['total_purchases'])
+                    
+                    # Log purchase activity
+                    log_activity(self.store, 'flow', self.pk, 'purchase', purchases_diff)
+                
+                if clicks_diff != 0:
                     self.store.total_clicks += clicks_diff
-                    self.store.save()
+                    self.store.save(update_fields=['total_clicks'])
+                    
+                    # Log click activity
+                    log_activity(self.store, 'flow', self.pk, 'click', clicks_diff)
                 
             except Flow.DoesNotExist:
                 self.status_changed_at = timezone.now()
         else:
             # New instance being created
             self.status_changed_at = timezone.now()
-            
+        
         super().save(*args, **kwargs)
 
     class Meta:
@@ -285,6 +337,7 @@ class CouponConfig(models.Model):
     maximum_amount = models.IntegerField(null=True)
     free_shipping = models.BooleanField()
     exclude_sale_products = models.BooleanField()
+    message = models.TextField(blank=True, null=True)
 
 
     def __str__(self):
@@ -347,5 +400,50 @@ def create_config_for_suggested_flow_step(sender, instance, created, **kwargs):
             SuggestedTimeDelayConfig.objects.create(suggested_flow_step=instance, delay_time=1, delay_type='hours')
         elif instance.action_type.name == 'coupon' and not hasattr(instance, 'suggested_coupon_config'):
             SuggestedCouponConfig.objects.create(suggested_flow_step=instance, amount=10, type='fixed', expire_in=3, maximum_amount=10, free_shipping=True, exclude_sale_products=True)
+            
+            
+class ActivityLog(models.Model):
+    ACTIVITY_TYPE_CHOICES = [
+        ('message', 'Message'),
+        ('purchase', 'Purchase'),
+        ('click', 'Click'),
+    ]
+    SOURCE_TYPE_CHOICES = [
+        ('flow', 'Flow'),
+        ('campaign', 'Campaign'),
+    ]
+
+    store = models.ForeignKey(Store, on_delete=models.CASCADE, related_name='activity_logs')
+    source_type = models.CharField(max_length=10, choices=SOURCE_TYPE_CHOICES)
+    source_id = models.UUIDField()  # ID of the Flow or Campaign
+    activity_type = models.CharField(max_length=10, choices=ACTIVITY_TYPE_CHOICES)
+    date = models.DateField()  # Track by day only
+    count = models.IntegerField(default=0)  # Count of the activity (e.g., messages sent, clicks, purchases)
+
+    def __str__(self):
+        return f"{self.store.store_name} - {self.get_activity_type_display()} on {self.date}"
 
 
+
+def log_activity(store, source_type, source_id, activity_type, diff_count):
+    today = date.today()
+    
+    # Update or create ActivityLog with count increment
+    activity_log, created = ActivityLog.objects.get_or_create(
+        store=store,
+        source_type=source_type,
+        source_id=source_id,
+        activity_type=activity_type,
+        date=today,
+        defaults={'count': diff_count},
+    )
+    
+    if not created:
+        # If the log entry already exists, increment the count
+        ActivityLog.objects.filter(
+            store=store,
+            source_type=source_type,
+            source_id=source_id,
+            activity_type=activity_type,
+            date=today,
+        ).update(count=models.F('count') + diff_count)

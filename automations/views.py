@@ -96,7 +96,6 @@ def process_webhook(payload):
         }
         
         
-        logging.info(f"Flow data: {flow_data}")
         
         
 

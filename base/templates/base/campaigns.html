@@ -81,14 +81,15 @@
     </div>
   </div>
   
+    <h2>الحملات</h2>
 
       <div class="action-bar">
-        <p>الحملات</p>
         <button class="create-button" onclick=showPopup()>
             <i class="fa-solid fa-plus"></i>
             <span>إنشاء حملة</span>
         </button>
-        </div>
+        <button id="sync-button" class="sync-button">تحديث البيانات</button>
+      </div>
 
 
     <table id="myTable" class="table table-striped hover" style="width:100%">
@@ -104,7 +105,8 @@
   </table>
 
   <div id="get-campaigns-url" data-get-campaigns-url="{% url 'get_campaigns' %}"></div>
-
+  
+  <meta name="csrf-token" content="{{ csrf_token }}">
 
     <script src="https://cdn.datatables.net/v/dt/jq-3.7.0/dt-2.1.8/datatables.min.js"></script>
 
@@ -168,6 +170,8 @@
         }
     });
 
+    
+
 
 
       document.addEventListener('DOMContentLoaded', function() {
@@ -227,6 +231,30 @@
         });
 
     });
+
+
+    document.getElementById('sync-button').addEventListener('click', syncData);
+
+    function syncData() {
+        fetch('/sync_data/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrf-token]').content,
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === "success") {
+                showMessage(data.message, 'success');
+                // Refresh the customer and group data display
+            } else {
+                showMessage('Error: ' + data.message, 'error');
+            }
+        })
+        .catch(error => console.error('Error syncing data:', error));
+    }
+
   
     document.getElementById('campaign-form').addEventListener('submit', function(e) {
       e.preventDefault();
