@@ -136,10 +136,10 @@
                                         ${
                                             row.status === "scheduled" || row.status === "draft" ? `
                                                 <a href="javascript:void(0);" onclick="showPopup('${row.id}');">تعديل</a>
-                                                <a href="${row.cancel_url}">الغاء</a>
+                                                <a href="javascript:void(0);" onclick="cancelCampaign('${row.id}');">الغاء</a>
                                             ` : `
                                                 <a href="javascript:void(0);" onclick="showPopup('${row.id}');">اظهار</a>
-                                                <a href="${row.delete_url}">حذف</a>
+                                                <a href="javascript:void(0);" onclick="deleteCampaign('${row.id}');">حذف</a>
                                             `
                                         }
                                     </div>
@@ -248,27 +248,55 @@
             if (data.status === "success") {
                 showMessage(data.message, 'success');
                 // Refresh the customer and group data display
+                refreshTable();  // Call the function to refresh the table
             } else {
-                showMessage('Error: ' + data.message, 'error');
+                showMessage(data.errors, 'error');
             }
         })
         .catch(error => console.error('Error syncing data:', error));
     }
 
+    function refreshTable() {
+        const myTable = $('#myTable').DataTable();
+        myTable.ajax.reload();  // Reload the table data
+    }
+
   
     document.getElementById('campaign-form').addEventListener('submit', function(e) {
-      e.preventDefault();
-  
-      var statusSelector = document.querySelector('[name="status"]');  // Select the hidden status field
-      var clickedButton = e.submitter;  // Get the button that triggered the submit event
-      var status = clickedButton.value;
-  
-      statusSelector.value = status;  // Set the value of the status field
-      console.log(statusSelector.value);  // For debugging, shows the selected status
-  
-      e.target.submit();  // Submit the form with the updated status
-  });
-  
+        e.preventDefault();
+    
+        var statusSelector = document.querySelector('[name="status"]');  // Select the hidden status field
+        var clickedButton = e.submitter;  // Get the button that triggered the submit event
+        var status = clickedButton.value;
+    
+        statusSelector.value = status;  // Set the value of the status field
+        console.log(statusSelector.value);  // For debugging, shows the selected status
+    
+        var formData = new FormData(e.target);
+    
+        fetch(e.target.action, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showMessage(data.message, 'success');
+                closePopup();
+                syncData();
+            } else {
+                showMessage(data.errors, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showMessage('An unexpected error occurred. Please try again.', 'error');
+        });
+    });
 
     function addVariableToMessage(variable){
       const messageInput = document.getElementById('id_msg');
@@ -279,7 +307,49 @@
     }
 
 
-          
+    function deleteCampaign(campaignId){
+      fetch('/delete-campaign/' + campaignId + '/', {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': document.querySelector('[name=csrf-token]').content,
+          'Content-Type': 'application/json'
+        }
+      })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            closeAllDropdowns();
+            showMessage(data.message, 'success');
+            syncData();
+          } else {
+            showMessage(data.errors, 'error');
+          }
+        })
+        .catch(error => {
+          console.error('Error deleting campaign:', error);  // Log the error for debugging
+          showMessage('An error occurred while deleting the campaign. Please try again.', 'error');
+        });
+    }
+
+    function cancelCampaign(campaignId){
+      fetch('/cancel-campaign/' + campaignId + '/', {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': document.querySelector('[name=csrf-token]').content,
+          'Content-Type': 'application/json'
+        }
+      })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            closeAllDropdowns();
+            showMessage(data.message, 'success');
+            syncData();
+          } else {
+            showMessage(data.errors, 'error');
+          }
+        });
+    }
 
       
     function showPopup(campaignId) {
@@ -295,8 +365,8 @@
               .then(response => response.json())
               .then(data => {
                   if (data.success) {
-                      allCampaigns = data.data;
                       const campaignData = data.data;
+
   
                       if (campaignData.status === "scheduled" || campaignData.status === "draft") {
                           submitButton.innerText = 'تحديث';
@@ -331,8 +401,10 @@
                       // Show the popup
                       document.getElementById("myPopup").style.display = "flex";
                       closeAllDropdowns();
+
+              
                   } else {
-                    showMessage('فشل في تحميل بيانات الحملة');
+                    showMessage(data.errors, 'error');
                   }
               });
       } else {

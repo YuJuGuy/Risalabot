@@ -217,11 +217,9 @@ def flows(request, context=None):
             new_flow.owner = request.user  # Associate the flow with the current user
             new_flow.store = UserStoreLink.objects.get(user=request.user).store
             new_flow.save()  # Now save the flow
-            messages.success(request, 'Flow created successfully.')
-            return redirect('flow', flow_id=new_flow.id)  # Redirect to the flow builder
+            return JsonResponse({'success': True, 'redirect_url': reverse('flow', kwargs={'flow_id': new_flow.id})})
         else:
-            messages.error(request, 'Error creating flow. Please correct the form errors.')
-            return redirect('flows')
+            return JsonResponse({'success': False, 'errors': form.errors}, status=400)
     else:
         form = FlowForm()
     
@@ -335,8 +333,8 @@ def flow_builder(request, flow_id, context=None):
         flow = Flow.objects.get(id=flow_id, owner=request.user)
     except Flow.DoesNotExist:
         if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-            return JsonResponse({'success': False, 'errors': 'Flow not found.'}, status=404)
-        messages.error(request, 'Flow not found.')
+            return JsonResponse({'success': False, 'errors': 'لم يتم العثور على الأتمتة.'}, status=404)
+        messages.error(request, 'لم يتم العثور على الأتمتة.')
         return redirect('flows')
 
     if context is None:
@@ -475,10 +473,13 @@ def flow_builder(request, flow_id, context=None):
 
 @login_required(login_url='login')
 def delete_flow(request, flow_id):
-    flow = get_object_or_404(Flow, id=flow_id, owner=request.user)
-    flow.delete()
-    messages.success(request, 'تم حذف التسلسل بنجاح.')
-    return redirect('flows')
+    if request.method == 'POST':
+        try:
+            flow = get_object_or_404(Flow, id=flow_id, owner=request.user)
+            flow.delete()
+            return JsonResponse({'success': True, 'message': 'تم حذف الأتمتة بنجاح.'})
+        except Flow.DoesNotExist:
+            return JsonResponse({'success': False, 'errors': 'الأتمتة غير موجودة.'}, status=404)
 
 @login_required
 def activate_suggested_flow(request, suggestion_id):
@@ -599,12 +600,10 @@ def campaign(request, context=None):
         store_groups = Group.objects.filter(store=store).order_by('-group_id')
         
         if not store_groups:
-            messages.error(request, 'Failed to fetch store groups.')
-            return redirect('dashboard')
+            return JsonResponse({'success': False, 'errors': 'لا يوجد مجموعات في المتجر.'}, status=400)
         
     except UserStoreLink.DoesNotExist:
-        messages.error(request, 'No store linked. Please link a store first.')
-        return redirect('dashboard')
+        return JsonResponse({'success': False, 'errors': 'لم يتم ربط المتجر. يرجى ربط متجر أولا.'}, status=400)
 
     if request.method == 'POST':
         form = CampaignForm(request.POST, store_groups=store_groups)
@@ -619,9 +618,7 @@ def campaign(request, context=None):
                 if scheduled_time.tzinfo is None or scheduled_time.tzinfo.utcoffset(scheduled_time) is None:
                     scheduled_time = make_aware(scheduled_time)
                 if scheduled_time < make_aware(datetime.now()):
-                    messages.error(request, 'Scheduled time cannot be in the past.')
-                    return redirect('campaigns')
-
+                    return JsonResponse({'success': False, 'errors': 'لا يمكن أن يكون الوقت المخطط في الماضي.'}, status=400)
                 # Fetch customers only for active campaigns
                 customers_data = Customer.objects.filter(customer_groups__group_id=group_id)
                 customers_numbers = [customer.customer_phone for customer in customers_data]
@@ -638,13 +635,11 @@ def campaign(request, context=None):
                 ]
 
                 if len(customers_data) == 0:
-                    messages.error(request, 'No customers in the selected group.')
-                    return redirect('campaigns')
+                    return JsonResponse({'success': False, 'errors': 'لا يوجد أي عملاء في المجموعة المختارة.'}, status=400)
 
                 # Check if the message limit is sufficient
                 if len(customers_numbers) > store.subscription.messages_limit - store.subscription_message_count:
-                    messages.error(request, 'Insufficient message balance.')
-                    return redirect('campaigns')
+                    return JsonResponse({'success': False, 'errors': 'الرصيد الرسالي غير متاح.'}, status=400)
             else:
                 # Set customers_data and customers_numbers to empty if it's a draft
                 customers_data_serialized = []
@@ -670,11 +665,10 @@ def campaign(request, context=None):
                 task = send_whatsapp_message_task.apply_async(args=[data], eta=scheduled_time)
                 campaign.task_id = task.id
                 campaign.save()
-                messages.success(request, 'Campaign created and scheduled successfully.')
+                return JsonResponse({'success': True, 'message': 'تم إنشاء الحملة وتم حفظها بنجاح.', 'redirect_url': reverse('campaigns')})
             else:
-                messages.success(request, 'Campaign saved as draft.')
+                return JsonResponse({'success': True, 'message': 'تم إنشاء الحملة وتم حفظها بنجاح.', 'redirect_url': reverse('campaigns')})
             
-            return redirect('campaigns')  # Adjust the redirect as needed
     else:
         form = CampaignForm(store_groups=store_groups)
     
@@ -853,8 +847,7 @@ def campaign_cancel(request, campaign_id):
 
         # Check if the campaign is scheduled
         if campaign.status != 'scheduled':
-            messages.error(request, 'This campaign is not scheduled, so it cannot be cancelled.')
-            return redirect('campaigns')
+            return JsonResponse({'success': False, 'errors': 'هذه الحملة غير مخططة، لذلك لا يمكن إلغاؤها.'}, status=400)
 
         # Check if the campaign has a task ID (Celery task)
         if campaign.task_id:
@@ -863,37 +856,37 @@ def campaign_cancel(request, campaign_id):
                 celery_app.control.revoke(campaign.task_id)
             except CeleryError as e:
                 # Log the error and display a user-friendly message
-                messages.error(request, f"Failed to revoke the campaign task: {str(e)}")
+                return JsonResponse({'success': False, 'errors': f"فشل إلغاء المهمة: {str(e)}"}, status=400)
             else:
                 # If successfully revoked, update campaign status
                 campaign.task_id = None
                 campaign.status = 'cancelled'
                 campaign.save(update_fields=['task_id', 'status'])
-                messages.success(request, 'Campaign has been successfully cancelled.')
+                return JsonResponse({'success': True, 'message': 'تم إلغاء الحملة بنجاح.'})
                 
         else:
             campaign.status = 'cancelled'
             campaign.save(update_fields=['task_id', 'status'])
-            messages.success(request, 'No task ID found for this campaign. Cancelling the campaign.')
+            return JsonResponse({'success': True, 'message': 'تم إلغاء الحملة بنجاح.'})
             
     except (Campaign.DoesNotExist, UserStoreLink.DoesNotExist):
         # If either the campaign or the user-store link does not exist
-        raise PermissionDenied('You do not have permission to cancel this campaign.')
+        return JsonResponse({'success': False, 'errors': 'ليس لديك الصلاحية لإلغاء هذه الحملة.'}, status=400)
 
-    # Redirect to the campaigns page
-    return redirect('campaigns')
 
 
 @login_required(login_url='login')
 def delete_campaign(request, campaign_id):
-    try:
-        campaign = Campaign.objects.get(id=campaign_id , store=UserStoreLink.objects.get(user=request.user).store)
-        campaign.status = 'deleted'
-        campaign.save(update_fields=['status'])
-        messages.success(request, 'Campaign deleted successfully.')
-    except Campaign.DoesNotExist:
-        messages.error(request, 'Campaign does not exist.')
-    return redirect('campaigns')
+    if request.method == 'POST':
+        try:
+            campaign = Campaign.objects.get(id=campaign_id, store=UserStoreLink.objects.get(user=request.user).store)
+            campaign.status = 'deleted'
+            campaign.save(update_fields=['status'])
+            return JsonResponse({'success': True, 'message': 'تم حذف الحملة بنجاح.'})
+        except Campaign.DoesNotExist:
+            return JsonResponse({'success': False, 'errors': 'الحملة غير موجودة.'}, status=400)
+    else:
+        return JsonResponse({'success': False, 'errors': 'طريقة الطلب غير صالحة.'}, status=405)
 
 
 #Customer Views

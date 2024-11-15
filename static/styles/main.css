@@ -83,7 +83,7 @@ html, body {
 }
 
 .logo-image {
-  max-height: 100%; /* Ensure the image height does not exceed the header height */
+  height: 100%; /* Ensure the image height does not exceed the header height */
   width: auto; /* Maintain aspect ratio */
   object-fit: contain; /* Fit the image within the container without cropping */
 }

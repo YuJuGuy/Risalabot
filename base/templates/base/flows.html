@@ -25,6 +25,7 @@
     </table>
     
 
+
     
 
 
@@ -36,7 +37,7 @@
     <div id="myPopup" class="popup">
         <div class="popup-content-flow">
             <span id ="closePopup" class="close">&times;</span>
-            <form id="flowForm" method="post" action="{% url 'flows' %}" novalidate>
+            <form id="flowForm" novalidate>
                 {% csrf_token %}
                 {% for field in form %}
                     <div class="form-field">
@@ -83,6 +84,33 @@
     <script src="https://cdn.datatables.net/v/dt/jq-3.7.0/dt-2.1.8/datatables.min.js"></script>
 
     <script>
+
+        document.getElementById('flowForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+        
+            var formData = new FormData(e.target);
+        
+            fetch(e.target.action, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    window.location.href = data.redirect_url;
+                } else {
+                    showMessage(data.errors, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showMessage('حدث خطأ ما. يرجى المحاولة مره اخرى.', 'error');
+            });
+        }); 
 
 
     const getFlowsUrl = document.getElementById('get-flows-url').dataset.getFlowsUrl;
@@ -264,7 +292,7 @@
                                     <i class="fa-solid fa-ellipsis-vertical"></i>
                                     <div class="dropdown-content">
                                         <a href="/flow/${row.id}/" class="edit-button">تعديل</a>
-                                        <a href="/flow/delete/${row.id}/" class="delete-button">حذف</a>
+                                        <a href="#" onclick="deleteFlow('${row.id}')" class="delete-button">حذف</a>
                                     </div>
                                 </div>`;
                         }
@@ -323,6 +351,35 @@
             // No recommended flows found
             recommendedFlowsContainer.innerHTML = '<p>لا توجد رسائل تلقائية موصى بها.</p>';
         }
+    }
+
+
+    function deleteFlow(flowId) {
+        fetch('/delete-flow/' + flowId + '/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showMessage(data.message, 'success');
+                refreshTable();
+            } else {
+                showMessage(data.errors, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error deleting flow:', error);
+            showMessage('حدث خطأ ما. يرجى المحاولة مره اخرى.', 'error');
+        });
+    }
+
+    function refreshTable() {
+        const myTable = $('#myTable').DataTable();
+        myTable.ajax.reload();  // Reload the table data
     }
 
     
