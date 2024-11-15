@@ -14,6 +14,13 @@
             <input class="input-field" id="username" name="email" type="email">
             <label for="password">كلمة المرور </label>
             <input class="input-field" type="password" name="password" id="password">
+            {% if messages %}
+                <ul>
+                    {% for message in messages %}
+                        <li>{{ message }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
 
             <button type="submit" class="submit-button">تسجيل الدخول</button>
             <div class="titles">
@@ -38,6 +45,13 @@
             {{ field }}
           </div>
           {% endfor %}
+          {% if messages %}
+          <ul>
+              {% for message in messages %}
+                  <li>{{ message }}</li>
+              {% endfor %}
+              </ul>
+          {% endif %}
           <button type="submit" class="submit-button">إنشاء حساب جديد</button>
           <div class="titles">
             <div class="login-text-small">لديك حساب؟ <a href="{% url 'login' %}" class="register-link">تسجيل الدخول</a></div>

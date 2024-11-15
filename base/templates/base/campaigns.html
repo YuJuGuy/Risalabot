@@ -134,7 +134,7 @@
                                     <i class="fa-solid fa-ellipsis-vertical"></i>
                                     <div class="dropdown-content">
                                         ${
-                                            row.status === "scheduled" || row.status === "draft" ? `
+                                            row.status === "مجدولة" || row.status === "مسودة" ? `
                                                 <a href="javascript:void(0);" onclick="showPopup('${row.id}');">تعديل</a>
                                                 <a href="javascript:void(0);" onclick="cancelCampaign('${row.id}');">الغاء</a>
                                             ` : `
@@ -246,11 +246,11 @@
         .then(response => response.json())
         .then(data => {
             if (data.status === "success") {
-                showMessage(data.message, 'success');
+                showMessage(data.message, data.type);
                 // Refresh the customer and group data display
                 refreshTable();  // Call the function to refresh the table
             } else {
-                showMessage(data.errors, 'error');
+                showMessage(data.errors, data.type);
             }
         })
         .catch(error => console.error('Error syncing data:', error));
@@ -270,9 +270,9 @@
         var status = clickedButton.value;
     
         statusSelector.value = status;  // Set the value of the status field
-        console.log(statusSelector.value);  // For debugging, shows the selected status
     
         var formData = new FormData(e.target);
+        console.log(...formData.entries());
     
         fetch(e.target.action, {
             method: 'POST',
@@ -285,16 +285,16 @@
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                showMessage(data.message, 'success');
+                showMessage(data.message, data.type);
                 closePopup();
                 syncData();
             } else {
-                showMessage(data.errors, 'error');
+                showMessage(data.errors, data.type);
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            showMessage('An unexpected error occurred. Please try again.', 'error');
+            showMessage('حدث خطأ غير متوقع. يرجى المحاولة مرة اخرى.', 'error');
         });
     });
 
@@ -319,15 +319,15 @@
         .then(data => {
           if (data.success) {
             closeAllDropdowns();
-            showMessage(data.message, 'success');
-            syncData();
+            showMessage(data.message, data.type);
+            refreshTable();
           } else {
-            showMessage(data.errors, 'error');
+            showMessage(data.errors, data.type);
           }
         })
         .catch(error => {
           console.error('Error deleting campaign:', error);  // Log the error for debugging
-          showMessage('An error occurred while deleting the campaign. Please try again.', 'error');
+          showMessage('حدث خطأ غير متوقع. يرجى المحاولة مرة اخرى.', 'error');
         });
     }
 
@@ -343,10 +343,10 @@
         .then(data => {
           if (data.success) {
             closeAllDropdowns();
-            showMessage(data.message, 'success');
-            syncData();
+            showMessage(data.message, data.type);
+            refreshTable();
           } else {
-            showMessage(data.errors, 'error');
+            showMessage(data.errors, data.type);
           }
         });
     }
@@ -404,7 +404,7 @@
 
               
                   } else {
-                    showMessage(data.errors, 'error');
+                    showMessage(data.errors, data.type);
                   }
               });
       } else {

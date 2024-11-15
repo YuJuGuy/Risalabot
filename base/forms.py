@@ -1,6 +1,6 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
-from . models import User , Campaign, Flow, FlowActionTypes
+from . models import User , Campaign, Flow
 from django.core.exceptions import ValidationError
 import json
 

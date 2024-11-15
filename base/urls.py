@@ -1,6 +1,8 @@
 from django.urls import path
 from . import views
 from . import authview
+from . import flows
+from . import campaigns
 from django.contrib.auth import views as auth_views
 urlpatterns = [
     path('login/', views.loginPage, name="login"),
@@ -14,23 +16,24 @@ urlpatterns = [
     
     
     path('dashboard/', views.dashboard, name="dashboard"),
+    path('get-dashboard-data/', views.get_dashboard_data, name='get_dashboard_data'),
     
     
     
-    path('flows/', views.flows, name='flows'),
-    path('flow/<uuid:flow_id>/', views.flow_builder, name='flow'),
-    path('delete-flow/<uuid:flow_id>/', views.delete_flow, name='delete_flow'),
-    path('get-flows/', views.get_flows, name='get_flows'),
-    path('activate-suggested-flow/<int:suggestion_id>/', views.activate_suggested_flow, name='activate_suggested_flow'),
+    path('flows/', flows.flows, name='flows'),
+    path('flow/<uuid:flow_id>/', flows.flow_builder, name='flow'),
+    path('delete-flow/<uuid:flow_id>/', flows.delete_flow, name='delete_flow'),
+    path('get-flows/', flows.get_flows, name='get_flows'),
+    path('activate-suggested-flow/<int:suggestion_id>/', flows.activate_suggested_flow, name='activate_suggested_flow'),
 
 
     
-    path('campaigns/', views.campaign, name='campaigns'),
-    path('cancel-campaign/<uuid:campaign_id>/', views.campaign_cancel, name='campaign_cancel'),
-    path('delete-campaign/<uuid:campaign_id>/', views.delete_campaign, name='campaign_delete'),
-    path('edit_campaign/<uuid:campaign_id>/', views.edit_campaign, name='edit_campaign'),
-    path('get_campaigns/', views.get_campaign_data, name='get_campaigns'),
-    path('get_campaigns/<uuid:campaign_id>/', views.get_campaign_data, name='get_campaigns'),
+    path('campaigns/', campaigns.campaign, name='campaigns'),
+    path('cancel-campaign/<uuid:campaign_id>/', campaigns.campaign_cancel, name='campaign_cancel'),
+    path('delete-campaign/<uuid:campaign_id>/', campaigns.delete_campaign, name='campaign_delete'),
+    path('edit_campaign/<uuid:campaign_id>/', campaigns.edit_campaign, name='edit_campaign'),
+    path('get_campaigns/', campaigns.get_campaign_data, name='get_campaigns'),
+    path('get_campaigns/<uuid:campaign_id>/', campaigns.get_campaign_data, name='get_campaigns'),
 
     
     

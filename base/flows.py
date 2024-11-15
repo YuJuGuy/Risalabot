@@ -1,294 +1,416 @@
-from django.shortcuts import render, redirect
-from django.contrib import messages
-from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse
-from django.core.exceptions import ValidationError
-from django.db import transaction
-from .models import Flow, FlowStep, FlowActionTypes, TextConfig, TimeDelayConfig, Trigger
-from .forms import FlowForm
-import json
 import logging
+from django.db import IntegrityError
+from django.core.exceptions import ValidationError
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import get_object_or_404
+from django.urls import reverse
+from . decorators import check_token_validity
+from . models import User, UserStoreLink,Trigger, FlowActionTypes, Flow, FlowStep, SuggestedFlow, SuggestedFlowStep, TextConfig, TimeDelayConfig,SuggestedTextConfig, SuggestedTimeDelayConfig, CouponConfig, SuggestedCouponConfig
+from django.http import JsonResponse
+from django.views.decorators.http import require_http_methods
+import json
+from django.db import transaction
+from django.shortcuts import render,redirect
+from django.contrib import messages
+from django.db.models import F
+from . forms import FlowForm
+from django.core.exceptions import PermissionDenied
 
 
 logger = logging.getLogger(__name__)
 
-class FlowBuilderError(Exception):
-    """Custom exception for Flow Builder specific errors"""
-    pass
+
+__all__ = ('celery_app',) 
+
 
 
 @login_required(login_url='login')
-def flow_builder(request, flow_id):
-    """
-    Handle flow building operations with comprehensive error handling and data validation.
-    """
+@check_token_validity
+def flows(request, context=None):
+    try:
+        user = request.user
+    except User.DoesNotExist:
+        messages.error(request, 'No user found.')
+        return redirect('dashboard')
+    
+    if context is None:
+        context = {}
+    
+    if request.method == 'POST':
+        form = FlowForm(request.POST)
+        if form.is_valid():
+            # Save the form but don't commit yet, as we need to add the owner
+            new_flow = form.save(commit=False)
+            new_flow.owner = request.user  # Associate the flow with the current user
+            new_flow.store = UserStoreLink.objects.get(user=request.user).store
+            new_flow.save()  # Now save the flow
+            return JsonResponse({'success': True, 'redirect_url': reverse('flow', kwargs={'flow_id': new_flow.id})})
+        else:
+            return JsonResponse({'success': False, 'errors': form.errors}, status=400)
+    else:
+        form = FlowForm()
+    
+    
+    context.update({
+        'form': form,
+        'triggers': Trigger.objects.all(),
+    })
+    return render(request, 'base/flows.html', context)
+
+
+@login_required(login_url='login')
+def get_flows(request):
+    try:
+        user = request.user
+        flows = list(user.flows.all().values('id', 'name', 'updated_at', 'status', 'messages_sent','purchases'))
+        for flow in flows:
+            flow['status'] = dict(Flow.STATUS_CHOICES).get(flow['status'], flow['status'])
+        for flow in flows:
+            flow['updated_at'] = flow['updated_at'].strftime('%Y-%m-%d %H:%M')
+        suggestions = list(SuggestedFlow.objects.all().values('id', 'name', 'description', 'img'))
+        data = {
+            'flows': flows,
+            'suggestions': suggestions
+        }
+        return JsonResponse(data)
+        
+    except User.DoesNotExist:
+        messages.error(request, 'No user found.')
+        return redirect('dashboard')
+    
+
+    
+def validate_steps_data(steps_data):
+        """Validates the steps data sent as JSON."""
+        try:
+            steps = json.loads(steps_data)
+        except json.JSONDecodeError:
+            raise ValidationError("بيانات الخطوات يجب أن تكون بتنسيق JSON صالح.")
+
+        # Check if the steps_data is a list
+        if not isinstance(steps, list):
+            raise ValidationError("بيانات الخطوات يجب أن تكون قائمة.")
+
+        valid_action_types = FlowActionTypes.objects.values_list('name', flat=True)
+        
+        # Validate each step's structure and content
+        for step in steps:
+            if 'action_type' not in step or step['action_type'] not in valid_action_types:
+                raise ValidationError(f"نوع الاجراء غير صالح: {step.get('action_type')}")
+
+            # SMS action validation
+            if step['action_type'] == 'sms':
+                message = step.get('content', {}).get('message', '').strip()
+                if not message:
+                    raise ValidationError("اجراء الرسالة يتطلب رسالة.")
+
+            # Delay action validation
+            elif step['action_type'] == 'delay':
+                delay_time = step.get('content', {}).get('delay_time')
+                delay_type = step.get('content', {}).get('delay_type')
+
+                if not delay_time or not str(delay_time).isdigit():
+                    raise ValidationError("اجراء التأخير يتطلب مدة تأخير صالحة.")
+
+                if delay_type not in ['hours', 'days', 'minutes']:
+                    raise ValidationError("اختيار نوع التأخير غير صالح. يجب أن يكون 'ساعات' أو 'أيام'.")
+                
+                
+            # Coupon action validation
+            elif step['action_type'] == 'coupon':
+                coupon_type = step.get('content', {}).get('type')
+                amount = step.get('content', {}).get('amount')
+                expire_in = step.get('content', {}).get('expire_in')
+                maximum_amount = step.get('content', {}).get('maximum_amount')
+                free_shipping = step.get('content', {}).get('free_shipping')
+                exclude_sale_products = step.get('content', {}).get('exclude_sale_products')
+                message = step.get('content', {}).get('message')
+
+                if coupon_type not in ['fixed', 'percentage']:
+                    raise ValidationError("اختيار نوع الكوبون غير صالح. يجب أن يكون 'مبلغ ثابت' أو 'نسبة مئوية'.")
+
+                if amount is None or not str(amount).isdigit() or int(amount) <= 0:
+                    raise ValidationError("اجراء الكوبون يتطلب مبلغ صالح.")
+
+                if expire_in is None or not str(expire_in).isdigit() or int(expire_in) <= 0:
+                    raise ValidationError("اجراء الكوبون يتطلب مدة انتهاء صلاحية صالحة.")
+
+                if maximum_amount is not None and (maximum_amount != "" and (not str(maximum_amount).isdigit() or int(maximum_amount) < 1)):
+                    raise ValidationError("لا يمكن أن يكون المبلغ الأقصى أقل من 1.")
+                
+                if coupon_type == "percentage" and (amount is None or int(amount) > 100):
+                    raise ValidationError("لا يمكن أن يكون المبلغ الأقصى أكبر من %100.")
+
+                if free_shipping not in ['True', 'False']:
+                    raise ValidationError("يجب أن تكون الشحن مجانية إما نعم أو ��ا.")
+                
+                if exclude_sale_products not in ['True', 'False']:
+                    raise ValidationError("استبعاد المنتجات المخفضة يجب أن تكون قيمة نعم أو لا.")
+                
+                if message is None or "{الكوبون}" not in message:
+                    raise ValidationError("اجراء الكوبون يتطلب رسالة تحتوي على الكوبون.")
+        
+        return steps
+    
+@login_required(login_url='login')
+@require_http_methods(["GET", "POST"])
+@check_token_validity
+def flow_builder(request, flow_id, context=None):
     try:
         flow = Flow.objects.get(id=flow_id, owner=request.user)
     except Flow.DoesNotExist:
-        logger.warning(f"Flow {flow_id} not found for user {request.user.id}")
-        messages.error(request, 'Flow not found.')
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({'success': False, 'errors': 'لم يتم العثور على الأتمتة.'}, status=404)
+        messages.error(request, 'لم يتم العثور على الأتمتة.')
         return redirect('flows')
 
+    if context is None:
+        context = {}
     if request.method == 'POST':
-        return handle_flow_update(request, flow)
-
-    # GET request handling
-    try:
-        flow_steps = FlowStep.objects.filter(flow=flow).order_by('order')
-        action_types = FlowActionTypes.objects.all()
-
-        return render(request, 'base/flow_builder.html', {
-            'flow': flow,
-            'triggers': Trigger.objects.all(),
-            'form': FlowForm(instance=flow),
-            'flow_steps': flow_steps,
-            'action_types': action_types,
-        })
-    except Exception as e:
-        logger.error(f"Error loading flow builder page: {str(e)}", exc_info=True)
-        messages.error(request, 'An error occurred while loading the flow builder.')
-        return redirect('flows')
-    
-def validate_flow_for_activation(flow):
-    """
-    Validate if a flow meets requirements for activation.
-    Returns (bool, str) tuple - (is_valid, error_message)
-    """
-    # Get all steps for the flow ordered by their sequence
-    steps = FlowStep.objects.filter(flow=flow).order_by('order')
-    
-    if not steps.exists():
-        return False, "Flow must have at least one step to be activated"
-    
-    # Validate each step has proper configuration
-    for step in steps:
-        if step.action_type.name == 'sms':
-            if not hasattr(step, 'text_config') or not step.text_config.message.strip():
-                return False, f"Step {step.order} (SMS) is missing message content"
-        elif step.action_type.name == 'delay':
-            if not hasattr(step, 'time_delay_config'):
-                return False, f"Step {step.order} (Delay) is missing delay configuration"
-    
-    return True, ""
-
-def handle_flow_update(request, flow):
-    """
-    Handle the POST request for updating a flow and its steps.
-    """
-    # Create a savepoint for potential rollback
-    sid = transaction.savepoint()
-    
-    try:
-        # Validate and save flow form
-        form = FlowForm(request.POST, instance=flow)
-        if not form.is_valid():
-            raise ValidationError(form.errors)
-
-        # Parse and validate steps data
-        steps_data = request.POST.get('steps')
-        if not steps_data:
-            raise FlowBuilderError("No steps data provided")
-
-        try:
-            steps_data = json.loads(steps_data)
-        except json.JSONDecodeError:
-            raise FlowBuilderError("Invalid steps data format")
-
-        # Validate steps data structure
-        validate_steps_data(steps_data)
-
-        # Start the update process
-        with transaction.atomic():
-            # Process the steps first
-            process_flow_steps(flow, steps_data)
+        flow_form = FlowForm(request.POST, instance=flow)
+        if flow_form.is_valid():
+            steps_data = request.POST.get('steps', '')
+            print(steps_data)
             
-            # After all steps are processed, attempt to activate the flow
-            is_valid, error_message = validate_flow_for_activation(flow)
+
             
-            if is_valid:
-                # Update the flow status to active
-                flow.status = 'active'
-                flow.save()
-                logger.info(f"Flow {flow.id} has been activated successfully")
-                activation_message = "Flow has been activated successfully"
-            else:
-                # Keep the flow in draft status
-                flow.status = 'draft'
-                flow.save()
-                logger.warning(f"Flow {flow.id} could not be activated: {error_message}")
-                activation_message = f"Flow saved as draft: {error_message}"
-
-        # If we get here, everything worked, so we can commit
-        transaction.savepoint_commit(sid)
-        
-        # Log success
-        logger.info(f"Successfully updated flow {flow.id} with {len(steps_data)} steps")
-        
-        return JsonResponse({
-            'success': True,
-            'redirect_url': request.build_absolute_uri(),
-            'message': 'Flow updated successfully',
-            'activation_status': {
-                'is_active': flow.status == 'active',
-                'message': activation_message
-            }
-        })
-
-    except ValidationError as e:
-        transaction.savepoint_rollback(sid)
-        logger.error(f"Validation error in flow {flow.id}: {str(e)}")
-        return JsonResponse({
-            'success': False,
-            'errors': {
-                'form': form.errors if 'form' in locals() else {},
-                'validation': str(e)
-            }
-        })
-    except FlowBuilderError as e:
-        transaction.savepoint_rollback(sid)
-        logger.error(f"Flow builder error in flow {flow.id}: {str(e)}")
-        return JsonResponse({
-            'success': False,
-            'errors': {'flow_builder': str(e)}
-        })
-    except Exception as e:
-        transaction.savepoint_rollback(sid)
-        logger.error(f"Unexpected error in flow {flow.id}: {str(e)}", exc_info=True)
-        return JsonResponse({
-            'success': False,
-            'errors': {'server': 'An unexpected error occurred. Please try again.'}
-        })
-
-def validate_steps_data(steps_data):
-    """
-    Validate the structure and content of steps data.
-    """
-    if not isinstance(steps_data, list):
-        raise FlowBuilderError("Steps data must be a list")
-
-    for index, step in enumerate(steps_data):
-        if not isinstance(step, dict):
-            raise FlowBuilderError(f"Step {index} must be an object")
-
-        required_fields = ['action_type', 'content']
-        for field in required_fields:
-            if field not in step:
-                raise FlowBuilderError(f"Step {index} is missing required field: {field}")
-
-        if not isinstance(step['content'], dict):
-            raise FlowBuilderError(f"Step {index} content must be an object")
-
-        # Validate specific action types
-        action_type = step['action_type']
-        content = step['content']
-
-        if action_type == 'sms':
-            if 'message' not in content or not content['message'].strip():
-                raise FlowBuilderError(f"Step {index}: SMS message cannot be empty")
-        elif action_type == 'delay':
-            if 'delay_time' not in content:
-                raise FlowBuilderError(f"Step {index}: Delay time is required")
             try:
-                delay_time = int(content['delay_time'])
-                if delay_time < 1:
-                    raise FlowBuilderError(f"Step {index}: Delay time must be positive")
-            except ValueError:
-                raise FlowBuilderError(f"Step {index}: Invalid delay time format")
-
-def process_flow_steps(flow, steps_data):
-    """
-    Process and save flow steps with their configurations.
-    """
-    existing_steps_ids = []
-
-    for index, step_data in enumerate(steps_data, start=1):
-        step = handle_step_creation_or_update(flow, step_data, index)
-        if step:
-            existing_steps_ids.append(step.id)
-
-    # Safely delete steps that are no longer in the flow
-    removed_steps = FlowStep.objects.filter(flow=flow).exclude(id__in=existing_steps_ids)
-    for step in removed_steps:
-        try:
-            step.delete()
-            logger.info(f"Deleted step {step.id} from flow {flow.id}")
-        except Exception as e:
-            logger.error(f"Error deleting step {step.id}: {str(e)}")
-            raise
-
-def handle_step_creation_or_update(flow, step_data, index):
-    """
-    Handle the creation or update of a single flow step and its configuration.
-    """
-    try:
-        step_id = step_data.get('step_id')
-        action_type = step_data['action_type']
-        content = step_data.get('content', {})
-
-        # Get or create the step
-        if step_id:
-            step = FlowStep.objects.get(id=step_id, flow=flow)
-            action_type_obj = FlowActionTypes.objects.get(name=action_type)
+                steps = validate_steps_data(steps_data)
+            except ValidationError as e:
+                if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                    return JsonResponse({'success': False, 'errors': str(e)}, status=400)
+                messages.error(request, f"خطأ في تحقق الخطوات: {e}")
+                return redirect('flow', flow_id=flow_id)
             
-            # If action type changed, handle cleanup
-            if step.action_type != action_type_obj:
-                handle_action_type_change(step, action_type_obj)
+            # Check if steps are empty when status is 'active'
+            if not steps and request.POST.get('status') == 'active':
+                if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                    return JsonResponse({'success': False, 'errors': 'عليك اضافة خطوة على الاقل.'}, status=400)
+
             
-            step.order = index
-            step.action_type = action_type_obj
-            step.save()
+            try:
+                with transaction.atomic():
+                    flow_form.save()
+                    FlowStep.objects.filter(flow=flow).update(order=F('order') + 1000)
+
+                    existing_steps_ids = []
+                    for index, step_data in enumerate(steps, start=1):
+                        step_id = step_data.get('step_id')
+                        action_type = step_data['action_type']
+                        status = step_data['status']
+                        content = step_data.get('content', {})
+
+                        if step_id:
+                            step = get_object_or_404(FlowStep, id=step_id, flow=flow)
+                            step.order = index
+                            action_type_obj = get_object_or_404(FlowActionTypes, name=action_type)
+                            if step.action_type != action_type_obj:
+                                TextConfig.objects.filter(flow_step=step).delete()
+                                TimeDelayConfig.objects.filter(flow_step=step).delete()
+                                CouponConfig.objects.filter(flow_step=step).delete()
+                                step.action_type = action_type_obj
+                            step.save()
+                        else:
+                            action_type_obj = get_object_or_404(FlowActionTypes, name=action_type)
+                            step = FlowStep.objects.create(
+                                flow=flow,
+                                order=index,
+                                action_type=action_type_obj
+                            )
+
+                        if action_type == 'sms':
+                            if not content.get('message'):
+                                raise ValidationError('SMS action requires a message.')
+                            TimeDelayConfig.objects.filter(flow_step=step).delete()
+                            TextConfig.objects.update_or_create(
+                                flow_step=step,
+                                defaults={'message': content.get('message', '')}
+                            )
+                        elif action_type == 'delay':
+                            if not content.get('delay_time') or not str(content.get('delay_time')).isdigit():
+                                raise ValidationError('اجراء التأخير يتطلب مدة تأخير صالحة.')
+                            if content.get('delay_type') not in ['hours', 'days', 'minutes']:
+                                raise ValidationError('اختيار نوع التأخير غير صالح. يجب أن يكون "ساعات" أو "أيام".')
+                            TextConfig.objects.filter(flow_step=step).delete()
+                            TimeDelayConfig.objects.update_or_create(
+                                flow_step=step,
+                                defaults={
+                                    'delay_time': content.get('delay_time', 1),
+                                    'delay_type': content.get('delay_type', 'hours')
+                                }
+                            )
+                        elif action_type == 'coupon':
+                            if not content.get('type'):
+                                raise ValidationError('Coupon action requires a coupon type.')
+                            if not content.get('amount') or not str(content.get('amount')).isdigit():
+                                raise ValidationError('اجراء الكوبون يتطلب مبلغ صالح.')
+                            if content.get('type') not in ['fixed', 'percentage']:
+                                raise ValidationError('اختيار نوع الكوبون غير صالح. يجب أن يكون "مبلغ ثابت" أو "نسبة مئوية".')
+                            TextConfig.objects.filter(flow_step=step).delete()
+                            CouponConfig.objects.update_or_create(
+                                flow_step=step,
+                                defaults={
+                                    'type': content.get('type'),
+                                    'amount': content.get('amount'),
+                                    'maximum_amount': content.get('maximum_amount'),
+                                    'expire_in': content.get('expire_in'),
+                                    'free_shipping': content.get('free_shipping'),
+                                    'exclude_sale_products': content.get('exclude_sale_products'),
+                                    'message': content.get('message')
+                                }
+                            )
+
+                        existing_steps_ids.append(step.id)
+
+                    FlowStep.objects.filter(flow=flow).exclude(id__in=existing_steps_ids).delete()
+
+                if FlowStep.objects.filter(flow=flow).exists():
+                    flow.status = status
+                    flow.save(update_fields=['status'])
+                    
+                if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                    return JsonResponse({'success': True, 'redirect_url': reverse('flows')})
+                else:
+                    return redirect('flows')
+            except (ValidationError, IntegrityError, PermissionDenied) as e:
+                if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                    return JsonResponse({'success': False, 'errors': str(e)}, status=400)
+                messages.error(request, f"حدث خطأ أثناء حفظ التسلسل: {str(e)}")
+                return redirect('flow', flow_id=flow_id)
         else:
-            action_type_obj = FlowActionTypes.objects.get(name=action_type)
-            step = FlowStep.objects.create(
-                flow=flow,
-                order=index,
-                action_type=action_type_obj
-            )
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'errors': flow_form.errors}, status=400)
+            else:
+                messages.error(request, 'النموذج غير صالح. يرجى التص��يح.')
+                return redirect('flow', flow_id=flow_id)
 
-        # Handle step configuration
-        handle_step_configuration(step, action_type, content)
+    flow_steps = FlowStep.objects.filter(flow=flow).order_by('order')
+    action_types = FlowActionTypes.objects.all()
+    context.update({
+        'flow': flow,
+        'triggers': Trigger.objects.all(),
+        'form': FlowForm(instance=flow),
+        'flow_steps': flow_steps,
+        'action_types': action_types,
+        'redirect_url': reverse('flows'),
+    })
 
-        return step
+    return render(request, 'base/flow_builder.html', context)
 
-    except FlowStep.DoesNotExist:
-        logger.warning(f"Step {step_id} not found in flow {flow.id}")
-        return None
-    except FlowActionTypes.DoesNotExist:
-        logger.error(f"Invalid action type: {action_type}")
-        raise FlowBuilderError(f"Invalid action type: {action_type}")
-    except Exception as e:
-        logger.error(f"Error processing step in flow {flow.id}: {str(e)}")
-        raise
 
-def handle_action_type_change(step, new_action_type):
+@login_required(login_url='login')
+def delete_flow(request, flow_id):
+    if request.method == 'POST':
+        try:
+            flow = get_object_or_404(Flow, id=flow_id, owner=request.user)
+            flow.delete()
+            return JsonResponse({'success': True, 'message': 'تم حذف الأتمتة بنجاح.'})
+        except Flow.DoesNotExist:
+            return JsonResponse({'success': False, 'errors': 'الأتمتة غير موجودة.'}, status=404)
+
+@login_required
+def activate_suggested_flow(request, suggestion_id):
     """
-    Handle cleanup when a step's action type changes.
-    """
-    TextConfig.objects.filter(flow_step=step).delete()
-    TimeDelayConfig.objects.filter(flow_step=step).delete()
-    step.action_type = new_action_type
-
-def handle_step_configuration(step, action_type, content):
-    """
-    Handle the configuration for a specific step based on its action type.
+    Activate a suggested flow by creating a copy for the current user.
     """
     try:
-        if action_type == 'sms':
-            TimeDelayConfig.objects.filter(flow_step=step).delete()
-            TextConfig.objects.update_or_create(
-                flow_step=step,
-                defaults={'message': content.get('message', '').strip()}
+        with transaction.atomic():
+            # Get the suggested flow to copy
+            suggested_flow = get_object_or_404(SuggestedFlow, id=suggestion_id)
+            logger.info(f"Starting to copy suggested flow {suggested_flow.id}: {suggested_flow.name}")
+            
+            # Create a new Flow for the current user
+            new_flow = Flow.objects.create(
+                owner=request.user,
+                store=UserStoreLink.objects.get(user=request.user).store,
+                name=suggested_flow.name,
+                trigger=suggested_flow.trigger,
+                status='draft'  # Always start as draft
             )
-
-        elif action_type == 'delay':
-            TextConfig.objects.filter(flow_step=step).delete()
-            TimeDelayConfig.objects.update_or_create(
-                flow_step=step,
-                defaults={
-                    'delay_time': int(content.get('delay_time', 1)),
-                    'delay_type': content.get('delay_type', 'hours')
-                }
+            logger.info(f"Created new flow {new_flow.id}")
+            
+            # Get all suggested steps ordered by their sequence
+            suggested_steps = SuggestedFlowStep.objects.select_related(
+                'suggested_text_config',
+                'suggested_time_delay_config',
+                'suggested_coupon_config'  # Added comma to fix syntax
+            ).filter(
+                suggested_flow=suggested_flow
+            ).order_by('order')
+            
+            # Copy steps and their configurations
+            for suggested_step in suggested_steps:
+                logger.info(f"Processing step {suggested_step.id} with order {suggested_step.order}")
+                
+                # Create the flow step
+                new_step = FlowStep.objects.create(
+                    flow=new_flow,
+                    order=suggested_step.order,
+                    action_type=suggested_step.action_type,
+                )
+                logger.info(f"Created new step {new_step.id}")
+                
+                # Check for existing configurations before creating new ones
+                existing_text_config = TextConfig.objects.filter(flow_step=new_step).exists()
+                existing_delay_config = TimeDelayConfig.objects.filter(flow_step=new_step).exists()
+                existing_coupon_config = CouponConfig.objects.filter(flow_step=new_step).exists()  # Check for coupon config
+                
+                if existing_text_config or existing_delay_config or existing_coupon_config:
+                    logger.warning(f"Configuration already exists for step {new_step.id}")
+                    continue
+                
+                try:
+                    # Try to get the text config
+                    text_config = SuggestedTextConfig.objects.filter(suggested_flow_step=suggested_step).first()
+                    if text_config:
+                        logger.info(f"Creating text config for step {new_step.id}")
+                        TextConfig.objects.create(
+                            flow_step=new_step,
+                            message=text_config.message
+                        )
+                    
+                    # Try to get the delay config
+                    delay_config = SuggestedTimeDelayConfig.objects.filter(suggested_flow_step=suggested_step).first()
+                    if delay_config:
+                        logger.info(f"Creating delay config for step {new_step.id}")
+                        TimeDelayConfig.objects.create(
+                            flow_step=new_step,
+                            delay_time=delay_config.delay_time,
+                            delay_type=delay_config.delay_type
+                        )
+                    
+                    # Try to get the coupon config
+                    coupon_config = SuggestedCouponConfig.objects.filter(suggested_flow_step=suggested_step).first()
+                    if coupon_config:
+                        logger.info(f"Creating coupon config for step {new_step.id}")
+                        CouponConfig.objects.create(
+                            flow_step=new_step,
+                            type=coupon_config.type,
+                            amount=coupon_config.amount,
+                            expire_in=coupon_config.expire_in,
+                            maximum_amount=coupon_config.maximum_amount,
+                            free_shipping=coupon_config.free_shipping,
+                            exclude_sale_products=coupon_config.exclude_sale_products,
+                            message=coupon_config.message
+                        )
+                        
+                    if not text_config and not delay_config and not coupon_config:
+                        logger.warning(f"No configuration found for step {suggested_step.id}")
+                        
+                except Exception as step_error:
+                    logger.error(f"Error creating config for step {new_step.id}: {str(step_error)}")
+                    raise
+            
+            messages.success(
+                request,
+                'Suggested flow activated successfully. You can now customize it.'
             )
+            return redirect('flow', flow_id=new_flow.id)
+            
     except Exception as e:
-        logger.error(f"Error handling configuration for step {step.id}: {str(e)}")
-        raise FlowBuilderError(f"Error configuring step: {str(e)}")
+        logger.error(f"Error activating suggested flow: {str(e)}", exc_info=True)
+        messages.error(
+            request,
+            'An error occurred while activating the suggested flow. Please try again.'
+        )
+        return redirect('flows')
