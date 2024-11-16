@@ -752,15 +752,14 @@ document.getElementById('flow-form').addEventListener('submit', function(e) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
+            showMessage(data.message, data.type);
             window.location.href = data.redirect_url;
         } else {
-            console.error('Error saving flow:', data.errors);
-            showMessage('خطأ في حفظ التدفق: ' + data.errors);
+            showMessage(data.message, data.type);
         }
     })
     .catch(error => {
-        console.error('Error:', error);
-        showMessage('حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى.');
+        showMessage('حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى.', 'error');
     });
 });
 

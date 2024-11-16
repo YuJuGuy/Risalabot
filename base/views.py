@@ -209,7 +209,7 @@ def get_customers(request):
             'email': customer.customer_email,
             'phone': customer.customer_phone,
             'location': customer.customer_location,
-            'groups': list(customer.customer_groups.values_list('name', flat=True)),  # Group IDs
+            'groups': list(customer.customer_groups.values_list('name', flat=True).exclude(name='جميع العملاء')),  # Group IDs
             'updated_at': customer.customer_updated_at.strftime('%Y-%m-%d %H:%M')
         } for customer in customers_list]
         
@@ -218,7 +218,7 @@ def get_customers(request):
 
         # Create a dictionary of group IDs to names
         group_data = (
-            Group.objects.filter(store=store).exclude(name='ج��يع العملاء')
+            Group.objects.filter(store=store).exclude(name='جميع العملاء')
             .annotate(customer_count=Count('customers'))  # Count related customers for each group
             .values('group_id', 'name', customer_count=Count('customers'))  # Include group ID, name, and customer count
 
@@ -234,6 +234,18 @@ def get_customers(request):
         }, status=200)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+
+@login_required(login_url='login')
+def delete_customer_list(request, group_id):
+    if request.method == "POST":
+        response = delete_customer_group(request.user, group_id)
+        if response.get('success'):
+            return JsonResponse({'status': 'success', 'message': 'تم حذف المجموعة بنجاح.'})
+        else:
+            return JsonResponse({'status': 'error', 'message': 'فشل حذف المجموعة.'}, status=400)
+    return JsonResponse({'status': 'error', 'message': 'طريقة الطلب غير صالحة.'}, status=405)
+
 
 
 
@@ -291,13 +303,3 @@ def sync_data(request):
 
     
     
-@login_required(login_url='login')
-def delete_customer_list(request, group_id):
-    if request.method == "POST":
-        response = delete_customer_group(request.user, group_id)
-        if response.get('success'):
-            return JsonResponse({'status': 'success', 'message': 'تم حذف المجموعة بنجاح.'})
-        else:
-            return JsonResponse({'status': 'error', 'message': 'فشل حذف المجموعة.'}, status=400)
-    return JsonResponse({'status': 'error', 'message': 'طريقة الطلب غير صالحة.'}, status=405)
-

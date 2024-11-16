@@ -107,7 +107,7 @@ class FlowForm(forms.ModelForm):
         model = Flow
         fields = ['name','trigger']
         labels = {
-            'name': 'اسم التدفق',
+            'name': 'اسم الأتمتة',
             'trigger': 'المشغل',
         }
         widgets = {
@@ -119,6 +119,9 @@ class FlowForm(forms.ModelForm):
         super(FlowForm, self).__init__(*args, **kwargs)
         # Customize the empty label for the trigger field
         self.fields['trigger'].empty_label = "اختر المشغل"
+        
+        for field_name, field in self.fields.items():
+            field.error_messages = {'required': f'يجب إدخال {self.Meta.labels[field_name]}'}
         
         
 

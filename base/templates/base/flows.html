@@ -3,11 +3,11 @@
 
 {% block content %}
     <div class="action-bar">
-    <p>الرسائل التلقائية</p>
+    <p>الأتمتة</p>
 
     <button class="create-button" id="myButton">
         <i class="fa-solid fa-plus"></i>
-        <span>انشاء رسالة تلقائية</span>
+        <span>إنشاء أتمتة</span>
     </button>
     </div>
 
@@ -46,7 +46,7 @@
                             {{ field }}
                         </div>
                         <div class="custom-select" style="width: 100%;">
-                            <div id="selected-trigger" class="select-selected">اختر المشغل</div>
+                            <div id="selected-trigger" class="select-selected">اختر الأتمتة</div>
                             <div id="options-list" class="select-items">
                                 {% for trigger in triggers %}
                                 <div class="select-option" data-id="{{ trigger.id }}">
@@ -70,7 +70,7 @@
     </div>
 
     <div class="recommended-flows">
-        <p>الرسائل التلقائية الموصى بها</p>
+        <p>الأتمتة الموصى بها</p>
         <div id="recommended-flows-container" class="recommended-flows-container">
            
             <!-- Suggested Flows will be injected here by JavaScript -->
@@ -79,7 +79,7 @@
     </div>
 
     <div id="get-flows-url" data-get-flows-url="{% url 'get_flows' %}"></div>
-    <div id="activate-suggested-flow-url" data-activate-suggested-flow-url="{% url 'activate_suggested_flow' 0 %}"></div>
+    <div id="activate-suggested-flow-url" data-activate-suggested-flow-url="{% url 'activate_suggested_flow' suggestion_id=0 %}"></div>
 
     <script src="https://cdn.datatables.net/v/dt/jq-3.7.0/dt-2.1.8/datatables.min.js"></script>
 
@@ -102,12 +102,20 @@
             .then(data => {
                 if (data.success) {
                     window.location.href = data.redirect_url;
+                    refreshTable();
                 } else {
-                    showMessage(data.errors, 'error');
+                    if (data.errors) {
+                        for (const [field, errors] of Object.entries(data.errors)) {
+                            errors.forEach(error => {
+                                showMessage(`${field}: ${error.message}`, 'error');
+                            });
+                        }
+                    } else {
+                        showMessage(data.message, data.type);
+                    }
                 }
             })
             .catch(error => {
-                console.error('Error:', error);
                 showMessage('حدث خطأ ما. يرجى المحاولة مره اخرى.', 'error');
             });
         }); 
@@ -262,11 +270,14 @@
         })
         .then(response => response.json())
         .then(data => {
-            displaySuggestedFlows(data.suggestions);
+            if (data.success) {
+                displaySuggestedFlows(data.data.suggestions);
+            } else {
+                showMessage(data.message, data.type);
+            }
         })
         .catch(error => {
-            console.error('Error fetching flows:', error);
-            showError('An error occurred while fetching flows.');
+            showMessage(error, 'error');
         });
     }
 
@@ -277,7 +288,7 @@
             $(myTable).DataTable({
                 ajax: {
                     url: getFlowsUrl,
-                    dataSrc: 'flows'
+                    dataSrc: 'data.flows'
                 },
                 columns: [
                     { data: 'name' },
@@ -338,7 +349,7 @@
                             <p>${flow.description}</p>
                         </div>
                         <div class="flow-card-button">
-                            <a href="/activate-suggested-flow/${flow.id}" class="edit-button">تفعيل</a>
+                            <a href="#" onclick="activateSuggestedFlow('${flow.id}')" class="edit-button">تفعيل</a>
                         </div>
                     </div>
                     <div class="flow-card-img">
@@ -365,15 +376,37 @@
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                showMessage(data.message, 'success');
+                showMessage(data.message, data.type);
                 refreshTable();
             } else {
-                showMessage(data.errors, 'error');
+                showMessage(data.message, data.type);
             }
         })
         .catch(error => {
-            console.error('Error deleting flow:', error);
             showMessage('حدث خطأ ما. يرجى المحاولة مره اخرى.', 'error');
+        });
+    }
+
+    function activateSuggestedFlow(flowId) {
+        const activateSuggestedFlowUrl = document.getElementById('activate-suggested-flow-url').dataset.activateSuggestedFlowUrl;
+        fetch(activateSuggestedFlowUrl.replace('0', flowId), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+        }
+        })
+        
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                refreshTable();
+                window.location.href = data.redirect_url;
+            } else {
+                showMessage(data.message, data.type);
+            }
+        })
+        .catch(error => {
+            showMessage(error, 'error');
         });
     }
 

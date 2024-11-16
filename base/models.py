@@ -116,6 +116,7 @@ class Campaign(models.Model):
     msg = models.TextField()  # Assuming msg is text content
     customers_group = models.CharField(max_length=255)  # Changed field to store the selected group
     messages_sent = models.IntegerField(default=0)
+    track = models.BooleanField(default=False)
 
     def __str__(self):
         return self.name
@@ -198,6 +199,7 @@ class Flow(models.Model):
     messages_sent = models.IntegerField(default=0)
     purchases = models.IntegerField(default=0)
     clicks = models.IntegerField(default=0)
+    track = models.BooleanField(default=False)
     
     def save(self, *args, **kwargs):
         if self.pk is not None:
@@ -419,6 +421,7 @@ class ActivityLog(models.Model):
     activity_type = models.CharField(max_length=10, choices=ACTIVITY_TYPE_CHOICES)
     date = models.DateField()  # Track by day only
     count = models.IntegerField(default=0)  # Count of the activity (e.g., messages sent, clicks, purchases)
+    user_ip = models.CharField(max_length=255, blank=True, null=True)
 
     def __str__(self):
         return f"{self.store.store_name} - {self.get_activity_type_display()} on {self.date}"

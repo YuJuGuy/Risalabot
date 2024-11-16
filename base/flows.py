@@ -30,8 +30,7 @@ def flows(request, context=None):
     try:
         user = request.user
     except User.DoesNotExist:
-        messages.error(request, 'No user found.')
-        return redirect('dashboard')
+        return JsonResponse({'success': False, 'type': 'error', 'errors': 'لم يتم العثور على المستخدم.'}, status=404)
     
     if context is None:
         context = {}
@@ -46,7 +45,9 @@ def flows(request, context=None):
             new_flow.save()  # Now save the flow
             return JsonResponse({'success': True, 'redirect_url': reverse('flow', kwargs={'flow_id': new_flow.id})})
         else:
-            return JsonResponse({'success': False, 'errors': form.errors}, status=400)
+            error_messages = form.errors.as_json()
+            return JsonResponse({'success': False, 'type': 'error', 'errors': json.loads(error_messages)}, status=400)
+
     else:
         form = FlowForm()
     
@@ -72,11 +73,10 @@ def get_flows(request):
             'flows': flows,
             'suggestions': suggestions
         }
-        return JsonResponse(data)
+        return JsonResponse({'success': True, 'data': data})
         
     except User.DoesNotExist:
-        messages.error(request, 'No user found.')
-        return redirect('dashboard')
+        return JsonResponse({'success': False, 'type': 'error', 'errors': 'لم يتم العثور على المستخدم.'}, status=404)
     
 
     
@@ -142,7 +142,7 @@ def validate_steps_data(steps_data):
                     raise ValidationError("لا يمكن أن يكون المبلغ الأقصى أكبر من %100.")
 
                 if free_shipping not in ['True', 'False']:
-                    raise ValidationError("يجب أن تكون الشحن مجانية إما نعم أو ��ا.")
+                    raise ValidationError("يجب أن تكون الشحن مجانية إما نعم أو لا.")
                 
                 if exclude_sale_products not in ['True', 'False']:
                     raise ValidationError("استبعاد المنتجات المخفضة يجب أن تكون قيمة نعم أو لا.")
@@ -160,17 +160,13 @@ def flow_builder(request, flow_id, context=None):
         flow = Flow.objects.get(id=flow_id, owner=request.user)
     except Flow.DoesNotExist:
         if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-            return JsonResponse({'success': False, 'errors': 'لم يتم العثور على الأتمتة.'}, status=404)
-        messages.error(request, 'لم يتم العثور على الأتمتة.')
-        return redirect('flows')
-
+            return JsonResponse({'success': False, 'type': 'error', 'errors': 'لم يتم العثور على الأتمتة.'}, status=404)
     if context is None:
         context = {}
     if request.method == 'POST':
         flow_form = FlowForm(request.POST, instance=flow)
         if flow_form.is_valid():
             steps_data = request.POST.get('steps', '')
-            print(steps_data)
             
 
             
@@ -178,9 +174,8 @@ def flow_builder(request, flow_id, context=None):
                 steps = validate_steps_data(steps_data)
             except ValidationError as e:
                 if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                    return JsonResponse({'success': False, 'errors': str(e)}, status=400)
-                messages.error(request, f"خطأ في تحقق الخطوات: {e}")
-                return redirect('flow', flow_id=flow_id)
+                    return JsonResponse({'success': False, 'type': 'error', 'errors': str(e)}, status=400)
+
             
             # Check if steps are empty when status is 'active'
             if not steps and request.POST.get('status') == 'active':
@@ -269,20 +264,18 @@ def flow_builder(request, flow_id, context=None):
                     flow.save(update_fields=['status'])
                     
                 if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                    return JsonResponse({'success': True, 'redirect_url': reverse('flows')})
+                    return JsonResponse({'success': True, 'redirect_url': reverse('flows'), 'message': 'تم تحديث الأتمتة بنجاح.', 'type': 'success'})
                 else:
-                    return redirect('flows')
+                    return JsonResponse({'success': True, 'redirect_url': reverse('flows'), 'message': 'تم تحديث الأتمتة بنجاح.', 'type': 'success'})
             except (ValidationError, IntegrityError, PermissionDenied) as e:
                 if request.headers.get('x-requested-with') == 'XMLHttpRequest':
                     return JsonResponse({'success': False, 'errors': str(e)}, status=400)
-                messages.error(request, f"حدث خطأ أثناء حفظ التسلسل: {str(e)}")
-                return redirect('flow', flow_id=flow_id)
+               
         else:
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                return JsonResponse({'success': False, 'errors': flow_form.errors}, status=400)
+                return JsonResponse({'success': False, 'type': 'error', 'errors': flow_form.errors}, status=400)
             else:
-                messages.error(request, 'النموذج غير صالح. يرجى التص��يح.')
-                return redirect('flow', flow_id=flow_id)
+                return JsonResponse({'success': False, 'type': 'error', 'errors': flow_form.errors}, status=400)
 
     flow_steps = FlowStep.objects.filter(flow=flow).order_by('order')
     action_types = FlowActionTypes.objects.all()
@@ -304,9 +297,9 @@ def delete_flow(request, flow_id):
         try:
             flow = get_object_or_404(Flow, id=flow_id, owner=request.user)
             flow.delete()
-            return JsonResponse({'success': True, 'message': 'تم حذف الأتمتة بنجاح.'})
+            return JsonResponse({'success': True, 'message': 'تم حذف الأتمتة بنجاح.', 'type': 'success'})
         except Flow.DoesNotExist:
-            return JsonResponse({'success': False, 'errors': 'الأتمتة غير موجودة.'}, status=404)
+            return JsonResponse({'success': False, 'errors': 'الأتمتة غير موجودة.', 'type': 'error'})
 
 @login_required
 def activate_suggested_flow(request, suggestion_id):
@@ -401,16 +394,10 @@ def activate_suggested_flow(request, suggestion_id):
                     logger.error(f"Error creating config for step {new_step.id}: {str(step_error)}")
                     raise
             
-            messages.success(
-                request,
-                'Suggested flow activated successfully. You can now customize it.'
-            )
-            return redirect('flow', flow_id=new_flow.id)
+            
+            return JsonResponse({'success': True, 'redirect_url': reverse('flow', kwargs={'flow_id': new_flow.id})})
             
     except Exception as e:
         logger.error(f"Error activating suggested flow: {str(e)}", exc_info=True)
-        messages.error(
-            request,
-            'An error occurred while activating the suggested flow. Please try again.'
-        )
-        return redirect('flows')
+        return JsonResponse({'success': False, 'errors': 'حدث خطأ أثناء تنشيط الأتمتة الموصى بها. يرجى المحاولة مره اخرى.', 'type': 'error'})
+        
