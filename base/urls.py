@@ -3,6 +3,7 @@ from . import views
 from . import authview
 from . import flows
 from . import campaigns
+from . import customers
 from django.contrib.auth import views as auth_views
 urlpatterns = [
     path('login/', views.loginPage, name="login"),
@@ -37,9 +38,9 @@ urlpatterns = [
 
     
     
-    path('customers/', views.customers_view, name='customers'),
-    path('get-customers/', views.get_customers, name='get_customers'),
-    path('delete-group/<int:group_id>/', views.delete_customer_list, name='delete_group'),
+    path('customers/', customers.customers_view, name='customers'),
+    path('get-customers/', customers.get_customers, name='get_customers'),
+    path('delete-group/<int:group_id>/', customers.delete_customer_list, name='delete_group'),
     path('sync_data/', views.sync_data, name='sync_data'),
     
     path('authstore/', authview.authstore, name="authstore"),

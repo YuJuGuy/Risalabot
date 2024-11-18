@@ -34,7 +34,7 @@
           <i class="fa-solid fa-hand-pointer"></i>
         </div>
         <div class="metric-content">
-            <h5>الضغطات</h5>
+            <h5>الضغطا</h5>
             <h1 id="clicks"></h1>
         </div>
     </div>
@@ -49,20 +49,42 @@
     </div>
 </div>
 
+
+<div class="charts-container">
 <div class="chart-container-wrapper">
     <div class="chart-container">
+        <div class="chart-header">
+            <h5 class="chart-title">الرسائل المرسلة</h5>
+            <div id="message-daterange" style="background: #fff; cursor: pointer; padding: 5px 10px; border: 1px solid #ccc;">
+                <i class="fa fa-calendar"></i>&nbsp;
+                <span></span> <i class="fa fa-caret-down"></i>
+            </div>
+        </div>
         <canvas id="myChart"></canvas>
     </div>
     <div class="chart-container">
+        <div class="chart-header">
+            <h5 class="chart-title">عمليات الشراء</h5>
+            <div id="purchase-daterange" style="background: #fff; cursor: pointer; padding: 5px 10px; border: 1px solid #ccc;">
+                <i class="fa fa-calendar"></i>&nbsp;
+                <span></span> <i class="fa fa-caret-down"></i>
+            </div>
+        </div>
         <canvas id="myChart2"></canvas>
+    </div>
+    <div class="chart-container">
+        <div class="chart-header">
+            <h5 class="chart-title">الضغطات</h5>
+            <div id="click-daterange" style="background: #fff; cursor: pointer; padding: 5px 10px; border: 1px solid #ccc;">
+                <i class="fa fa-calendar"></i>&nbsp;
+                <span></span> <i class="fa fa-caret-down"></i>
+            </div>
+        </div>
+        <canvas id="myChart3"></canvas>
     </div>
 </div>
 
-<div class="chart-container-wrapper">
-    <div class="chart-container">
-        <canvas id="myChart3"></canvas>
-    </div>
-    <div class="chart-container">
+    <div class="chart-container-single" style="position: relative; width: 100%;">
         <canvas id="myChart4"></canvas>
     </div>
 </div>
@@ -72,133 +94,157 @@
 
 
 
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script type="text/javascript" src="https://cdn.jsdelivr.net/jquery/latest/jquery.min.js"></script>
+<script type="text/javascript" src="https://cdn.jsdelivr.net/momentjs/latest/moment.min.js"></script>
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+
 <script>
-  let activityLog = [];
-  fetch('/get-dashboard-data/')
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            document.getElementById('message-count').textContent = data.data.message_count;
-            document.getElementById('total-customers').textContent = data.data.total_customers;
-            document.getElementById('purchases').textContent = data.data.purchases;
-            document.getElementById('clicks').textContent = data.data.clicks;
-            document.getElementById('active-automations').textContent = data.data.active_automations;
-            activityLog = data.data.activty_log;
-            console.log(activityLog);
-            initializeCharts();
+    $(function() {
+        var start = moment().subtract(7, 'days');
+        var end = moment();
+
+        function updateDateRange(elementId, start, end) {
+            $(elementId + ' span').html(start.format('M D, YYYY') + ' - ' + end.format('M D, YYYY'));
         }
-        else {
-            showMessage(data.message, data.type);
+
+        function initializeDateRangePicker(elementId, callback) {
+            $(elementId).daterangepicker({
+                opens: 'left',
+                startDate: start,
+                endDate: end,
+                ranges: {
+                    'اليوم': [moment(), moment()],
+                    'أمس': [moment().subtract(1, 'days'), moment().subtract(1, 'days')],
+                    'آخر 7 أيام': [moment().subtract(6, 'days'), moment()],
+                    'آخر 30 يوم': [moment().subtract(29, 'days'), moment()],
+                    'هذا الشهر': [moment().startOf('month'), moment().endOf('month')],
+                    'الشهر الماضي': [moment().subtract(1, 'month').startOf('month'), moment().subtract(1, 'month').endOf('month')]
+                }
+            }, function(start, end) {
+                updateDateRange(elementId, start, end);
+                callback(start, end);
+            });
         }
+
+        initializeDateRangePicker('#message-daterange', function(start, end) {
+            updateChart(messageChart, 'Message', { start: start, end: end });
+        });
+        initializeDateRangePicker('#purchase-daterange', function(start, end) {
+            updateChart(purchaseChart, 'Purchase', { start: start, end: end });
+        });
+        initializeDateRangePicker('#click-daterange', function(start, end) {
+            updateChart(clickChart, 'Click', { start: start, end: end });
+        });
+
+        // Initialize all charts with a default date range of one week
+        updateDateRange('#message-daterange', start, end);
+        updateDateRange('#purchase-daterange', start, end);
+        updateDateRange('#click-daterange', start, end);
+
+        // Fetch data and initialize charts after data is fetched
+        fetchDataAndInitializeCharts(start, end);
     });
 
-  function initializeCharts() {
-    const ctx = document.getElementById('myChart');
-    const ctx2 = document.getElementById('myChart2');
-    const ctx3 = document.getElementById('myChart3');
-    const ctx4 = document.getElementById('myChart4');
-
-    // Create an object to aggregate counts for messages only
-    const aggregatedData = {};
-
-// Aggregate counts based on date and source type for messages only
-activityLog.forEach(log => {
-    if (log.activity_type === 'Message') { // Check if the activity type is 'message'
-        const key = `${log.date}-${log.source_type}`; // Use date and source type as the key
-        if (!aggregatedData[key]) {
-            aggregatedData[key] = { date: log.date, source_type: log.source_type, count: 0 }; // Store date, source type, and count
-        }
-        aggregatedData[key].count += log.count; // Add to count
-    }
-});
-
-const labels = [...new Set(Object.values(aggregatedData).map(item => item.date))]; // Unique dates for labels
-const sourceTypes = [...new Set(Object.values(aggregatedData).map(item => item.source_type))]; // Unique source types
-
-// Create datasets for each source type
-const datasets = sourceTypes.map(sourceType => {
-    return {
-        label: sourceType,
-        data: labels.map(label => {
-            const entry = Object.values(aggregatedData).find(item => item.date === label && item.source_type === sourceType);
-            return entry ? entry.count : 0; // Add count if exists, otherwise 0
-        }),
-        borderWidth: 1
+    let activityLog = [];
+    let aggregatedData = {
+        Message: {},
+        Purchase: {},
+        Click: {}
     };
-});
 
-new Chart(ctx, {
-    type: 'bar',
-    data: {
-        labels: labels,
-        datasets: datasets // Use the datasets array here
-    },
-    options: {
-        scales: {
-            y: {
-                beginAtZero: true
-            }
-        }
+    function fetchDataAndInitializeCharts(start, end) {
+        fetch('/get-dashboard-data/')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('message-count').textContent = data.data.message_count;
+                    document.getElementById('total-customers').textContent = data.data.total_customers;
+                    document.getElementById('purchases').textContent = data.data.purchases;
+                    document.getElementById('clicks').textContent = data.data.clicks;
+                    document.getElementById('active-automations').textContent = data.data.active_automations;
+                    activityLog = data.data.activity_log;
+                    console.log(activityLog)
+
+                    // Populate aggregatedData
+                    activityLog.forEach(log => {
+                        const { activity_type, date, source_type, uuid, count } = log;
+                        if (aggregatedData[activity_type]) {
+                            const key = `${date}-${source_type}-${uuid}`;
+                            if (!aggregatedData[activity_type][key]) {
+                                aggregatedData[activity_type][key] = { date, source_type, uuid, count: 0 };
+                            }
+                            aggregatedData[activity_type][key].count += count; // Increment count for each log entry
+                        }
+                    });
+
+                    // Initialize charts after data is fetched
+                    initializeCharts({ start: start, end: end }, { start: start, end: end }, { start: start, end: end });
+                } else {
+                    showMessage(data.message, data.type);
+                }
+            });
     }
-});
 
-    new Chart(ctx2, {
-      type: 'line',
-      data: {
-          labels: ['Red', 'Blue', 'Yellow', 'Green', 'Purple', 'Orange'],
-          datasets: [{
-              label: '# of Votes',
-              data: [12, 19, 3, 5, 2, 3],
-              borderWidth: 1
-          }]
-      },
-      options: {
-          scales: {
-              y: {
-                  beginAtZero: true
-              }
-          }
-      }
-    });
+    let messageChart, purchaseChart, clickChart, otherChart;
 
-    new Chart(ctx3, {
-      type: 'bar',
-      data: {
-        labels: ['Red', 'Blue', 'Yellow', 'Green', 'Purple', 'Orange'],
-        datasets: [{
-          label: '# of Votes',
-          data: [12, 19, 3, 5, 2, 3],
-          borderWidth: 1
-        }]
-      },
-      options: {
-        scales: {
-          y: {
-            beginAtZero: true
-          }
-        }
-      }
-    });
+    function initializeCharts(messageDateRange, purchaseDateRange, clickDateRange) {
+        messageChart = createChart('myChart', 'Message', messageDateRange);
+        purchaseChart = createChart('myChart2', 'Purchase', purchaseDateRange);
+        clickChart = createChart('myChart3', 'Click', clickDateRange);
+        otherChart = createChart('myChart4', 'Other', null); // Assuming 'Other' is static
+    }
 
-    new Chart(ctx4, {
-      type: 'bar',
-      data: {
-        labels: ['Red', 'Blue', 'Yellow', 'Green', 'Purple', 'Orange'],
-        datasets: [{
-          label: '# of Votes',
-          data: [12, 19, 3, 5, 2, 3],
-          borderWidth: 1
-        }]
-      },
-      options: {
-        scales: {
-          y: {
-            beginAtZero: true
-          }
-        }
-      }
-    });
-  }
+    function createChart(canvasId, activityType, dateRange) {
+        const ctx = document.getElementById(canvasId);
+        const { labels, datasets } = createDatasets(aggregatedData[activityType], dateRange);
+        console.log(labels)
+        console.log(datasets)
+
+        return new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: datasets
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    }
+
+    function updateChart(chart, activityType, dateRange) {
+        const { labels, datasets } = createDatasets(aggregatedData[activityType], dateRange);
+        chart.data.labels = labels;
+        chart.data.datasets = datasets;
+        chart.update();
+    }
+
+    function createDatasets(aggregatedData, dateRange) {
+        if (!dateRange) return { labels: [], datasets: [] }; // Return empty if dateRange is null
+
+        const labels = [...new Set(Object.values(aggregatedData).map(item => item.date))].filter(date => {
+            const logDate = moment(date);
+            return logDate.isBetween(dateRange.start, dateRange.end, null, '[]');
+        });
+        const sourceTypes = [...new Set(Object.values(aggregatedData).map(item => item.source_type))];
+
+        const datasets = sourceTypes.map(sourceType => ({
+            label: sourceType,
+            data: labels.map(label => {
+                const entries = Object.values(aggregatedData).filter(item => item.date === label && item.source_type === sourceType);
+                return entries.reduce((sum, entry) => sum + entry.count, 0); // Sum counts for each date and source type
+            }),
+            borderWidth: 1
+        }));
+
+        return { labels, datasets };
+    }
+
 </script>
 {% endblock %}

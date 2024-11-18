@@ -63,7 +63,7 @@ def flows(request, context=None):
 def get_flows(request):
     try:
         user = request.user
-        flows = list(user.flows.all().values('id', 'name', 'updated_at', 'status', 'messages_sent','purchases'))
+        flows = list(user.flows.all().values('id', 'name', 'updated_at', 'status', 'messages_sent','purchases').exclude(status='deleted'))
         for flow in flows:
             flow['status'] = dict(Flow.STATUS_CHOICES).get(flow['status'], flow['status'])
         for flow in flows:
@@ -296,7 +296,8 @@ def delete_flow(request, flow_id):
     if request.method == 'POST':
         try:
             flow = get_object_or_404(Flow, id=flow_id, owner=request.user)
-            flow.delete()
+            flow.status = 'deleted'
+            flow.save(update_fields=['status'])
             return JsonResponse({'success': True, 'message': 'تم حذف الأتمتة بنجاح.', 'type': 'success'})
         except Flow.DoesNotExist:
             return JsonResponse({'success': False, 'errors': 'الأتمتة غير موجودة.', 'type': 'error'})

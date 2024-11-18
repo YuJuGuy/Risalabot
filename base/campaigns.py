@@ -81,6 +81,8 @@ def campaign(request, context=None):
             campaign.status = status
             campaign.store = store
             campaign.scheduled_time = scheduled_time
+            campaign.purchases = 2
+            campaign.messages_sent = 2
             campaign.save()
             
             data = {

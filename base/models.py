@@ -104,6 +104,7 @@ class Campaign(models.Model):
         ('sent', 'تم الإرسال'),
         ('cancelled', 'تم الإلغاء'),
         ('failed', 'فشلت'),
+        ('deleted', 'تم الحذف'),
     
     )
     store = models.ForeignKey(Store, on_delete=models.CASCADE)
@@ -120,49 +121,49 @@ class Campaign(models.Model):
 
     def __str__(self):
         return self.name
-    
-def save(self, *args, **kwargs):
-    if self.pk is not None:
-        try:
-            old_instance = Campaign.objects.get(pk=self.pk)
-            if old_instance.status != self.status:
+
+    def save(self, *args, **kwargs):
+        if self.pk is not None:
+            try:
+                old_instance = Campaign.objects.get(pk=self.pk)
+                if old_instance.status != self.status:
+                    self.status_changed_at = timezone.now()
+                
+                # Calculate differences
+                clicks_diff = self.clicks - old_instance.clicks
+                messages_diff = self.messages_sent - old_instance.messages_sent
+                purchases_diff = self.purchases - old_instance.purchases
+                
+                # Update store totals and log activity
+                if messages_diff != 0:
+                    self.store.subscription_message_count += messages_diff
+                    self.store.total_messages_sent += messages_diff
+                    self.store.save(update_fields=['subscription_message_count', 'total_messages_sent'])
+                    
+                    # Log message activity
+                    log_activity(self.store, 'campaign', self.pk, 'message', messages_diff)
+                
+                if purchases_diff != 0:
+                    self.store.total_purchases += purchases_diff
+                    self.store.save(update_fields=['total_purchases'])
+                    
+                    # Log purchase activity
+                    log_activity(self.store, 'campaign', self.pk, 'purchase', purchases_diff)
+                
+                if clicks_diff != 0:
+                    self.store.total_clicks += clicks_diff
+                    self.store.save(update_fields=['total_clicks'])
+                    
+                    # Log click activity
+                    log_activity(self.store, 'campaign', self.pk, 'click', clicks_diff)
+                
+            except Campaign.DoesNotExist:
                 self.status_changed_at = timezone.now()
-            
-            # Calculate differences
-            clicks_diff = self.clicks - old_instance.clicks
-            messages_diff = self.messages_sent - old_instance.messages_sent
-            purchases_diff = self.purchases - old_instance.purchases
-            
-            # Update store totals and log activity
-            if messages_diff != 0:
-                self.store.subscription_message_count += messages_diff
-                self.store.total_messages_sent += messages_diff
-                self.store.save(update_fields=['subscription_message_count', 'total_messages_sent'])
-                
-                # Log message activity
-                log_activity(self.store, 'campaign', self.pk, 'message', messages_diff)
-                
-            if purchases_diff != 0:
-                self.store.total_purchases += purchases_diff
-                self.store.save(update_fields=['total_purchases'])
-                
-                # Log purchase activity
-                log_activity(self.store, 'campaign', self.pk, 'purchase', purchases_diff)
-                
-            if clicks_diff != 0:
-                self.store.total_clicks += clicks_diff
-                self.store.save(update_fields=['total_clicks'])
-                
-                # Log click activity
-                log_activity(self.store, 'campaign', self.pk, 'click', clicks_diff)
-                
-        except Campaign.DoesNotExist:
+        else:
+            # New instance being created
             self.status_changed_at = timezone.now()
-    else:
-        # New instance being created
-        self.status_changed_at = timezone.now()
         
-    super().save(*args, **kwargs)
+        super().save(*args, **kwargs)
 
 
 # Helper function to handle ActivityLog increment or creation
@@ -185,6 +186,7 @@ class Flow(models.Model):
         ('active', 'مفعلة'),
         ('paused', 'موقوفة'),
         ('archived', 'محظورة'),
+        ('deleted', 'تم الحذف'),
     )
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

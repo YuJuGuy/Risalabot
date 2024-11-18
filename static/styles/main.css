@@ -1,7 +1,7 @@
 /*========== GOOGLE FONTS ==========*/
 @import url("https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap");
 @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100..900&display=swap');
-
+@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@200;300;400;500;700;800;900&display=swap');
 
 /*========== VARIABLES CSS ==========*/
 :root {
@@ -17,7 +17,7 @@
   --container-color: #FFFFFF;
 
   /*========== Font and typography ==========*/
-  --body-font: "Vazirmatn", sans-serif;
+  --body-font: "Tajawal", sans-serif;
   --normal-font-size: .938rem;
   --small-font-size: .75rem;
   --smaller-font-size: .75rem;
@@ -501,8 +501,14 @@ img {
   color: #1a1a1a;
 }
 
-.chart-container-wrapper{
+.charts-container{
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
   margin: 2rem;
+}
+
+.chart-container-wrapper{
   border-radius: 4px;
   display: flex;
   justify-content: flex-start;
@@ -514,14 +520,51 @@ img {
   padding: 1rem;
   box-shadow: rgba(55, 63, 71, 10%) 0px 0px 0px 1px, rgba(55, 63, 71, 16%) 0px 1px 4px;
   background-color: #fff;
-  flex: 1 1 calc(50% - 3rem);
+  flex: 1 1 calc(33% - 3rem);
   border-radius: 8px;
 
 }
 
+.chart-container-single {
+  padding: 1rem;
+  box-shadow: rgba(55, 63, 71, 10%) 0px 0px 0px 1px, rgba(55, 63, 71, 16%) 0px 1px 4px;
+  background-color: #fff;
+  border-radius: 8px;
+  width: 100%;
+  height: auto; /* Let the height be determined by the content */
+}
+
+.chart-container-single canvas {
+  display: block;
+  width: 100% !important; /* Full width */
+  height: 500px; /* Fixed height to maintain aspect ratio */
+}
+
+
 .chart-container canvas{
   width: 100% !important;
   height: auto !important;
+}
+
+.chart-header{
+  padding: 0.5rem;
+  display: flex;
+  text-align: right;
+  justify-content: space-between;
+}
+.chart-title{
+  font-size: 1.5rem;
+  font-weight: bold;
+  margin: 0;
+  color: #000000;
+}
+
+.daterange{
+  padding: 0.5rem;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  font-size: 0.875rem;
+  font: inherit;
 }
 
 /*Customer List*/

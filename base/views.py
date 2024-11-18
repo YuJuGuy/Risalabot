@@ -13,6 +13,10 @@ from django.utils.crypto import get_random_string
 from Risalabot.celery import app as celery_app
 from django.db.models import Count
 from . decorators import check_token_validity
+from django.db.models import F
+from datetime import datetime, timedelta
+from django.utils import timezone
+
 
 
 import logging
@@ -125,128 +129,47 @@ def get_dashboard_data(request):
     try:
         store = UserStoreLink.objects.get(user=request.user).store
         activity_log = ActivityLog.objects.filter(store=store)
+        message_log = []
+        purchase_log = []
+        click_log = []
         activity_log_data = []
+        
+        
         for log in activity_log:
-            activity_log_data.append({
-                'date': log.date,
-                'count': log.count,
-                'activity_type': log.get_activity_type_display(),
-                'source_type': log.get_source_type_display(),
-            })
+            if log.source_type == 'campaign': source_type = 'حملة'
+            elif log.source_type == 'flow': source_type = 'أتمتة'
+            else: source_type = 'أخرى'
+            #get the data of the last 7 days in default if there is no data in a day just show 0 in the chart
+            if log.date >= (datetime.now().date() - timedelta(days=7)):
+                activity_log_data.append({
+                    'date': log.date,
+                    'activity_type': log.get_activity_type_display(),
+                    'source_type': source_type,
+                    'uuid': log.source_id,
+                    'count': log.count
+                })
+                
+            else:
+                activity_log_data.append({'date': log.date.date(), 'count': 0, 'activity_type': log.get_activity_type_display(), 'source_type': source_type, 'uuid': log.source_id})
+            
+            
         data = {
             'message_count': store.total_messages_sent,
             'purchases': store.total_purchases,
             'total_customers': store.total_customers,
             'clicks': store.total_clicks,
             'active_automations': Flow.objects.filter(owner=request.user, status='active').count() + Campaign.objects.filter(store=store, status='scheduled').count(),
-            'activty_log': activity_log_data
+            'message_log': message_log,
+            'purchase_log': purchase_log,
+            'click_log': click_log,
+            'activity_log': activity_log_data
         }
+        
+        
+        
         return JsonResponse({'success': True, 'data': data}, status=200)
     except UserStoreLink.DoesNotExist:
-       return JsonResponse({'success': False, 'type': 'info', 'message': 'No store linked. You won\'t be able to see any data without linking a store.'}, status=400)
-
-
-
-
-
-
-#Customer Views
-
-@login_required(login_url='login')
-@check_token_validity
-def customers_view(request, context=None):
-    try:
-        store = UserStoreLink.objects.get(user=request.user).store
-    except UserStoreLink.DoesNotExist:
-        messages.error(request, 'No store linked. Please link a store first.')
-        return redirect('dashboard')
-
-    if context is None:
-        context = {}
-
-    form = GroupCreationForm()
-    if request.method == 'POST':
-        form = GroupCreationForm(request.POST)
-
-        if form.is_valid():
-            group_name = form.cleaned_data['name']
-            conditions = form.cleaned_data['conditions']
-            response = create_customer_group(request.user, group_name, conditions)
-            
-            if response.get('success'):
-                # Return a JSON response on successful creation
-                return JsonResponse({'status': 'success', 'message': 'تم إنشاء المجموعة بنجاح.'}, status=200)
-            else:
-                # Return JSON with error messages
-                error_message = response.get('error', {}).get('message', 'حدث خطأ ما.')
-                error_fields = response.get('error', {}).get('fields', {})
-                errors = {field: messages_list for field, messages_list in error_fields.items()}
-                return JsonResponse({'status': 'error', 'message': error_message, 'errors': errors}, status=400)
-        else:
-            return JsonResponse({'status': 'error', 'message': 'فشل التحقق من صحة النموذج.'}, status=400)
-
-    context.update({
-        'form': form,
-    })
-    
-    return render(request, 'base/customer_list.html', context)
-
-
-
-
-@login_required(login_url='login')
-def get_customers(request):
-    try:
-        # Get the store associated with the logged-in user
-        store = UserStoreLink.objects.get(user=request.user).store
-
-        # Retrieve customers for the specific store
-        customers_list = Customer.objects.filter(store=store)
-
-        # Prepare customer data
-        customers_data = [{
-            'name': customer.customer_name,
-            'email': customer.customer_email,
-            'phone': customer.customer_phone,
-            'location': customer.customer_location,
-            'groups': list(customer.customer_groups.values_list('name', flat=True).exclude(name='جميع العملاء')),  # Group IDs
-            'updated_at': customer.customer_updated_at.strftime('%Y-%m-%d %H:%M')
-        } for customer in customers_list]
-        
-
-        # Calculate group counts
-
-        # Create a dictionary of group IDs to names
-        group_data = (
-            Group.objects.filter(store=store).exclude(name='جميع العملاء')
-            .annotate(customer_count=Count('customers'))  # Count related customers for each group
-            .values('group_id', 'name', customer_count=Count('customers'))  # Include group ID, name, and customer count
-
-        )
-
-        # Convert to list of dictionaries for easier JSON handling
-        group_data_list = list(group_data)
-        
-        return JsonResponse({
-            'customers': customers_data,
-            'group_data': group_data_list,  # List of dictionaries with 'name' and 'customer_count'
-            'total_count': len(customers_list),
-        }, status=200)
-    except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
-
-
-@login_required(login_url='login')
-def delete_customer_list(request, group_id):
-    if request.method == "POST":
-        response = delete_customer_group(request.user, group_id)
-        if response.get('success'):
-            return JsonResponse({'status': 'success', 'message': 'تم حذف المجموعة بنجاح.'})
-        else:
-            return JsonResponse({'status': 'error', 'message': 'فشل حذف المجموعة.'}, status=400)
-    return JsonResponse({'status': 'error', 'message': 'طريقة الطلب غير صالحة.'}, status=405)
-
-
+       return JsonResponse({'success': False, 'type': 'info', 'message': 'لا يوجد متجر مرتبط بحسابك. لا يمكنك رؤية البيانات دون ربط متجر.'}, status=400)
 
 
 @login_required(login_url='login')
