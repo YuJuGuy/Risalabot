@@ -16,6 +16,8 @@ from . decorators import check_token_validity
 from django.db.models import F
 from datetime import datetime, timedelta
 from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
+import json
 
 
 
@@ -124,52 +126,115 @@ def dashboard(request, context=None):
     return render(request, 'base/dashboard.html', context)
 
 
-@login_required(login_url='login')
 def get_dashboard_data(request):
-    try:
-        store = UserStoreLink.objects.get(user=request.user).store
-        activity_log = ActivityLog.objects.filter(store=store)
-        message_log = []
-        purchase_log = []
-        click_log = []
-        activity_log_data = []
-        
-        
-        for log in activity_log:
-            if log.source_type == 'campaign': source_type = 'حملة'
-            elif log.source_type == 'flow': source_type = 'أتمتة'
-            else: source_type = 'أخرى'
-            #get the data of the last 7 days in default if there is no data in a day just show 0 in the chart
-            if log.date >= (datetime.now().date() - timedelta(days=7)):
-                activity_log_data.append({
-                    'date': log.date,
-                    'activity_type': log.get_activity_type_display(),
-                    'source_type': source_type,
-                    'uuid': log.source_id,
-                    'count': log.count
-                })
-                
-            else:
-                activity_log_data.append({'date': log.date.date(), 'count': 0, 'activity_type': log.get_activity_type_display(), 'source_type': source_type, 'uuid': log.source_id})
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            start_date_str = data.get('start')
+            end_date_str = data.get('end')
+            chart_type = data.get('chart', 'All')
+
+            # Convert the date strings to datetime.date objects
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date() if start_date_str else None
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date() if end_date_str else None
+
+            # Fetch and filter logs based on the date range and chart type
+            store = UserStoreLink.objects.get(user=request.user).store
+            activity_log = ActivityLog.objects.filter(store=store)
+            message_log = []
+            purchase_log = []
+            click_log = []
+
+            for log in activity_log:
+                # Convert the source_type to Arabic
+                if log.source_type == 'campaign':
+                    log.source_type = 'الحملة'
+                elif log.source_type == 'flow':
+                    log.source_type = 'الأتمتة'
+                    
+                if start_date and end_date and start_date <= log.date <= end_date:
+                    # Initialize name to handle cases where source_type is not 'campaign' or 'flow'
+                    log_data = {
+                        'date': log.date,
+                        'activity_type': log.get_activity_type_display(),
+                        'source_type': log.source_type,
+                        'uuid': log.source_id,
+                        'count': log.count,                        
+                    }
+
+                    if chart_type == 'All':
+                        if log.activity_type == 'message':
+                            # Check for existing entry by date and source_type
+                            existing_entry = next((entry for entry in message_log if entry['date'] == log.date and entry['source_type'] == log.source_type), None)
+                            if existing_entry:
+                                existing_entry['count'] += log.count
+                            else:
+                                message_log.append(log_data)
+                        elif log.activity_type == 'purchase':
+                            # Check for existing entry by date and source_type
+                            existing_entry = next((entry for entry in purchase_log if entry['date'] == log.date and entry['source_type'] == log.source_type), None)
+                            if existing_entry:
+                                existing_entry['count'] += log.count
+                            else:
+                                purchase_log.append(log_data)
+                        elif log.activity_type == 'click':
+                            # Check for existing entry by date and source_type
+                            existing_entry = next((entry for entry in click_log if entry['date'] == log.date and entry['source_type'] == log.source_type), None)
+                            if existing_entry:
+                                existing_entry['count'] += log.count
+                            else:
+                                click_log.append(log_data)
+                    elif chart_type == 'Message' and log.activity_type == 'message':
+                        # Check for existing entry by date and source_type
+                        existing_entry = next((entry for entry in message_log if entry['date'] == log.date and entry['source_type'] == log.source_type), None)
+                        if existing_entry:
+                            existing_entry['count'] += log.count
+                        else:
+                            message_log.append(log_data)
+                    elif chart_type == 'Purchase' and log.activity_type == 'purchase':
+                        # Check for existing entry by date and source_type
+                        existing_entry = next((entry for entry in purchase_log if entry['date'] == log.date and entry['source_type'] == log.source_type), None)
+                        if existing_entry:
+                            existing_entry['count'] += log.count
+                        else:
+                            purchase_log.append(log_data)
+                    elif chart_type == 'Click' and log.activity_type == 'click':
+                        # Check for existing entry by date and source_type
+                        existing_entry = next((entry for entry in click_log if entry['date'] == log.date and entry['source_type'] == log.source_type), None)
+                        if existing_entry:
+                            existing_entry['count'] += log.count
+                        else:
+                            click_log.append(log_data)
+
+            # Prepare the data to be returned
+            activity_dropdown_menu_types = [choice[1] for choice in ActivityLog.ACTIVITY_TYPE_CHOICES]
+            source_dropdown_menu_types = [choice[1] for choice in ActivityLog.SOURCE_TYPE_CHOICES]
+            response_data = {
+                'success': True,
+                'data': {
+                    'message_count': store.total_messages_sent,
+                    'purchases': store.total_purchases,
+                    'total_customers': store.total_customers,
+                    'clicks': store.total_clicks,
+                    'active_automations': Flow.objects.filter(owner=request.user, status='active').count() + Campaign.objects.filter(store=store, status='scheduled').count(),
+                    'message_log': message_log,
+                    'purchase_log': purchase_log,
+                    'click_log': click_log,
+                    'activityDropdownMenuTypes': activity_dropdown_menu_types,
+                    'sourceDropdownMenuTypes': source_dropdown_menu_types
+                }
+            }
             
-            
-        data = {
-            'message_count': store.total_messages_sent,
-            'purchases': store.total_purchases,
-            'total_customers': store.total_customers,
-            'clicks': store.total_clicks,
-            'active_automations': Flow.objects.filter(owner=request.user, status='active').count() + Campaign.objects.filter(store=store, status='scheduled').count(),
-            'message_log': message_log,
-            'purchase_log': purchase_log,
-            'click_log': click_log,
-            'activity_log': activity_log_data
-        }
-        
-        
-        
-        return JsonResponse({'success': True, 'data': data}, status=200)
-    except UserStoreLink.DoesNotExist:
-       return JsonResponse({'success': False, 'type': 'info', 'message': 'لا يوجد متجر مرتبط بحسابك. لا يمكنك رؤية البيانات دون ربط متجر.'}, status=400)
+
+            return JsonResponse(response_data, status=200)
+
+        except json.JSONDecodeError:
+            return JsonResponse({'success': False, 'message': 'Invalid JSON'}, status=400)
+        except Exception as e:
+            # Catch any other exceptions and return a response
+            return JsonResponse({'success': False, 'message': str(e)}, status=500)
+    else:
+        return JsonResponse({'success': False, 'message': 'Invalid request method'}, status=405)
 
 
 @login_required(login_url='login')

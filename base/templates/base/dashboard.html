@@ -53,6 +53,7 @@
 <div class="charts-container">
 <div class="chart-container-wrapper">
     <div class="chart-container">
+        <i class='bx bx-expand' style="float: right; cursor: pointer;" onclick="expandChart('messageChart')"></i>
         <div class="chart-header">
             <h5 class="chart-title">الرسائل المرسلة</h5>
             <div id="message-daterange" style="background: #fff; cursor: pointer; padding: 5px 10px; border: 1px solid #ccc;">
@@ -60,9 +61,10 @@
                 <span></span> <i class="fa fa-caret-down"></i>
             </div>
         </div>
-        <canvas id="myChart"></canvas>
+        <canvas id="messageChart"></canvas>
     </div>
     <div class="chart-container">
+        <i class='bx bx-expand' style="float: right; cursor: pointer;" onclick="expandChart('purchaseChart')"></i>
         <div class="chart-header">
             <h5 class="chart-title">عمليات الشراء</h5>
             <div id="purchase-daterange" style="background: #fff; cursor: pointer; padding: 5px 10px; border: 1px solid #ccc;">
@@ -70,25 +72,69 @@
                 <span></span> <i class="fa fa-caret-down"></i>
             </div>
         </div>
-        <canvas id="myChart2"></canvas>
+        <canvas id="purchaseChart"></canvas>
     </div>
     <div class="chart-container">
+        <i class='bx bx-expand' style="float: right; cursor: pointer;" onclick="expandChart('clickChart')"></i>
         <div class="chart-header">
             <h5 class="chart-title">الضغطات</h5>
             <div id="click-daterange" style="background: #fff; cursor: pointer; padding: 5px 10px; border: 1px solid #ccc;">
                 <i class="fa fa-calendar"></i>&nbsp;
                 <span></span> <i class="fa fa-caret-down"></i>
             </div>
+
         </div>
-        <canvas id="myChart3"></canvas>
+        <canvas id="clickChart"></canvas>
     </div>
 </div>
 
     <div class="chart-container-single" style="position: relative; width: 100%;">
-        <canvas id="myChart4"></canvas>
+        <i class='bx bx-expand' style="float: right; cursor: pointer;" onclick="expandChart('customChart')"></i>
+        <div class="chart-header">
+            <h5 class="chart-title">مخصص</h5>
+            <div class="activity-dropdown"> 
+                <button class="dropdown-toggle"
+                        type="button" 
+                        id="activitySelectDropdown"
+                        data-bs-toggle="dropdown" 
+                        aria-expanded="false"
+                        onclick="showDropdownMenu('activityDropdownMenu')"> 
+                    اختر النشاط <i class="fa fa-caret-down"></i>
+                </button> 
+                <ul class="dropdown-menu" 
+                    aria-labelledby="activitySelectDropdown" id="activityDropdownMenu"> 
+                    <!-- Activity options will be populated here -->
+                </ul> 
+            </div> 
+    
+            <div class="source-dropdown"> 
+                <button class="dropdown-toggle"
+                        type="button" 
+                        id="sourceSelectDropdown"
+                        data-bs-toggle="dropdown" 
+                        aria-expanded="false"
+                        onclick="showDropdownMenu('sourceDropdownMenu')"> 
+                    اختر المصدر <i class="fa fa-caret-down"></i>
+                </button> 
+                <ul class="dropdown-menu" 
+                    aria-labelledby="sourceSelectDropdown" id="sourceDropdownMenu"> 
+                    <!-- Source options will be populated here -->
+                </ul> 
+            </div> 
+            <div id="custom-daterange" style="background: #fff; cursor: pointer; padding: 5px 10px; border: 1px solid #ccc;">
+                <i class="fa fa-calendar"></i>&nbsp;
+                <span></span> <i class="fa fa-caret-down"></i>
+            </div>
+        </div>
+        <canvas id="customChart"></canvas>
     </div>
 </div>
 
+
+<div id="chartModal" class="chart-modal">
+    <span class="chart-close" onclick="closeModal()">&times;</span>
+    <canvas id="expandedChart"></canvas>
+</div>
 
 
 
@@ -129,79 +175,134 @@
         }
 
         initializeDateRangePicker('#message-daterange', function(start, end) {
-            updateChart(messageChart, 'Message', { start: start, end: end });
+            fetchDataAndInitializeCharts(start, end, 'Message');
         });
         initializeDateRangePicker('#purchase-daterange', function(start, end) {
-            updateChart(purchaseChart, 'Purchase', { start: start, end: end });
+            fetchDataAndInitializeCharts(start, end, 'Purchase');
         });
         initializeDateRangePicker('#click-daterange', function(start, end) {
-            updateChart(clickChart, 'Click', { start: start, end: end });
+            fetchDataAndInitializeCharts(start, end, 'Click');
+        });
+
+        initializeDateRangePicker('#custom-daterange', function(start, end) {
+            fetchDataAndInitializeCharts(start, end, 'Custom');
         });
 
         // Initialize all charts with a default date range of one week
         updateDateRange('#message-daterange', start, end);
         updateDateRange('#purchase-daterange', start, end);
         updateDateRange('#click-daterange', start, end);
-
+        updateDateRange('#custom-daterange', start, end);
         // Fetch data and initialize charts after data is fetched
-        fetchDataAndInitializeCharts(start, end);
+        fetchDataAndInitializeCharts(start, end, 'All');
     });
 
-    let activityLog = [];
-    let aggregatedData = {
-        Message: {},
-        Purchase: {},
-        Click: {}
-    };
+    function fetchDataAndInitializeCharts(start, end, chart) {
+        
+        fetch('/get-dashboard-data/', {
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json'
+            },
+            method: 'POST',  // Ensure this matches the method expected by the backend
+            body: JSON.stringify({
+                start: start.format('YYYY-MM-DD'),
+                end: end.format('YYYY-MM-DD'),
+                chart: chart
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('message-count').textContent = data.data.message_count;
+                document.getElementById('total-customers').textContent = data.data.total_customers;
+                document.getElementById('purchases').textContent = data.data.purchases;
+                document.getElementById('clicks').textContent = data.data.clicks;
+                document.getElementById('active-automations').textContent = data.data.active_automations;
 
-    function fetchDataAndInitializeCharts(start, end) {
-        fetch('/get-dashboard-data/')
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    document.getElementById('message-count').textContent = data.data.message_count;
-                    document.getElementById('total-customers').textContent = data.data.total_customers;
-                    document.getElementById('purchases').textContent = data.data.purchases;
-                    document.getElementById('clicks').textContent = data.data.clicks;
-                    document.getElementById('active-automations').textContent = data.data.active_automations;
-                    activityLog = data.data.activity_log;
-                    console.log(activityLog)
-
-                    // Populate aggregatedData
-                    activityLog.forEach(log => {
-                        const { activity_type, date, source_type, uuid, count } = log;
-                        if (aggregatedData[activity_type]) {
-                            const key = `${date}-${source_type}-${uuid}`;
-                            if (!aggregatedData[activity_type][key]) {
-                                aggregatedData[activity_type][key] = { date, source_type, uuid, count: 0 };
-                            }
-                            aggregatedData[activity_type][key].count += count; // Increment count for each log entry
-                        }
-                    });
-
-                    // Initialize charts after data is fetched
-                    initializeCharts({ start: start, end: end }, { start: start, end: end }, { start: start, end: end });
-                } else {
-                    showMessage(data.message, data.type);
+                if (chart === 'Message' || chart === 'All') {
+                    destroyChart('messageChart');
+                    createMessageChart(data.data.message_log, { start, end });
                 }
+                if (chart === 'Purchase' || chart === 'All') {
+                    destroyChart('purchaseChart');
+                    createPurchaseChart(data.data.purchase_log, { start, end });
+                }
+                if (chart === 'Click' || chart === 'All') {
+                    destroyChart('clickChart');
+                    createClickChart(data.data.click_log, { start, end });
+                }
+                if (chart === 'Custom' || chart === 'All') {
+                    destroyChart('customChart');
+                    initializeCustomDropdowns(data.data.activityDropdownMenuTypes, data.data.sourceDropdownMenuTypes);
+                    allData = data.data.click_log.concat(data.data.message_log, data.data.purchase_log);
+                    console.log(allData);
+                    createCustomChart(allData, { start, end });
+                }
+            } else {
+                showMessage(data.message, data.type);
+            }
+        });
+    }
+
+    function initializeCustomDropdowns(activityDropdownMenuTypes, sourceDropdownMenuTypes) {
+        const activityDropdownMenu = document.getElementById('activityDropdownMenu');
+        const sourceDropdownMenu = document.getElementById('sourceDropdownMenu');
+
+        activityDropdownMenu.innerHTML = '';
+        sourceDropdownMenu.innerHTML = '';
+
+        for (const activity of activityDropdownMenuTypes) {
+            const activityOption = document.createElement('li');
+            const activityLabel = document.createElement('label');
+            const activityCheckbox = document.createElement('input');
+            activityCheckbox.type = 'checkbox';
+            activityCheckbox.value = activity;
+            activityLabel.appendChild(activityCheckbox);
+            activityLabel.appendChild(document.createTextNode(activity));
+            activityOption.appendChild(activityLabel);
+            activityDropdownMenu.appendChild(activityOption);
+
+            // Add click event listener to toggle checkbox
+            activityOption.addEventListener('click', () => {
+                activityCheckbox.checked = !activityCheckbox.checked;
             });
+        }
+
+        for (const source of sourceDropdownMenuTypes) {
+            const sourceOption = document.createElement('li');
+            const sourceLabel = document.createElement('label');
+            const sourceCheckbox = document.createElement('input');
+            sourceCheckbox.type = 'checkbox';
+            sourceCheckbox.value = source;
+            sourceLabel.appendChild(sourceCheckbox);
+            sourceLabel.appendChild(document.createTextNode(source));
+            sourceOption.appendChild(sourceLabel);
+            sourceDropdownMenu.appendChild(sourceOption);
+
+            // Add click event listener to toggle checkbox
+            sourceOption.addEventListener('click', () => {
+                sourceCheckbox.checked = !sourceCheckbox.checked;
+            });
+        }
     }
 
-    let messageChart, purchaseChart, clickChart, otherChart;
-
-    function initializeCharts(messageDateRange, purchaseDateRange, clickDateRange) {
-        messageChart = createChart('myChart', 'Message', messageDateRange);
-        purchaseChart = createChart('myChart2', 'Purchase', purchaseDateRange);
-        clickChart = createChart('myChart3', 'Click', clickDateRange);
-        otherChart = createChart('myChart4', 'Other', null); // Assuming 'Other' is static
+    function showDropdownMenu(dropdownMenuId) {
+        const dropdownMenu = document.getElementById(dropdownMenuId);
+        // if dropdown menu is not already shown, show it
+        if (!dropdownMenu.classList.contains('show')) {
+            dropdownMenu.classList.toggle('show');
+        }
+        else {
+            dropdownMenu.classList.remove('show');
+        }
     }
 
-    function createChart(canvasId, activityType, dateRange) {
-        const ctx = document.getElementById(canvasId);
-        const { labels, datasets } = createDatasets(aggregatedData[activityType], dateRange);
-        console.log(labels)
-        console.log(datasets)
 
+
+    function createMessageChart(aggregatedData, dateRange) {
+        const ctx = document.getElementById('messageChart');
+        const { labels, datasets } = createDatasets(aggregatedData, dateRange);
         return new Chart(ctx, {
             type: 'bar',
             data: {
@@ -218,33 +319,208 @@
         });
     }
 
-    function updateChart(chart, activityType, dateRange) {
-        const { labels, datasets } = createDatasets(aggregatedData[activityType], dateRange);
-        chart.data.labels = labels;
-        chart.data.datasets = datasets;
-        chart.update();
+    function createPurchaseChart(aggregatedData, dateRange) {
+        const ctx = document.getElementById('purchaseChart');
+        const { labels, datasets } = createDatasets(aggregatedData, dateRange);
+        return new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: datasets
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
     }
 
-    function createDatasets(aggregatedData, dateRange) {
-        if (!dateRange) return { labels: [], datasets: [] }; // Return empty if dateRange is null
-
-        const labels = [...new Set(Object.values(aggregatedData).map(item => item.date))].filter(date => {
-            const logDate = moment(date);
-            return logDate.isBetween(dateRange.start, dateRange.end, null, '[]');
+    function createClickChart(aggregatedData, dateRange) {
+        const ctx = document.getElementById('clickChart');
+        const { labels, datasets } = createDatasets(aggregatedData, dateRange);
+        return new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: datasets
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
         });
-        const sourceTypes = [...new Set(Object.values(aggregatedData).map(item => item.source_type))];
+    }
 
-        const datasets = sourceTypes.map(sourceType => ({
+    function createCustomChart(aggregatedData, dateRange) {
+        const ctx = document.getElementById('customChart');
+        const { labels, datasets } = createCustomDatasets(aggregatedData, dateRange);
+        return new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: datasets
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    }
+
+    function destroyChart(chartId) {
+        const chart = Chart.getChart(chartId);
+        if (chart) {
+            chart.destroy();
+        }
+    }
+
+    // Assuming createDatasets is a function that processes the data into labels and datasets
+    function createDatasets(data, dateRange) {
+
+        // Generate all dates within the date range
+        const startDate = dateRange.start;
+        const endDate = dateRange.end;
+        const uniqueDates = [];
+        let currentDate = startDate.clone();
+
+        while (currentDate <= endDate) {
+            uniqueDates.push(currentDate.format('YYYY-MM-DD'));
+            currentDate.add(1, 'days');
+        }
+
+        // Group data by source_type
+        const groupedData = data.reduce((acc, item) => {
+            if (!acc[item.source_type]) {
+                acc[item.source_type] = {};
+            }
+            acc[item.source_type][item.date] = item.count;
+            return acc;
+        }, {});
+
+        // Define colors for each source type
+        const colors = {
+            'حملة ضغطات': 'rgba(75, 192, 192, 0.2)',
+            'حملة رسائل': 'rgba(153, 102, 255, 0.2)',
+            'حملة مشتريات': 'rgba(255, 159, 64, 0.2)',
+            'أتمتة ضغطات': 'rgba(54, 162, 235, 0.2)',
+            'أتمتة رسائل': 'rgba(255, 206, 86, 0.2)',
+            'أتمتة مشتريات': 'rgba(75, 192, 192, 0.2)'
+        };
+
+        const borderColors = {
+            'حملة ضغطات': 'rgba(75, 192, 192, 1)',
+            'حملة رسائل': 'rgba(153, 102, 255, 1)',
+            'حملة مشتريات': 'rgba(255, 159, 64, 1)',
+            'أتمتة ضغطات': 'rgba(54, 162, 235, 1)',
+            'أتمتة رسائل': 'rgba(255, 206, 86, 1)',
+            'أتمتة مشتريات': 'rgba(75, 192, 192, 1)'
+        };
+
+        // Create datasets for each source_type
+        const datasets = Object.keys(groupedData).map(sourceType => ({
             label: sourceType,
-            data: labels.map(label => {
-                const entries = Object.values(aggregatedData).filter(item => item.date === label && item.source_type === sourceType);
-                return entries.reduce((sum, entry) => sum + entry.count, 0); // Sum counts for each date and source type
-            }),
+            data: uniqueDates.map(date => groupedData[sourceType][date] || 0),
+            backgroundColor: colors[sourceType] || 'rgba(201, 203, 207, 0.2)',
+            borderColor: borderColors[sourceType] || 'rgba(201, 203, 207, 1)',
             borderWidth: 1
         }));
 
-        return { labels, datasets };
+        return {
+            labels: uniqueDates,
+            datasets: datasets
+        };
     }
 
+    function createCustomDatasets(data, dateRange) {
+        // Generate all dates within the date range
+        const startDate = dateRange.start;
+        const endDate = dateRange.end;
+        const uniqueDates = [];
+        let currentDate = startDate.clone();
+
+        while (currentDate <= endDate) {
+            uniqueDates.push(currentDate.format('YYYY-MM-DD'));
+            currentDate.add(1, 'days');
+        }
+
+        // Group data by source_type and activity_type
+        const groupedData = data.reduce((acc, item) => {
+            const key = `${item.source_type} ${item.activity_type}`;
+            if (!acc[key]) {
+                acc[key] = {};
+            }
+            acc[key][item.date] = item.count;
+            return acc;
+        }, {});
+
+        // Define colors for each source_type and activity_type combination
+        const colors = {
+            'الحملة ضغطات': 'rgba(75, 192, 192, 0.2)',
+            'الحملة رسالة': 'rgba(153, 102, 255, 0.2)',
+            'الحملة مشتريات': 'rgba(255, 159, 64, 0.2)',
+            'الأتمتة ضغطات': 'rgba(54, 162, 235, 0.2)',
+            'الأتمتة رسالة': 'rgba(255, 206, 86, 0.2)',
+            'الأتمتة مشتريات': 'rgba(75, 192, 192, 0.2)'
+        };
+
+        const borderColors = {
+            'الحملة ضغطات': 'rgba(75, 192, 192, 1)',
+            'الحملة رسالة': 'rgba(153, 102, 255, 1)',
+            'الحملة مشتريات': 'rgba(255, 159, 64, 1)',
+            'الأتمتة ضغطات': 'rgba(54, 162, 235, 1)',
+            'الأتمتة رسالة': 'rgba(255, 206, 86, 1)',
+            'الأتمتة مشتريات': 'rgba(75, 192, 192, 1)'
+        };
+
+        // Create datasets for each source_type and activity_type combination
+        const datasets = Object.keys(groupedData).map(key => ({
+            label: key,
+            data: uniqueDates.map(date => groupedData[key][date] || 0),
+            backgroundColor: colors[key] || 'rgba(201, 203, 207, 0.2)',
+            borderColor: borderColors[key] || 'rgba(201, 203, 207, 1)',
+            borderWidth: 1
+        }));
+
+        return {
+            labels: uniqueDates,
+            datasets: datasets
+        };
+    }
+
+    function expandChart(chartId) {
+        const originalChart = Chart.getChart(chartId);
+        if (!originalChart) return;
+    
+        const modal = document.getElementById('chartModal');
+        const expandedChartCanvas = document.getElementById('expandedChart');
+    
+        // Destroy any existing chart in the modal
+        if (Chart.getChart(expandedChartCanvas)) {
+            Chart.getChart(expandedChartCanvas).destroy();
+        }
+    
+        // Create a new chart in the modal with the same data and options
+        new Chart(expandedChartCanvas, {
+            type: originalChart.config.type,
+            data: originalChart.config.data,
+            options: originalChart.config.options
+        });
+    
+        modal.style.display = "flex";
+    }
+    
+    function closeModal() {
+        const modal = document.getElementById('chartModal');
+        modal.style.display = "none";
+    }
 </script>
 {% endblock %}

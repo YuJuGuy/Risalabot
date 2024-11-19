@@ -567,6 +567,94 @@ img {
   font: inherit;
 }
 
+.chart-modal {
+  display: none; /* Hidden by default */
+  position: fixed; /* Stay in place */
+  z-index: 1000; /* Sit on top */
+  left: 0;
+  top: 0;
+  width: 100% !important; /* Full width */
+  height: 100% !important; /* Full height */
+  overflow: auto; /* Enable scroll if needed */
+  background-color: rgb(0,0,0); /* Fallback color */
+  background-color: rgba(0,0,0,0.9); /* Black w/ opacity */
+}
+
+#custom-daterange{
+  height: fit-content !important;
+}
+
+.dropdown-toggle {
+  padding: 0.5rem 1rem;
+  background-color: #00ff94; 
+  color: #000; 
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background-color 0.3s;
+  font-family: inherit;
+  font-weight: bold;
+}
+
+.dropdown-toggle:hover {
+  background-color: #00ff94; 
+}
+
+.dropdown-menu {
+  display: none; /* Hidden by default */
+  position: absolute;
+  background-color: #fff;
+  min-width: 200px;
+  border-radius: 4px;
+  box-shadow: 0px 8px 16px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
+  margin-top: 0.5rem;
+  padding: 0;
+}
+
+.dropdown-menu.show {
+  display: block; /* Show when active */
+}
+
+.dropdown-menu li {
+  padding: 0.5rem 0.5rem;
+  list-style: none;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.dropdown-menu li:hover {
+  background-color: #f0f0f0; /* Light grey on hover */
+}
+
+.chart-modal canvas {
+  margin: auto;
+  display: block;
+  width: 80% !important;
+  height: auto !important;
+  max-width: 1300px;
+  background-color: #fff;
+  align-self: center;
+}
+
+.chart-close {
+  position: absolute;
+  top: 15px;
+  right: 35px;
+  color: #f1f1f1;
+  font-size: 40px;
+  font-weight: bold;
+  transition: 0.3s;
+}
+
+.chart-close:hover,
+.chart-close:focus {
+  color: #bbb;
+  text-decoration: none;
+  cursor: pointer;
+}
+
 /*Customer List*/
 
 

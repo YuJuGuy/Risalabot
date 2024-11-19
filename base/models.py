@@ -408,13 +408,13 @@ def create_config_for_suggested_flow_step(sender, instance, created, **kwargs):
             
 class ActivityLog(models.Model):
     ACTIVITY_TYPE_CHOICES = [
-        ('message', 'Message'),
-        ('purchase', 'Purchase'),
-        ('click', 'Click'),
+        ('message', 'رسالة'),
+        ('purchase', 'مشتريات'),
+        ('click', 'ضغطات'),
     ]
     SOURCE_TYPE_CHOICES = [
-        ('flow', 'Flow'),
-        ('campaign', 'Campaign'),
+        ('flow', 'الأتمتة'),
+        ('campaign', 'الحملة'),
     ]
 
     store = models.ForeignKey(Store, on_delete=models.CASCADE, related_name='activity_logs')
