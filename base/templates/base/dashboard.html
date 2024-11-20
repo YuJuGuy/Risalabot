@@ -34,7 +34,7 @@
           <i class="fa-solid fa-hand-pointer"></i>
         </div>
         <div class="metric-content">
-            <h5>الضغطا</h5>
+            <h5>الضغطات</h5>
             <h1 id="clicks"></h1>
         </div>
     </div>
@@ -234,10 +234,9 @@
                 }
                 if (chart === 'Custom' || chart === 'All') {
                     destroyChart('customChart');
+                    console.log(data.data.custom_log)
+                    createCustomChart(data.data.custom_log, { start, end });
                     initializeCustomDropdowns(data.data.activityDropdownMenuTypes, data.data.sourceDropdownMenuTypes);
-                    allData = data.data.click_log.concat(data.data.message_log, data.data.purchase_log);
-                    console.log(allData);
-                    createCustomChart(allData, { start, end });
                 }
             } else {
                 showMessage(data.message, data.type);
@@ -408,21 +407,15 @@
 
         // Define colors for each source type
         const colors = {
-            'حملة ضغطات': 'rgba(75, 192, 192, 0.2)',
-            'حملة رسائل': 'rgba(153, 102, 255, 0.2)',
-            'حملة مشتريات': 'rgba(255, 159, 64, 0.2)',
-            'أتمتة ضغطات': 'rgba(54, 162, 235, 0.2)',
-            'أتمتة رسائل': 'rgba(255, 206, 86, 0.2)',
-            'أتمتة مشتريات': 'rgba(75, 192, 192, 0.2)'
+            'الحملة': 'rgba(75, 192, 192, 0.2)',
+            'الأتمتة': 'rgba(153, 102, 255, 0.2)',
+            'other': 'rgba(255, 159, 64, 0.2)' // Add more colors as needed
         };
 
         const borderColors = {
-            'حملة ضغطات': 'rgba(75, 192, 192, 1)',
-            'حملة رسائل': 'rgba(153, 102, 255, 1)',
-            'حملة مشتريات': 'rgba(255, 159, 64, 1)',
-            'أتمتة ضغطات': 'rgba(54, 162, 235, 1)',
-            'أتمتة رسائل': 'rgba(255, 206, 86, 1)',
-            'أتمتة مشتريات': 'rgba(75, 192, 192, 1)'
+            'الحملة': 'rgba(75, 192, 192, 1)',
+            'الأتمتة': 'rgba(153, 102, 255, 1)',
+            'other': 'rgba(255, 159, 64, 1)' // Add more border colors as needed
         };
 
         // Create datasets for each source_type
@@ -464,25 +457,39 @@
 
         // Define colors for each source_type and activity_type combination
         const colors = {
-            'الحملة ضغطات': 'rgba(75, 192, 192, 0.2)',
-            'الحملة رسالة': 'rgba(153, 102, 255, 0.2)',
-            'الحملة مشتريات': 'rgba(255, 159, 64, 0.2)',
-            'الأتمتة ضغطات': 'rgba(54, 162, 235, 0.2)',
-            'الأتمتة رسالة': 'rgba(255, 206, 86, 0.2)',
-            'الأتمتة مشتريات': 'rgba(75, 192, 192, 0.2)'
+            // Campaigns
+            'الحملة ضغطات': 'rgba(255, 99, 132, 0.2)',  // Campaign clicks (base red)
+            'الحملة رسالة': 'rgba(255, 159, 64, 0.2)',  // Campaign messages (orange)
+            'الحملة مشتريات': 'rgba(255, 205, 86, 0.2)', // Campaign purchases (yellow)
+            
+            // Flows
+            'الأتمتة ضغطات': 'rgba(75, 192, 192, 0.2)',  // Flow clicks (teal)
+            'الأتمتة رسالة': 'rgba(54, 162, 235, 0.2)',  // Flow messages (blue)
+            'الأتمتة مشتريات': 'rgba(153, 102, 255, 0.2)' // Flow purchases (purple)
         };
-
+        
         const borderColors = {
-            'الحملة ضغطات': 'rgba(75, 192, 192, 1)',
-            'الحملة رسالة': 'rgba(153, 102, 255, 1)',
-            'الحملة مشتريات': 'rgba(255, 159, 64, 1)',
-            'الأتمتة ضغطات': 'rgba(54, 162, 235, 1)',
-            'الأتمتة رسالة': 'rgba(255, 206, 86, 1)',
-            'الأتمتة مشتريات': 'rgba(75, 192, 192, 1)'
+            // Campaigns
+            'الحملة ضغطات': 'rgba(255, 99, 132, 1)',  // Campaign clicks (base red)
+            'الحملة رسالة': 'rgba(255, 159, 64, 1)',  // Campaign messages (orange)
+            'الحملة مشتريات': 'rgba(255, 205, 86, 1)', // Campaign purchases (yellow)
+            
+            // Flows
+            'الأتمتة ضغطات': 'rgba(75, 192, 192, 1)',  // Flow clicks (teal)
+            'الأتمتة رسالة': 'rgba(54, 162, 235, 1)',  // Flow messages (blue)
+            'الأتمتة مشتريات': 'rgba(153, 102, 255, 1)' // Flow purchases (purple)
         };
+        
+        // Sort keys to ensure "campaign" related datasets come first, followed by "flow"
+        const sortedKeys = Object.keys(groupedData).sort((a, b) => {
+            const order = ['الحملة', 'الأتمتة']; // Define the desired order
+            const aPrefix = a.split(' ')[0];
+            const bPrefix = b.split(' ')[0];
+            return order.indexOf(aPrefix) - order.indexOf(bPrefix);
+        });
 
         // Create datasets for each source_type and activity_type combination
-        const datasets = Object.keys(groupedData).map(key => ({
+        const datasets = sortedKeys.map(key => ({
             label: key,
             data: uniqueDates.map(date => groupedData[key][date] || 0),
             backgroundColor: colors[key] || 'rgba(201, 203, 207, 0.2)',

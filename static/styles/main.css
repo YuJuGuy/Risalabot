@@ -537,7 +537,7 @@ img {
 .chart-container-single canvas {
   display: block;
   width: 100% !important; /* Full width */
-  height: 500px; /* Fixed height to maintain aspect ratio */
+  max-height: 500px !important; /* Fixed height to maintain aspect ratio */
 }
 
 
@@ -586,8 +586,8 @@ img {
 
 .dropdown-toggle {
   padding: 0.5rem 1rem;
-  background-color: #00ff94; 
-  color: #000; 
+  background-color: #48C9B0; 
+  color: #fff; 
   border: none;
   border-radius: 4px;
   cursor: pointer;
@@ -598,7 +598,7 @@ img {
 }
 
 .dropdown-toggle:hover {
-  background-color: #00ff94; 
+  background-color: #45e4c4; 
 }
 
 .dropdown-menu {

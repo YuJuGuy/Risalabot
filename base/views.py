@@ -144,6 +144,8 @@ def get_dashboard_data(request):
             message_log = []
             purchase_log = []
             click_log = []
+            custom_log = []
+            
 
             for log in activity_log:
                 # Convert the source_type to Arabic
@@ -165,42 +167,67 @@ def get_dashboard_data(request):
                     if chart_type == 'All':
                         if log.activity_type == 'message':
                             # Check for existing entry by date and source_type
-                            existing_entry = next((entry for entry in message_log if entry['date'] == log.date and entry['source_type'] == log.source_type), None)
+                            existing_entry = next((entry for entry in message_log if entry['date'] == log.date and entry['source_type'] == log.source_type and entry['activity_type'] == log.activity_type), None)
                             if existing_entry:
                                 existing_entry['count'] += log.count
                             else:
                                 message_log.append(log_data)
                         elif log.activity_type == 'purchase':
                             # Check for existing entry by date and source_type
-                            existing_entry = next((entry for entry in purchase_log if entry['date'] == log.date and entry['source_type'] == log.source_type), None)
+                            existing_entry = next((entry for entry in purchase_log if entry['date'] == log.date and entry['source_type'] == log.source_type and entry['activity_type'] == log.activity_type), None)
                             if existing_entry:
                                 existing_entry['count'] += log.count
                             else:
                                 purchase_log.append(log_data)
                         elif log.activity_type == 'click':
                             # Check for existing entry by date and source_type
-                            existing_entry = next((entry for entry in click_log if entry['date'] == log.date and entry['source_type'] == log.source_type), None)
+                            existing_entry = next((entry for entry in click_log if entry['date'] == log.date and entry['source_type'] == log.source_type and entry['activity_type'] == log.activity_type), None)
                             if existing_entry:
                                 existing_entry['count'] += log.count
                             else:
                                 click_log.append(log_data)
+                        custom_log.append(log_data)
+                    elif chart_type == 'Custom':
+                        if log.activity_type == 'message':
+                            # Check for existing entry by date and source_type
+                            existing_entry = next((entry for entry in custom_log if entry['date'] == log.date and entry['source_type'] == log.source_type and entry['activity_type'] == log.activity_type), None)
+                            if existing_entry:
+                                existing_entry['count'] += log.count
+                            else:
+                                custom_log.append(log_data)
+                        elif log.activity_type == 'purchase':
+                            # Check for existing entry by date and source_type
+                            existing_entry = next((entry for entry in custom_log if entry['date'] == log.date and entry['source_type'] == log.source_type and entry['activity_type'] == log.activity_type), None)
+                            if existing_entry:
+                                existing_entry['count'] += log.count
+                            else:
+                                custom_log.append(log_data)
+                        elif log.activity_type == 'click':
+                            # Check for existing entry by date and source_type
+                            existing_entry = next((entry for entry in custom_log if entry['date'] == log.date and entry['source_type'] == log.source_type and entry['activity_type'] == log.activity_type), None)
+                            if existing_entry:
+                                existing_entry['count'] += log.count
+                            else:
+                                custom_log.append(log_data)
+                        
+                        
                     elif chart_type == 'Message' and log.activity_type == 'message':
                         # Check for existing entry by date and source_type
-                        existing_entry = next((entry for entry in message_log if entry['date'] == log.date and entry['source_type'] == log.source_type), None)
+                        existing_entry = next((entry for entry in message_log if entry['date'] == log.date and entry['source_type'] == log.source_type and entry['activity_type'] == log.activity_type  ), None)
                         if existing_entry:
                             existing_entry['count'] += log.count
                         else:
                             message_log.append(log_data)
                     elif chart_type == 'Purchase' and log.activity_type == 'purchase':
                         # Check for existing entry by date and source_type
-                        existing_entry = next((entry for entry in purchase_log if entry['date'] == log.date and entry['source_type'] == log.source_type), None)
+                        existing_entry = next((entry for entry in purchase_log if entry['date'] == log.date and entry['source_type'] == log.source_type and entry['activity_type'] == log.activity_type), None)
                         if existing_entry:
                             existing_entry['count'] += log.count
                         else:
                             purchase_log.append(log_data)
                     elif chart_type == 'Click' and log.activity_type == 'click':
                         # Check for existing entry by date and source_type
-                        existing_entry = next((entry for entry in click_log if entry['date'] == log.date and entry['source_type'] == log.source_type), None)
+                        existing_entry = next((entry for entry in click_log if entry['date'] == log.date and entry['source_type'] == log.source_type and entry['activity_type'] == log.activity_type), None)
                         if existing_entry:
                             existing_entry['count'] += log.count
                         else:
@@ -220,6 +247,7 @@ def get_dashboard_data(request):
                     'message_log': message_log,
                     'purchase_log': purchase_log,
                     'click_log': click_log,
+                    'custom_log': custom_log,
                     'activityDropdownMenuTypes': activity_dropdown_menu_types,
                     'sourceDropdownMenuTypes': source_dropdown_menu_types
                 }
