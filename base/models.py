@@ -408,7 +408,7 @@ def create_config_for_suggested_flow_step(sender, instance, created, **kwargs):
             
 class ActivityLog(models.Model):
     ACTIVITY_TYPE_CHOICES = [
-        ('message', 'رسالة'),
+        ('message', 'رسائل'),
         ('purchase', 'مشتريات'),
         ('click', 'ضغطات'),
     ]

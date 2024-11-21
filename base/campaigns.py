@@ -81,8 +81,6 @@ def campaign(request, context=None):
             campaign.status = status
             campaign.store = store
             campaign.scheduled_time = scheduled_time
-            campaign.purchases = 2
-            campaign.messages_sent = 2
             campaign.save()
             
             data = {
@@ -193,6 +191,8 @@ def edit_campaign(request, campaign_id):
                     campaign.task_id = task.id
                     campaign.status = 'scheduled'
                     campaign.scheduled_time = scheduled_time
+                    campaign.purchases += 1
+                    campaign.messages_sent += 1
                     campaign.save()  # Save the changes
                     return JsonResponse({'success': True, 'type': 'success', 'message': 'تم تحديث الحملة وإعادة حفظها بنجاح.'})
                 

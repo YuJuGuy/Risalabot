@@ -121,6 +121,23 @@
                     <!-- Source options will be populated here -->
                 </ul> 
             </div> 
+
+            <div class="name-dropdown"> 
+                <button class="dropdown-toggle"
+                        type="button" 
+                        id="nameSelectDropdown"
+                        data-bs-toggle="dropdown" 
+                        aria-expanded="false"
+                        onclick="showDropdownMenu('nameDropdownMenu')"> 
+                    اختر الاسم <i class="fa fa-caret-down"></i>
+                </button> 
+                <ul class="dropdown-menu" 
+                    aria-labelledby="nameSelectDropdown" id="nameDropdownMenu"> 
+                    <!-- Name options will be populated here -->
+                </ul> 
+            </div> 
+
+
             <div id="custom-daterange" style="background: #fff; cursor: pointer; padding: 5px 10px; border: 1px solid #ccc;">
                 <i class="fa fa-calendar"></i>&nbsp;
                 <span></span> <i class="fa fa-caret-down"></i>
@@ -147,6 +164,46 @@
 <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
 
 <script>
+    // on page load get the selected activity and source items
+    function getSelectedItems() {
+        const activityDropdownMenu = document.getElementById('activityDropdownMenu');
+        const sourceDropdownMenu = document.getElementById('sourceDropdownMenu');
+        const nameDropdownMenu = document.getElementById('nameDropdownMenu');
+        let mySelectedActivityItems = [];
+        let mySelectedSourceItems = [];
+        let mySelectedNameItems = [];
+
+        // Check if the dropdown menus are correctly selected
+        if (!activityDropdownMenu || !sourceDropdownMenu) {
+            console.error('Dropdown menus not found');
+            return [mySelectedActivityItems, mySelectedSourceItems, mySelectedNameItems];
+        }
+
+        // Log the checkboxes found in each dropdown
+        const activityCheckboxes = activityDropdownMenu.querySelectorAll('input[type="checkbox"]');
+        const sourceCheckboxes = sourceDropdownMenu.querySelectorAll('input[type="checkbox"]');
+        const nameCheckboxes = nameDropdownMenu.querySelectorAll('input[type="checkbox"]');
+        // Collect checked items
+        mySelectedActivityItems = Array.from(activityCheckboxes)
+            .filter(checkbox => checkbox.checked)
+            .map(checkbox => checkbox.value);
+
+        mySelectedSourceItems = Array.from(sourceCheckboxes)
+            .filter(checkbox => checkbox.checked)
+            .map(checkbox => checkbox.value);
+
+        mySelectedNameItems = Array.from(nameCheckboxes)
+            .filter(checkbox => checkbox.checked)
+            .map(checkbox => ({ id: checkbox.id, value: checkbox.value }));
+
+        return [mySelectedActivityItems, mySelectedSourceItems, mySelectedNameItems];
+    }
+
+    
+
+
+
+
     $(function() {
         var start = moment().subtract(7, 'days');
         var end = moment();
@@ -197,6 +254,7 @@
         fetchDataAndInitializeCharts(start, end, 'All');
     });
 
+
     function fetchDataAndInitializeCharts(start, end, chart) {
         
         fetch('/get-dashboard-data/', {
@@ -233,10 +291,10 @@
                     createClickChart(data.data.click_log, { start, end });
                 }
                 if (chart === 'Custom' || chart === 'All') {
+                    initializeCustomDropdowns(data.data.activityDropdownMenuTypes, data.data.sourceDropdownMenuTypes, data.data.nameDropdownMenuTypes, data.data.custom_log, { start, end });
+                    const [mySelectedActivityItems, mySelectedSourceItems, mySelectedNameItems] = getSelectedItems();
                     destroyChart('customChart');
-                    console.log(data.data.custom_log)
-                    createCustomChart(data.data.custom_log, { start, end });
-                    initializeCustomDropdowns(data.data.activityDropdownMenuTypes, data.data.sourceDropdownMenuTypes);
+                    createCustomChart(data.data.custom_log, { start, end }, mySelectedActivityItems, mySelectedSourceItems, mySelectedNameItems);
                 }
             } else {
                 showMessage(data.message, data.type);
@@ -244,47 +302,87 @@
         });
     }
 
-    function initializeCustomDropdowns(activityDropdownMenuTypes, sourceDropdownMenuTypes) {
-        const activityDropdownMenu = document.getElementById('activityDropdownMenu');
-        const sourceDropdownMenu = document.getElementById('sourceDropdownMenu');
+function initializeCustomDropdowns(activityDropdownMenuTypes, sourceDropdownMenuTypes, nameDropdownMenuTypes, currentData, initialDateRange) {
+    const activityDropdownMenu = document.getElementById('activityDropdownMenu');
+    const sourceDropdownMenu = document.getElementById('sourceDropdownMenu');
+    const nameDropdownMenu = document.getElementById('nameDropdownMenu');
+    activityDropdownMenu.innerHTML = '';
+    sourceDropdownMenu.innerHTML = '';
 
-        activityDropdownMenu.innerHTML = '';
-        sourceDropdownMenu.innerHTML = '';
+    let dateRange = initialDateRange; // Initialize with the initial date range
 
-        for (const activity of activityDropdownMenuTypes) {
-            const activityOption = document.createElement('li');
-            const activityLabel = document.createElement('label');
-            const activityCheckbox = document.createElement('input');
-            activityCheckbox.type = 'checkbox';
-            activityCheckbox.value = activity;
-            activityLabel.appendChild(activityCheckbox);
-            activityLabel.appendChild(document.createTextNode(activity));
-            activityOption.appendChild(activityLabel);
-            activityDropdownMenu.appendChild(activityOption);
+    // Function to update the name dropdown based on selected sources
+    function updateNameDropdown(selectedSources) {
+        nameDropdownMenu.innerHTML = ''; // Clear existing names
+        for (const [name, value] of Object.entries(nameDropdownMenuTypes)) {
+            const sourceType = value[1];
+            if (selectedSources.includes(sourceType)) {
+                const nameOption = document.createElement('li');
+                const nameLabel = document.createElement('label');
+                const nameCheckbox = document.createElement('input');
+                nameCheckbox.type = 'checkbox';
+                nameCheckbox.value = value;
+                nameCheckbox.id = name;
+                nameLabel.appendChild(nameCheckbox);
+                nameLabel.appendChild(document.createTextNode(name));
+                nameOption.appendChild(nameLabel);
+                nameDropdownMenu.appendChild(nameOption);
+                nameCheckbox.checked = true;
 
-            // Add click event listener to toggle checkbox
-            activityOption.addEventListener('click', () => {
-                activityCheckbox.checked = !activityCheckbox.checked;
-            });
+                nameCheckbox.addEventListener('change', () => {
+                    const [mySelectedActivityItems, mySelectedSourceItems, mySelectedNameItems] = getSelectedItems();
+                    destroyChart('customChart');
+                    createCustomChart(currentData, dateRange, mySelectedActivityItems, mySelectedSourceItems, mySelectedNameItems);
+                });
+            }
         }
-
-        for (const source of sourceDropdownMenuTypes) {
-            const sourceOption = document.createElement('li');
-            const sourceLabel = document.createElement('label');
-            const sourceCheckbox = document.createElement('input');
-            sourceCheckbox.type = 'checkbox';
-            sourceCheckbox.value = source;
-            sourceLabel.appendChild(sourceCheckbox);
-            sourceLabel.appendChild(document.createTextNode(source));
-            sourceOption.appendChild(sourceLabel);
-            sourceDropdownMenu.appendChild(sourceOption);
-
-            // Add click event listener to toggle checkbox
-            sourceOption.addEventListener('click', () => {
-                sourceCheckbox.checked = !sourceCheckbox.checked;
-            });
-        }
+        // Update the chart after updating the name dropdown
+        const [mySelectedActivityItems, mySelectedSourceItems, mySelectedNameItems] = getSelectedItems();
+        destroyChart('customChart');
+        createCustomChart(currentData, dateRange, mySelectedActivityItems, mySelectedSourceItems, mySelectedNameItems);
     }
+
+    for (const activity of activityDropdownMenuTypes) {
+        const activityOption = document.createElement('li');
+        const activityLabel = document.createElement('label');
+        const activityCheckbox = document.createElement('input');
+        activityCheckbox.type = 'checkbox';
+        activityCheckbox.value = activity;
+        activityLabel.appendChild(activityCheckbox);
+        activityLabel.appendChild(document.createTextNode(activity));
+        activityOption.appendChild(activityLabel);
+        activityDropdownMenu.appendChild(activityOption);
+        activityCheckbox.checked = true;
+
+        activityCheckbox.addEventListener('change', () => {
+            const [mySelectedActivityItems, mySelectedSourceItems, mySelectedNameItems] = getSelectedItems();
+            destroyChart('customChart');
+            createCustomChart(currentData, dateRange, mySelectedActivityItems, mySelectedSourceItems, mySelectedNameItems);
+        });
+    }
+
+    for (const source of sourceDropdownMenuTypes) {
+        const sourceOption = document.createElement('li');
+        const sourceLabel = document.createElement('label');
+        const sourceCheckbox = document.createElement('input');
+        sourceCheckbox.type = 'checkbox';
+        sourceCheckbox.value = source;
+        sourceLabel.appendChild(sourceCheckbox);
+        sourceLabel.appendChild(document.createTextNode(source));
+        sourceOption.appendChild(sourceLabel);
+        sourceDropdownMenu.appendChild(sourceOption);
+        sourceCheckbox.checked = true;
+
+        sourceCheckbox.addEventListener('change', () => {
+            const [mySelectedActivityItems, mySelectedSourceItems, mySelectedNameItems] = getSelectedItems();
+            updateNameDropdown(mySelectedSourceItems); // Update names based on selected sources
+        });
+    }
+
+    // Initial update of the name dropdown
+    const initialSelectedSources = Array.from(sourceDropdownMenu.querySelectorAll('input[type="checkbox"]:checked')).map(checkbox => checkbox.value);
+    updateNameDropdown(initialSelectedSources);
+}
 
     function showDropdownMenu(dropdownMenuId) {
         const dropdownMenu = document.getElementById(dropdownMenuId);
@@ -296,6 +394,19 @@
             dropdownMenu.classList.remove('show');
         }
     }
+
+    function closeDropdownMenu(dropdownMenuId) {
+        const dropdownMenu = document.getElementById(dropdownMenuId);
+        dropdownMenu.classList.remove('show');
+    }
+
+    window.addEventListener('click', (event) => {
+        if (!event.target.matches('.dropdown-toggle')) {
+            closeDropdownMenu('activityDropdownMenu');
+            closeDropdownMenu('sourceDropdownMenu');
+            closeDropdownMenu('nameDropdownMenu');
+        }
+    });
 
 
 
@@ -311,7 +422,10 @@
             options: {
                 scales: {
                     y: {
-                        beginAtZero: true
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
                     }
                 }
             }
@@ -330,7 +444,10 @@
             options: {
                 scales: {
                     y: {
-                        beginAtZero: true
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
                     }
                 }
             }
@@ -349,16 +466,19 @@
             options: {
                 scales: {
                     y: {
-                        beginAtZero: true
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
                     }
                 }
             }
         });
     }
 
-    function createCustomChart(aggregatedData, dateRange) {
+    function createCustomChart(aggregatedData, dateRange, mySelectedActivityItems, mySelectedSourceItems, mySelectedNameItems) {
         const ctx = document.getElementById('customChart');
-        const { labels, datasets } = createCustomDatasets(aggregatedData, dateRange);
+        const { labels, datasets } = createCustomDatasets(aggregatedData, dateRange, mySelectedActivityItems, mySelectedSourceItems, mySelectedNameItems);
         return new Chart(ctx, {
             type: 'bar',
             data: {
@@ -368,7 +488,10 @@
             options: {
                 scales: {
                     y: {
-                        beginAtZero: true
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
                     }
                 }
             }
@@ -384,7 +507,6 @@
 
     // Assuming createDatasets is a function that processes the data into labels and datasets
     function createDatasets(data, dateRange) {
-
         // Generate all dates within the date range
         const startDate = dateRange.start;
         const endDate = dateRange.end;
@@ -396,16 +518,16 @@
             currentDate.add(1, 'days');
         }
 
-        // Group data by source_type
+        // Group data by source_type, name, and date
         const groupedData = data.reduce((acc, item) => {
-            if (!acc[item.source_type]) {
-                acc[item.source_type] = {};
+            if (!acc[item.source_type_display]) {
+                acc[item.source_type_display] = {};
             }
-            acc[item.source_type][item.date] = item.count;
+            acc[item.source_type_display][item.date] = item.count;
             return acc;
         }, {});
 
-        // Define colors for each source type
+        // Define colors for each source_type
         const colors = {
             'الحملة': 'rgba(75, 192, 192, 0.2)',
             'الأتمتة': 'rgba(153, 102, 255, 0.2)',
@@ -418,7 +540,7 @@
             'other': 'rgba(255, 159, 64, 1)' // Add more border colors as needed
         };
 
-        // Create datasets for each source_type
+        // Create datasets for each source_type and name
         const datasets = Object.keys(groupedData).map(sourceType => ({
             label: sourceType,
             data: uniqueDates.map(date => groupedData[sourceType][date] || 0),
@@ -433,51 +555,66 @@
         };
     }
 
-    function createCustomDatasets(data, dateRange) {
+    
+    function createCustomDatasets(data, dateRange, selectedActivities, selectedSources, selectedNames) {
         // Generate all dates within the date range
         const startDate = dateRange.start;
         const endDate = dateRange.end;
         const uniqueDates = [];
         let currentDate = startDate.clone();
-
+    
         while (currentDate <= endDate) {
             uniqueDates.push(currentDate.format('YYYY-MM-DD'));
             currentDate.add(1, 'days');
         }
+    
+        // Filter data based on selected activities and sources
+        const filteredData = data.filter(item => 
+        selectedActivities.includes(item.activity_type_display) &&
+        selectedSources.includes(item.source_type_display) &&
+        selectedNames.some(nameObj => {
+            const [uuid] = nameObj.value.split(','); // Split the value and get the first part
+            return uuid === item.uuid; // Compare with item.uuid
+        })
+    );
 
-        // Group data by source_type and activity_type
-        const groupedData = data.reduce((acc, item) => {
-            const key = `${item.source_type} ${item.activity_type}`;
+    
+        // Group data by source_type, activity_type, and name
+        const groupedData = filteredData.reduce((acc, item) => {
+            const key = `${item.activity_type_display} ${item.source_type_display} ${item.name}`;
             if (!acc[key]) {
                 acc[key] = {};
             }
-            acc[key][item.date] = item.count;
+            if (!acc[key][item.date]) {
+                acc[key][item.date] = 0;
+            }
+            acc[key][item.date] += item.count;
             return acc;
         }, {});
-
+    
         // Define colors for each source_type and activity_type combination
         const colors = {
             // Campaigns
-            'الحملة ضغطات': 'rgba(255, 99, 132, 0.2)',  // Campaign clicks (base red)
-            'الحملة رسالة': 'rgba(255, 159, 64, 0.2)',  // Campaign messages (orange)
-            'الحملة مشتريات': 'rgba(255, 205, 86, 0.2)', // Campaign purchases (yellow)
+            'ضغطات الحملة': 'rgba(255, 99, 132, 0.2)',  // Campaign clicks (base red)
+            'رسائل الحملة': 'rgba(255, 159, 64, 0.2)',  // Campaign messages (orange)
+            'مشتريات الحملة': 'rgba(255, 205, 86, 0.2)', // Campaign purchases (yellow)
             
             // Flows
-            'الأتمتة ضغطات': 'rgba(75, 192, 192, 0.2)',  // Flow clicks (teal)
-            'الأتمتة رسالة': 'rgba(54, 162, 235, 0.2)',  // Flow messages (blue)
-            'الأتمتة مشتريات': 'rgba(153, 102, 255, 0.2)' // Flow purchases (purple)
+            'ضغطات الأتمتة': 'rgba(75, 192, 192, 0.2)',  // Flow clicks (teal)
+            'رسائل الأتمتة': 'rgba(54, 162, 235, 0.2)',  // Flow messages (blue)
+            'مشتريات الأتمتة': 'rgba(153, 102, 255, 0.2)' // Flow purchases (purple)
         };
         
         const borderColors = {
             // Campaigns
-            'الحملة ضغطات': 'rgba(255, 99, 132, 1)',  // Campaign clicks (base red)
-            'الحملة رسالة': 'rgba(255, 159, 64, 1)',  // Campaign messages (orange)
-            'الحملة مشتريات': 'rgba(255, 205, 86, 1)', // Campaign purchases (yellow)
+            'ضغطات الحملة': 'rgba(255, 99, 132, 1)',  // Campaign clicks (base red)
+            'رسائل الحملة': 'rgba(255, 159, 64, 1)',  // Campaign messages (orange)
+            'مشتريات الحملة': 'rgba(255, 205, 86, 1)', // Campaign purchases (yellow)
             
             // Flows
-            'الأتمتة ضغطات': 'rgba(75, 192, 192, 1)',  // Flow clicks (teal)
-            'الأتمتة رسالة': 'rgba(54, 162, 235, 1)',  // Flow messages (blue)
-            'الأتمتة مشتريات': 'rgba(153, 102, 255, 1)' // Flow purchases (purple)
+            'ضغطات الأتمتة': 'rgba(75, 192, 192, 1)',  // Flow clicks (teal)
+            'رسائل الأتمتة': 'rgba(54, 162, 235, 1)',  // Flow messages (blue)
+            'مشتريات الأتمتة': 'rgba(153, 102, 255, 1)' // Flow purchases (purple)
         };
         
         // Sort keys to ensure "campaign" related datasets come first, followed by "flow"
@@ -487,16 +624,17 @@
             const bPrefix = b.split(' ')[0];
             return order.indexOf(aPrefix) - order.indexOf(bPrefix);
         });
-
-        // Create datasets for each source_type and activity_type combination
+    
+        // Create datasets for each source_type, activity_type, and name combination
         const datasets = sortedKeys.map(key => ({
             label: key,
             data: uniqueDates.map(date => groupedData[key][date] || 0),
-            backgroundColor: colors[key] || 'rgba(201, 203, 207, 0.2)',
-            borderColor: borderColors[key] || 'rgba(201, 203, 207, 1)',
-            borderWidth: 1
+            backgroundColor: colors[key.split(' ').slice(0, 2).join(' ')] || 'rgba(201, 203, 207, 0.2)',
+            borderColor: borderColors[key.split(' ').slice(0, 2).join(' ')] || 'rgba(201, 203, 207, 1)',
+            borderWidth: 1,
+            // no floating point numbers
         }));
-
+    
         return {
             labels: uniqueDates,
             datasets: datasets

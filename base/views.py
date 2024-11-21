@@ -148,23 +148,24 @@ def get_dashboard_data(request):
             
 
             for log in activity_log:
-                # Convert the source_type to Arabic
-                if log.source_type == 'campaign':
-                    log.source_type = 'الحملة'
-                elif log.source_type == 'flow':
-                    log.source_type = 'الأتمتة'
                     
                 if start_date and end_date and start_date <= log.date <= end_date:
-                    # Initialize name to handle cases where source_type is not 'campaign' or 'flow'
+                    source_type = dict(ActivityLog.SOURCE_TYPE_CHOICES).get(log.source_type, log.source_type)
+                    activity_type = dict(ActivityLog.ACTIVITY_TYPE_CHOICES).get(log.activity_type, log.activity_type)
                     log_data = {
                         'date': log.date,
-                        'activity_type': log.get_activity_type_display(),
+                        'activity_type': log.activity_type,
                         'source_type': log.source_type,
-                        'uuid': log.source_id,
+                        'activity_type_display': activity_type,
+                        'source_type_display': source_type,
                         'count': log.count,                        
                     }
-
                     if chart_type == 'All':
+                        custom_log_data = log_data.copy()  # Use original log data
+                        custom_log_data['name'] = Campaign.objects.get(id=log.source_id).name if log.source_type == 'campaign' else Flow.objects.get(id=log.source_id).name
+                        custom_log_data['uuid'] = log.source_id
+                        custom_log.append(custom_log_data)
+                        
                         if log.activity_type == 'message':
                             # Check for existing entry by date and source_type
                             existing_entry = next((entry for entry in message_log if entry['date'] == log.date and entry['source_type'] == log.source_type and entry['activity_type'] == log.activity_type), None)
@@ -186,29 +187,15 @@ def get_dashboard_data(request):
                                 existing_entry['count'] += log.count
                             else:
                                 click_log.append(log_data)
-                        custom_log.append(log_data)
+                        
+                        
+                        
+                        
+                            
                     elif chart_type == 'Custom':
-                        if log.activity_type == 'message':
-                            # Check for existing entry by date and source_type
-                            existing_entry = next((entry for entry in custom_log if entry['date'] == log.date and entry['source_type'] == log.source_type and entry['activity_type'] == log.activity_type), None)
-                            if existing_entry:
-                                existing_entry['count'] += log.count
-                            else:
-                                custom_log.append(log_data)
-                        elif log.activity_type == 'purchase':
-                            # Check for existing entry by date and source_type
-                            existing_entry = next((entry for entry in custom_log if entry['date'] == log.date and entry['source_type'] == log.source_type and entry['activity_type'] == log.activity_type), None)
-                            if existing_entry:
-                                existing_entry['count'] += log.count
-                            else:
-                                custom_log.append(log_data)
-                        elif log.activity_type == 'click':
-                            # Check for existing entry by date and source_type
-                            existing_entry = next((entry for entry in custom_log if entry['date'] == log.date and entry['source_type'] == log.source_type and entry['activity_type'] == log.activity_type), None)
-                            if existing_entry:
-                                existing_entry['count'] += log.count
-                            else:
-                                custom_log.append(log_data)
+                        log_data['name'] = Campaign.objects.get(id=log.source_id).name if log.source_type == 'campaign' else Flow.objects.get(id=log.source_id).name
+                        log_data['uuid'] = log.source_id
+                        custom_log.append(log_data)
                         
                         
                     elif chart_type == 'Message' and log.activity_type == 'message':
@@ -234,6 +221,7 @@ def get_dashboard_data(request):
                             click_log.append(log_data)
 
             # Prepare the data to be returned
+            name_to_uuid = {log['name']: (log['uuid'], log['source_type_display']) for log in custom_log}
             activity_dropdown_menu_types = [choice[1] for choice in ActivityLog.ACTIVITY_TYPE_CHOICES]
             source_dropdown_menu_types = [choice[1] for choice in ActivityLog.SOURCE_TYPE_CHOICES]
             response_data = {
@@ -249,10 +237,13 @@ def get_dashboard_data(request):
                     'click_log': click_log,
                     'custom_log': custom_log,
                     'activityDropdownMenuTypes': activity_dropdown_menu_types,
-                    'sourceDropdownMenuTypes': source_dropdown_menu_types
+                    'sourceDropdownMenuTypes': source_dropdown_menu_types,
+                    'nameDropdownMenuTypes': name_to_uuid,
                 }
             }
             
+                        
+    
 
             return JsonResponse(response_data, status=200)
 
