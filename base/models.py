@@ -197,7 +197,7 @@ class Flow(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
     status_changed_at = models.DateTimeField(null=True, blank=True)
-    trigger = models.ForeignKey('Trigger', on_delete=models.CASCADE, related_name='flows')
+    trigger = models.ForeignKey(Trigger, on_delete=models.CASCADE, related_name='flows')
     messages_sent = models.IntegerField(default=0)
     purchases = models.IntegerField(default=0)
     clicks = models.IntegerField(default=0)
@@ -452,3 +452,13 @@ def log_activity(store, source_type, source_id, activity_type, diff_count):
             activity_type=activity_type,
             date=today,
         ).update(count=models.F('count') + diff_count)
+        
+
+class AbandonedCart(models.Model):
+    store = models.ForeignKey(Store, on_delete=models.CASCADE, related_name='abandoned_carts')
+    customer_id = models.CharField(max_length=255)
+    cart_id = models.CharField(max_length=255)
+    flow_id = models.UUIDField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    bought = models.BooleanField(default=False)

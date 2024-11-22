@@ -137,13 +137,13 @@
                                     <i class="fa-solid fa-ellipsis-vertical"></i>
                                     <div class="dropdown-content">
                                         ${
-                                            row.status === "scheduled" || row.status === "draft" ? `
+                                            row.status === "scheduled" ? `
                                                 <a href="javascript:void(0);" onclick="showPopup('${row.id}');">تعديل</a>
                                                 <a href="javascript:void(0);" onclick="cancelCampaign('${row.id}');">الغاء</a>
-                                            ` : `
+                                            ` : row.status === "draft" || row.status === "cancelled" ? `
                                                 <a href="javascript:void(0);" onclick="showPopup('${row.id}');">اظهار</a>
                                                 <a href="javascript:void(0);" onclick="deleteCampaign('${row.id}');">حذف</a>
-                                            `
+                                            ` : ''
                                         }
                                     </div>
                                 </div>`;
@@ -168,6 +168,8 @@
                     search: '',
                     lengthMenu: '_MENU_',
                     zeroRecords: "لا توجد سجلات متاحة",
+                    emptyTable: "لا توجد سجلات متاحة",
+
                 }
             });
         }
@@ -275,7 +277,6 @@
         statusSelector.value = status;  // Set the value of the status field
     
         var formData = new FormData(e.target);
-        console.log(...formData.entries());
     
         fetch(e.target.action, {
             method: 'POST',

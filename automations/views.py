@@ -8,7 +8,7 @@ from base.models import Trigger
 from dotenv import load_dotenv  
 import logging
 import json
-from base.models import User, Store, Flow,UserStoreLink
+from base.models import User, Store, Flow,UserStoreLink, AbandonedCart
 from .tasks import process_flows_task
 
 # log to a file
@@ -78,8 +78,24 @@ def process_webhook(payload):
             status_id = payload.get('data', {}).get('status', {}).get('id', '')
             event = f"{event}.{status_id}"
             
+        
+            
+            
         data = payload.get('data', {}) or {}
         customer = data.get('customer', {}) or {}
+        
+        if event == 'order.created':
+            cart_reference_id = str(data.get('cart_reference_id', ''))
+            if cart_reference_id:
+                try:
+                    # Check if the cart exists
+                    if AbandonedCart.objects.filter(cart_id=cart_reference_id).exists():
+                        # Update the cart to mark it as bought
+                        AbandonedCart.objects.filter(cart_id=cart_reference_id).update(bought=True)
+                    else:
+                        logging.warning(f"Cart with ID {cart_reference_id} does not exist.")
+                except Exception as e:
+                    logging.error(f"Error processing webhook: {str(e)}")
         
         # Prepare flow data with safe dictionary access
         flow_data = {
@@ -93,6 +109,9 @@ def process_webhook(payload):
             'status_arabic': str((data.get('status', {}) or {}).get('name', '')),
             'rating_link': str((data.get('urls', {}) or {}).get('rating_link', '')),
             'total_amount': str((data.get('amounts', {}) or {}).get('total', {}).get('amount', '')),
+            'cart_link': str(data.get('checkout_url', '')),
+            'customer_id': str(customer.get('id', '')),
+            'cart_id': str(data.get('id', '')) if event == 'abandoned.cart' else '',
         }
         
         

@@ -259,9 +259,9 @@ def get_campaign_data(request, campaign_id=None):
             
             return JsonResponse({'success': True, 'data': data}, status=200)
     except Campaign.DoesNotExist:
-        return JsonResponse({'success': False, 'error': 'Campaign not found.'}, status=404)
+        return JsonResponse({'success': False, 'type': 'error', 'error': 'لم يتم العثور على الحملة.'}, status=404)
     except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+        return JsonResponse({'success': False, 'type': 'error', 'error': str(e)}, status=500)
 
     
 @login_required(login_url='login')
@@ -283,22 +283,22 @@ def campaign_cancel(request, campaign_id):
                 celery_app.control.revoke(campaign.task_id)
             except CeleryError as e:
                 # Log the error and display a user-friendly message
-                return JsonResponse({'success': False, 'errors': f"فشل إلغاء المهمة: {str(e)}"}, status=400)
-            else:
-                # If successfully revoked, update campaign status
-                campaign.task_id = None
-                campaign.status = 'cancelled'
-                campaign.save(update_fields=['task_id', 'status'])
-                return JsonResponse({'success': True, 'message': 'تم إلغاء الحملة بنجاح.'})
+                logger.error(f"فشل إلغاء المهمة: {str(e)}")
+                # Continue to mark the campaign as cancelled
+            # If successfully revoked or if revocation fails, update campaign status
+            campaign.task_id = None
+            campaign.status = 'cancelled'
+            campaign.save(update_fields=['task_id', 'status'])
+            return JsonResponse({'success': True, 'type': 'success', 'message': 'تم إلغاء الحملة بنجاح.'})
                 
         else:
             campaign.status = 'cancelled'
             campaign.save(update_fields=['task_id', 'status'])
-            return JsonResponse({'success': True, 'message': 'تم إلغاء الحملة بنجاح.'})
+            return JsonResponse({'success': True, 'type': 'success', 'message': 'تم إلغاء الحملة بنجاح.'})
             
     except (Campaign.DoesNotExist, UserStoreLink.DoesNotExist):
         # If either the campaign or the user-store link does not exist
-        return JsonResponse({'success': False, 'errors': 'ليس لديك الصلاحية لإلغاء هذه الحملة.'}, status=400)
+        return JsonResponse({'success': False, 'type': 'error', 'errors': 'ليس لديك الصلاحية لإلغاء هذه الحملة.'}, status=400)
 
 
 
@@ -309,8 +309,8 @@ def delete_campaign(request, campaign_id):
             campaign = Campaign.objects.get(id=campaign_id, store=UserStoreLink.objects.get(user=request.user).store)
             campaign.status = 'deleted'
             campaign.save(update_fields=['status'])
-            return JsonResponse({'success': True, 'message': 'تم حذف الحملة بنجاح.'})
+            return JsonResponse({'success': True, 'type': 'success', 'message': 'تم حذف الحملة بنجاح.'})
         except Campaign.DoesNotExist:
-            return JsonResponse({'success': False, 'errors': 'الحملة غير موجودة.'}, status=400)
+            return JsonResponse({'success': False, 'type': 'error', 'errors': 'الحملة غير موجودة.'}, status=400)
     else:
-        return JsonResponse({'success': False, 'errors': 'طريقة الطلب غير صالحة.'}, status=405)
+        return JsonResponse({'success': False, 'type': 'error', 'errors': 'طريقة الطلب غير صالحة.'}, status=405)

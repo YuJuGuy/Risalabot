@@ -178,6 +178,12 @@
                         <div class="variable-item" onclick="addVariableToMessage('{رابط التقييم}')">
                             <p>رابط التقييم</p>
                         </div>
+                        <div class="variable-item" onclick="addVariableToMessage('{رابط السلة}')">
+                            <p>رابط السلة</p>
+                        </div>
+                        <div class="variable-item coupon-variable" onclick="addVariableToMessage('{الكوبون}')">
+                            <p>الكوبون</p>
+                        </div>
                     </div>
                     <p>المتغيرات سوف تستبدل بالقيم المناسبة للعميل المرسل له</p>
                 </div>
@@ -236,6 +242,9 @@
                         </div>
                         <div class="variable-item" onclick="addVariableToMessage('{رابط التقييم}')">
                             <p>رابط التقييم</p>
+                        </div>
+                        <div class="variable-item" onclick="addVariableToMessage('{رابط السلة}')">
+                            <p>رابط السلة</p>
                         </div>
                         <div class="variable-item coupon-variable" onclick="addVariableToMessage('{الكوبون}')">
                             <p>الكوبون</p>
@@ -402,6 +411,25 @@ new Sortable(document.getElementById('canvas-steps'), {
                                     <div class="variable-item" onclick="addVariableToMessage('{الدولة}')">
                                         <p>الدولة</p>
                                     </div>
+                                    <div class="variable-item" onclick="addVariableToMessage('{رقم التتبع}')">
+                                        <p>رقم التتبع</p>
+                                    </div>
+                                    <div class="variable-item" onclick="addVariableToMessage('{الحالة}')">
+                                        <p>الحالة</p>
+                                    </div>
+                                    <div class="variable-item" onclick="addVariableToMessage('{السعر}')">
+                                        <p>السعر</p>
+                                    </div>
+                                    <div class="variable-item" onclick="addVariableToMessage('{رابط التقييم}')">
+                                        <p>رابط التقييم</p>
+                                    </div>
+                                    <div class="variable-item" onclick="addVariableToMessage('{رابط السلة}')">
+                                        <p>رابط السلة</p>
+                                    </div>
+                                    <div class="variable-item coupon-variable" onclick="addVariableToMessage('{الكوبون}')">
+                                        <p>الكوبون</p>
+                                    </div>
+                                    
                                 </div>
                                 <p>المتغيرات سوف تستبدل بالقيم المناسبة للعميل المرسل له</p>
                             </div>
@@ -438,7 +466,45 @@ new Sortable(document.getElementById('canvas-steps'), {
                     <label>استبعاد المنتجات المخفضة:</label>
                     <input type="checkbox" class="exclude-sale-products">
                     <textarea placeholder="أدخل نص الرسالة هنا" class="coupon-message"></textarea>
-
+                    <div class="available-variables">
+                        <div class="variable-item-container">
+                            <div class="variable-item" onclick="addVariableToMessage('{اسم العميل}')">
+                                <p>اسم العميل</p>
+                            </div>
+                            <div class="variable-item" onclick="addVariableToMessage('{الاسم الاول}')">
+                                <p>الاسم الاول</p>
+                            </div>
+                            <div class="variable-item" onclick="addVariableToMessage('{الايميل}')">
+                                <p>الايميل</p>
+                            </div>
+                            <div class="variable-item" onclick="addVariableToMessage('{رقم العميل}')">
+                                <p>رقم العميل</p>
+                            </div>
+                            <div class="variable-item" onclick="addVariableToMessage('{الدولة}')">
+                                <p>الدولة</p>
+                            </div>
+                            <div class="variable-item" onclick="addVariableToMessage('{رقم التتبع}')">
+                                <p>رقم التتبع</p>
+                            </div>
+                            <div class="variable-item" onclick="addVariableToMessage('{الحالة}')">
+                                <p>الحالة</p>
+                            </div>
+                            <div class="variable-item" onclick="addVariableToMessage('{السعر}')">
+                                <p>السعر</p>
+                            </div>
+                            <div class="variable-item" onclick="addVariableToMessage('{رابط التقييم}')">
+                                <p>رابط التقييم</p>
+                            </div>
+                            <div class="variable-item" onclick="addVariableToMessage('{رابط السلة}')">
+                                <p>رابط السلة</p>
+                            </div>
+                            <div class="variable-item coupon-variable" onclick="addVariableToMessage('{الكوبون}')">
+                                <p>الكوبون</p>
+                            </div>
+                            
+                        </div>
+                        <p>المتغيرات سوف تستبدل بالقيم المناسبة للعميل المرسل له</p>
+                    </div>
                 </div>
             `;
         }

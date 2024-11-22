@@ -4,7 +4,7 @@ from django.db import transaction
 from base.apis import create_coupon
 from datetime import datetime, timedelta, timezone
 from django.utils.crypto import get_random_string
-from base.models import Store, Campaign, UserStoreLink, Flow, FlowStep, TextConfig, TimeDelayConfig, CouponConfig
+from base.models import Store, Campaign, UserStoreLink, Flow, FlowStep, TextConfig, TimeDelayConfig, CouponConfig, AbandonedCart
 import logging
 import pytz
 
@@ -53,13 +53,16 @@ def send_whatsapp_message(store, number, msg, session):
 def send_whatsapp_message_task(self, data):
     try:
         store = Store.objects.get(id=data['store_id'])
-        campaign = Campaign.objects.get(id=data['campaign_id'], store=store)
+        campaign = Campaign.objects.get(id=data['campaign_id'], store=store, status='scheduled')
         session = UserStoreLink.objects.filter(store=store).first().user.session_id
     except Store.DoesNotExist:
         logging.info(f"Store with id {data['store_id']} does not exist.")
         return None
     except Campaign.DoesNotExist:
-        logging.info(f"Campaign with id {data['campaign_id']} does not exist.")
+        logging.info(f"Campaign with id {data['campaign_id']} does not exist")
+        return None
+    except Campaign.status != 'scheduled':
+        logging.info(f"Campaign with id {data['campaign_id']} is not scheduled")
         return None
 
     sent_count = 0
@@ -121,8 +124,10 @@ def process_flows_task(self, flow_ids, flow_data, current_step_index=0):
 
     for flow in flows:
         # Order flow steps and process starting from the current step
-        flow_steps = FlowStep.objects.filter(flow=flow).order_by('order').select_related('text_config', 'time_delay_config')
+        flow_steps = FlowStep.objects.filter(flow=flow).order_by('order').select_related('text_config', 'time_delay_config', 'coupon_config')
         session = UserStoreLink.objects.filter(store=store).first().user.session_id
+
+        abandoned_cart_created = False  # Track if abandoned cart is created
 
         if flow_steps:
             # Process steps starting from the current step index
@@ -140,7 +145,8 @@ def process_flows_task(self, flow_ids, flow_data, current_step_index=0):
                             '{رقم التتبع}': flow_data['tracking_link'],
                             '{الحالة}': flow_data['status_arabic'],
                             '{السعر}': flow_data['total_amount'],
-                            '{رابط التقييم}': flow_data['rating_link']
+                            '{رابط التقييم}': flow_data['rating_link'],
+                            '{رابط السلة}': flow_data['cart_link']
                     }
                         # Apply all replacements in one loop
                         for placeholder, value in replacements.items():
@@ -155,6 +161,13 @@ def process_flows_task(self, flow_ids, flow_data, current_step_index=0):
                             flow.messages_sent += 1
                             flow.save(update_fields=['messages_sent'])
                         logging.info(f"Message sent to {flow_data['customer_phone']}")
+                        
+                        # Create abandoned cart if the flow trigger is abandoned cart
+                        if flow.trigger.event_type == 'abandoned_cart' and not abandoned_cart_created:
+                            if '{رابط السلة}' in text_config.message:
+                                AbandonedCart.objects.create(store=store, customer_id=flow_data['customer_id'], cart_id=flow_data['cart_id'], flow_id=flow.id)
+                                abandoned_cart_created = True  # Mark as created
+
                     else:
                         logging.info(f"Failed to send message to {flow_data['customer_phone']}: {message}")
                 
@@ -186,13 +199,14 @@ def process_flows_task(self, flow_ids, flow_data, current_step_index=0):
                             '{الحالة}': flow_data['status_arabic'],
                             '{السعر}': flow_data['total_amount'],
                             '{رابط التقييم}': flow_data['rating_link'],
+                            '{رابط السلة}': flow_data['cart_link'],
                             '{الكوبون}': code
+                            
                     }
                         # Apply all replacements in one loop
                         for placeholder, value in replacements.items():
                             coupon_config.message = coupon_config.message.replace(placeholder, value)
                            
-                    print(coupon_config.message)
                     result = create_coupon(user, coupondata)
 
                     if result['success']:
@@ -203,6 +217,11 @@ def process_flows_task(self, flow_ids, flow_data, current_step_index=0):
                             with transaction.atomic():
                                 flow.messages_sent += 1
                                 flow.save(update_fields=['messages_sent'])
+                            # Create abandoned cart if the flow trigger is abandoned cart
+                            if flow.trigger.event_type == 'abandoned_cart' and not abandoned_cart_created:
+                                if '{رابط السلة}' in coupon_config.message:
+                                    AbandonedCart.objects.create(store=store, customer_id=flow_data['customer_id'], cart_id=flow_data['cart_id'], flow_id=flow.id)
+                                    abandoned_cart_created = True  # Mark as created
                     else:
                         # Handle failure, coupon creation failed
                         logging.error("Failed to create coupon: %s", result['message'])
