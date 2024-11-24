@@ -127,33 +127,10 @@
 
 /* ========== MEDIA QUERIES ==========*/
 @media screen and (max-width: 320px) {
-  .header__search {
-    width: 70%;
-  }
+
 }
 
 
-  .header {
-    padding: 0 3rem 0 6rem;
-  }
-  .header__container {
-    height: calc(var(--header-height) + .5rem);
-  }
-  .header__search {
-    width: 300px;
-    padding: .55rem .75rem;
-  }
-  .header__toggle {
-    display: none;
-  }
-  .header__logo {
-    display: block;
-  }
-  .header__img {
-    width: 40px;
-    height: 40px;
-    order: 1;
-  }
   .sidenav{
     width: var(--nav-width); /* Keep the navbar expanded */
   }

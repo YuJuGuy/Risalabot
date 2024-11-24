@@ -54,18 +54,26 @@ html, body {
 
 /*========== Header ==========*/
 
-.container-nav{
-  height: var(--header-height);
-}
+
 
 .header{
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0 1rem;
-  background-color: #19181B;
+  padding: 1.25rem 2rem;
+  background-color: #212121;
   height: var(--header-height);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+.container-nav{
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  background-color: #212121;
+}
+.container-nav > header{
+  width: 100%;
+  max-width: 100rem;
 }
 
 .logo-container {
@@ -89,10 +97,26 @@ html, body {
 }
 
 
-.right-container{
+.left-container{
   display: flex;
   align-items: center;
   gap : 1.5rem;
+}
+
+.login-btn{
+  border-radius: 5.0rem;
+  border: 1px solid #fff;
+  padding: 0.5rem 1rem;
+  font-family: inherit;
+  background-color: #212121;
+  font-weight: 800;
+  color: #fff;
+}
+
+.login-btn:hover {
+  transition: background-color 0.15s ease-in, color 0.15s ease-in, box-shadow 0.15s ease-in; /* Added ease-in */
+  background-color: #fff;
+  color: #212121;
 }
 
 .support{
@@ -477,7 +501,7 @@ img {
 }
 
 .metric-icon i{
-  color: #666;
+  color: #212121;
 }
 
 .metric-content{

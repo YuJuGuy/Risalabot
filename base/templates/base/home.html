@@ -17,7 +17,30 @@
 
     </head>
     <body>
-        <h1>Home</h1>
+        <div class="container-nav">
+        <header class="header">
+            <div class="logo-container">
+                <a href="{% url 'home' %}">
+                    <img src="{% static 'svgs/Risalabot.svg' %}" alt="RisalaBot Logo" class="logo-image">
+                </a>
+            </div>
+            
+        
+              
+              <div class= "left-container">
+                <a href="{% url 'login' %}" class="login-btn">
+                    تسجيل الدخول
+                </a>
+              </div>
+        </header>
+        </div>
+        <main class="main-container">
+            <section class="main-content">
+                
+            </section>
+
+        </main>
+
 
 
 

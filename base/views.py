@@ -60,7 +60,7 @@ def loginPage(request):
 
 def logoutUser(request):
     logout(request)
-    return redirect('login')
+    return redirect('home')
 
 def generate_unique_session_id():
     """Generate a unique session_id for the user."""

@@ -24,7 +24,7 @@
     {% if page == 'login'%}
     <div class="login-container">
         <div class="titles">
-            <div class="login-text">تسجيل الدخول</div>
+            <div class="logo-container"><img src="{% static 'svgs/RisalabotBlack.svg' %}" alt="RisalaBot Logo" class="logo-image"></div>
             <div class="login-text-small">سجل دخولك للتمكن من الوصول الى خدماتنا</div>
         </div>
         <form class="login-form" method="post" action="">
@@ -53,7 +53,7 @@
     {% else %}
     <div class="login-container">
         <div class="titles">
-          <div class="login-text">إنشاء حساب جديد</div>
+            <div class="logo-container"><img src="{% static 'svgs/RisalabotBlack.svg' %}" alt="RisalaBot Logo" class="logo-image"></div>
           <div class="login-text-small">انشئ حساب جديد للتمكن من الوصول الى خدماتنا</div>
         </div>
         <form class="login-form" method="post" action="">

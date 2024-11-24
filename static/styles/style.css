@@ -27,8 +27,15 @@ body {
   }
   
   .titles {
+    display: flex;
+    flex-direction: column;
     text-align: center;
     margin-bottom: 1.5rem; /* Adjusted margin for better spacing */
+  }
+
+  .logo-container{
+    width: 50%;
+    align-self: center;
   }
   
   .login-text {
