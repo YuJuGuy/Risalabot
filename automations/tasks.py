@@ -12,6 +12,21 @@ logging.basicConfig(level=logging.INFO)
 ksa_timezone = pytz.timezone("Asia/Riyadh")
 
 
+replacements = {
+    '{اسم العميل}': 'customer_full_name',
+    '{الاسم الاول}': 'customer_first_name',
+    '{الايميل}': 'customer_email',
+    '{رقم العميل}': 'customer_number',
+    '{الدولة}': 'customer_country',
+    '{رقم التتبع}': 'tracking_link',
+    '{الحالة}': 'status_arabic',
+    '{السعر}': 'total_amount',
+    '{رابط التقييم}': 'rating_link',
+    '{رابط السلة}': 'cart_link',
+    '{الكوبون}': 'code'
+}
+
+
 
 def send_whatsapp_message(store, number, msg, session):
     """
@@ -72,13 +87,6 @@ def send_whatsapp_message_task(self, data):
     for customer in data['customers_data']:
         # Only process replacements if the message contains placeholders
         if '{' in data['msg']:
-            replacements = {
-                '{اسم العميل}': customer['customer_full_name'],
-                '{الاسم الاول}': customer['customer_first_name'],
-                '{الايميل}': customer['customer_email'],
-                '{رقم العميل}': customer['customer_number'],
-                '{الدولة}': customer['customer_country']
-            }
             
             # Apply all replacements in one loop
             for placeholder, value in replacements.items():
@@ -107,6 +115,10 @@ def send_whatsapp_message_task(self, data):
     return None
 
 
+
+
+
+
 @shared_task(bind=True, max_retries=3)
 def process_flows_task(self, flow_ids, flow_data, current_step_index=0):
     """
@@ -132,30 +144,21 @@ def process_flows_task(self, flow_ids, flow_data, current_step_index=0):
         if flow_steps:
             # Process steps starting from the current step index
             for index, flow_step in enumerate(flow_steps[current_step_index:], start=current_step_index):
+                
+                # Send SMS
                 if flow_step.action_type.name == 'sms':
                     text_config = TextConfig.objects.get(flow_step=flow_step)
                   
+                  # Apply all replacements in one loop
                     if '{' in text_config.message:
-                        replacements = {
-                            '{اسم العميل}': flow_data['customer_full_name'],
-                            '{الاسم الاول}': flow_data['customer_first_name'],
-                            '{الايميل}': flow_data['customer_email'],
-                            '{رقم العميل}': flow_data['customer_phone'],
-                            '{الدولة}': flow_data['customer_country'],
-                            '{رقم التتبع}': flow_data['tracking_link'],
-                            '{الحالة}': flow_data['status_arabic'],
-                            '{السعر}': flow_data['total_amount'],
-                            '{رابط التقييم}': flow_data['rating_link'],
-                            '{رابط السلة}': flow_data['cart_link']
-                    }
-                        # Apply all replacements in one loop
-                        for placeholder, value in replacements.items():
+                         for placeholder, key in replacements.items():
+                            value = flow_data.get(key, '')
                             text_config.message = text_config.message.replace(placeholder, value)
-                            
                     
                 
-                            
+                    # Send the message
                     success, message = send_whatsapp_message(store, flow_data['customer_phone'], text_config.message, session)
+                    # If the message is sent successfully, update the flow messages sent count
                     if success:
                         with transaction.atomic():
                             flow.messages_sent += 1
@@ -170,16 +173,18 @@ def process_flows_task(self, flow_ids, flow_data, current_step_index=0):
 
                     else:
                         logging.info(f"Failed to send message to {flow_data['customer_phone']}: {message}")
-                
+                        
+                # Create coupon
                 elif flow_step.action_type.name == 'coupon':
                     coupon_config = CouponConfig.objects.get(flow_step=flow_step)
+                    # Generate a random coupon code
                     code = get_random_string(12).upper()
-                    maximum_amount = coupon_config.maximum_amount
+                    # Prepare the coupon data
                     coupondata = {
                         'code': code,
                         'type': coupon_config.type,
                         'amount': coupon_config.amount,
-                        'maximum_amount': maximum_amount,
+                        'maximum_amount': coupon_config.maximum_amount,
                         'start_date': datetime.now(ksa_timezone).strftime("%Y-%m-%d"),
                         'expiry_date': (datetime.now(ksa_timezone) + timedelta(days=coupon_config.expire_in)).strftime("%Y-%m-%d"),
                         'free_shipping': coupon_config.free_shipping,
@@ -187,24 +192,10 @@ def process_flows_task(self, flow_ids, flow_data, current_step_index=0):
                         'message': coupon_config.message
                     }
                         
-                    
+                    # Apply all replacements in one loop
                     if '{' in coupon_config.message:
-                        replacements = {
-                            '{اسم العميل}': flow_data['customer_full_name'],
-                            '{الاسم الاول}': flow_data['customer_first_name'],
-                            '{الايميل}': flow_data['customer_email'],
-                            '{رقم العميل}': flow_data['customer_phone'],
-                            '{الدولة}': flow_data['customer_country'],
-                            '{رقم التتبع}': flow_data['tracking_link'],
-                            '{الحالة}': flow_data['status_arabic'],
-                            '{السعر}': flow_data['total_amount'],
-                            '{رابط التقييم}': flow_data['rating_link'],
-                            '{رابط السلة}': flow_data['cart_link'],
-                            '{الكوبون}': code
-                            
-                    }
-                        # Apply all replacements in one loop
-                        for placeholder, value in replacements.items():
+                        for placeholder, key in replacements.items():
+                            value = flow_data.get(key, '')
                             coupon_config.message = coupon_config.message.replace(placeholder, value)
                            
                     result = create_coupon(user, coupondata)
@@ -245,6 +236,8 @@ def process_flows_task(self, flow_ids, flow_data, current_step_index=0):
         logging.info(f"Flow {flow.id} for store {store.store_id} has been fully executed.")
     
     return None
+
+
 
 
 

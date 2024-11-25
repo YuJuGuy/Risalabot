@@ -4,6 +4,7 @@ from . import authview
 from . import flows
 from . import campaigns
 from . import customers
+from . import channel_views
 from django.contrib.auth import views as auth_views
 urlpatterns = [
     path('login/', views.loginPage, name="login"),
@@ -47,7 +48,11 @@ urlpatterns = [
     path('callback/', authview.callback, name="callback"),
     path('unlinkstore/<str:store_id>/', authview.unlinkstore, name="unlinkstore"),
     
-    
+    path('link-whatsapp-channel/', channel_views.whatsapp_session, name="whatsapp_session"),
+    path('create-whatsapp-session/', channel_views.create_whatsapp_session, name="create_whatsapp_session"),
+    path('get-whatsapp-qr-code/', channel_views.get_whatsapp_qr_code, name='get_whatsapp_qr_code'),
+    path('whatsapp-details/', channel_views.get_whatsapp_details, name='whatsapp_details'),
+    path('stop-whatsapp/', channel_views.stop_whatsapp, name='whatsapp_stop'),
 
     
 

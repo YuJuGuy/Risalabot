@@ -48,16 +48,16 @@ def webhook(request):
                 event = payload_json.get('event')
                 logging.info(f"Signature verified successfully. Event: {event}")
                 
-                if event == 'order.updated':
-                    status_id = payload_json.get('data', {}).get('status', {}).get('id', '')
-                    event = f"{event}.{status_id}"
                 
-                if Trigger.objects.filter(event_type=event).exists():
-                    process_webhook(payload_json)
-                    return JsonResponse({"message": "Webhook processed successfully"}, status=200)
-                else:
-                    logging.warning(f"Unrecognized event type: {event}")
-                    return JsonResponse({"message": "Unrecognized event"}, status=400)
+                if "app" in event:
+                    return JsonResponse({"message": "App event"}, status=200)
+                
+                if "order" in event or "abandoned" in event or "customer.login" in event:
+                    process_order_webhook(payload_json)
+                
+                    
+
+
             except json.JSONDecodeError:
                 logging.error("Failed to decode JSON payload")
                 return JsonResponse({"message": "Invalid JSON payload"}, status=400)
@@ -69,7 +69,7 @@ def webhook(request):
         return JsonResponse({"message": "Invalid security strategy or missing signature header"}, status=403)
 
 
-def process_webhook(payload):
+def process_order_webhook(payload):
     try:
         event = payload.get('event')
         store_id = str(payload.get('merchant', ''))
@@ -77,7 +77,6 @@ def process_webhook(payload):
         if event == 'order.updated':
             status_id = payload.get('data', {}).get('status', {}).get('id', '')
             event = f"{event}.{status_id}"
-            
         
             
             
@@ -96,6 +95,12 @@ def process_webhook(payload):
                         logging.warning(f"Cart with ID {cart_reference_id} does not exist.")
                 except Exception as e:
                     logging.error(f"Error processing webhook: {str(e)}")
+                    
+        # check if trigger for the user exists
+        matching_trigger = Trigger.objects.filter(event_type=event).first()
+        if not matching_trigger:
+            raise ValueError(f"No matching trigger found for event: {event}")
+        
         
         # Prepare flow data with safe dictionary access
         flow_data = {
@@ -114,14 +119,9 @@ def process_webhook(payload):
             'cart_id': str(data.get('id', '')) if event == 'abandoned.cart' else '',
         }
         
-        
-        
-        
 
         # Find matching trigger
-        matching_trigger = Trigger.objects.filter(event_type=event).first()
-        if not matching_trigger:
-            raise ValueError(f"No matching trigger found for event: {event}")
+
 
         # Find UserStoreLink
         user_store_link = UserStoreLink.objects.filter(store__store_id=store_id).first()
@@ -149,4 +149,8 @@ def process_webhook(payload):
 
     except Exception as e:
         logging.error(f"Error processing webhook: {str(e)}")
+        
+        
+def process_app_webhook(payload):
+    pass
 

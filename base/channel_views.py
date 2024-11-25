@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
-from .whatsapp_api import whatsapp_create_session, whatsapp_details, get_session_status, logout_user, stop_session
+from automations.whatsapp_api import whatsapp_create_session, whatsapp_details, get_session_status, logout_user, stop_session
 from base.decorators import check_token_validity
 from base.models import UserStoreLink
 import logging
