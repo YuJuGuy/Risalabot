@@ -6,6 +6,8 @@ from . import campaigns
 from . import customers
 from . import channel_views
 from django.contrib.auth import views as auth_views
+from debug_toolbar.toolbar import debug_toolbar_urls
+
 urlpatterns = [
     path('login/', views.loginPage, name="login"),
     path('logout/', views.logoutUser, name="logout"),
@@ -57,4 +59,4 @@ urlpatterns = [
     
 
     path('', views.home, name="home"),
-]
+] + debug_toolbar_urls()

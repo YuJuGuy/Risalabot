@@ -48,11 +48,12 @@ INSTALLED_APPS = [
     
     'base.apps.BaseConfig',
     'automations.apps.AutomationsConfig',
-    'debug_toolbar',
 
 ]
 
 AUTH_USER_MODEL = 'base.User'
+
+
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -62,7 +63,6 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'debug_toolbar.middleware.DebugToolbarMiddleware',
 ]
 
 ROOT_URLCONF = 'Risalabot.urls'
@@ -97,6 +97,9 @@ DATABASES = {
         'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
+
+
+
 
 
 
@@ -168,6 +171,7 @@ CELERY_TASK_ACKS_LATE = True
 
 CELERY_IMPORTS = [
     'automations.tasks',
+    
     'automations.recurring_tasks'
 ]
 

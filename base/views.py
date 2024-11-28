@@ -30,6 +30,8 @@ __all__ = ('celery_app',)
 
 
 
+
+
 def home(request):
     return render(request, 'base/home.html')
 
@@ -302,11 +304,11 @@ def sync_data(request):
             groups = Group.objects.filter(group_id__in=group_ids, store=store)
             customer_obj.customer_groups.set(groups)
 
-        return JsonResponse({'status': 'success', 'message': 'تم تحديث قاعدة البيانات بنجاح.'}, status=200)
+        return JsonResponse({'status': 'success', 'type': 'success', 'message': 'تم تحديث قاعدة البيانات بنجاح.'}, status=200)
 
     except Exception as e:
         logger.error("Error during sync: %s", e, exc_info=True)
-        return JsonResponse({'error': 'حدث خطأ أثناء المزامنة.'}, status=500)
+        return JsonResponse({'status': 'error', 'type': 'error', 'message': 'حدث خطأ أثناء المزامنة.'}, status=500)
 
     
     

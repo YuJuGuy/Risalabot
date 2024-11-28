@@ -127,7 +127,7 @@ def handle_store_connection(request, user, store_id, store_name, access_token, r
         existing_store_id = str(user_store_link.store.store_id).strip()
         if existing_store_id == str(store_id).strip():
             update_store_tokens(user_store_link.store, access_token, refresh_token)
-            messages.success(request, 'Access token updated successfully.')
+            messages.success(request, 'تم تحديث قاعدة البيانات بنجاح.')
             return False
         else:
             messages.error(request, 'Disconnect from your current store before connecting to a new one')

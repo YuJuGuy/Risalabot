@@ -28,6 +28,7 @@ __all__ = ('celery_app',)
 def flows(request, context=None):
     try:
         user = request.user
+        store = UserStoreLink.objects.get(user=request.user).store
     except User.DoesNotExist:
         return JsonResponse({'success': False, 'type': 'error', 'errors': 'لم يتم العثور على المستخدم.'}, status=404)
     
@@ -35,12 +36,16 @@ def flows(request, context=None):
         context = {}
     
     if request.method == 'POST':
+        
         form = FlowForm(request.POST)
+        if not store.subscription:
+            return JsonResponse({'success': False, 'type': 'error', 'errors': 'المتجر غير مشترك بالخدمة.'}, status=400)
+
         if form.is_valid():
             # Save the form but don't commit yet, as we need to add the owner
             new_flow = form.save(commit=False)
             new_flow.owner = request.user  # Associate the flow with the current user
-            new_flow.store = UserStoreLink.objects.get(user=request.user).store
+            new_flow.store = store
             new_flow.save()  # Now save the flow
             return JsonResponse({'success': True, 'redirect_url': reverse('flow', kwargs={'flow_id': new_flow.id})})
         else:
@@ -162,7 +167,13 @@ def flow_builder(request, flow_id, context=None):
             return JsonResponse({'success': False, 'type': 'error', 'errors': 'لم يتم العثور على الأتمتة.'}, status=404)
     if context is None:
         context = {}
+
     if request.method == 'POST':
+        store = UserStoreLink.objects.get(user=request.user).store
+        if not store.subscription:
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'type': 'error', 'errors': 'المتجر غير مشترك بالخدمة.'}, status=400)
+
         flow_form = FlowForm(request.POST, instance=flow)
         if flow_form.is_valid():
             steps_data = request.POST.get('steps', '')

@@ -821,7 +821,7 @@ document.getElementById('flow-form').addEventListener('submit', function(e) {
             showMessage(data.message, data.type);
             window.location.href = data.redirect_url;
         } else {
-            showMessage(data.message, data.type);
+            showMessage(data.errors, data.type);
         }
     })
     .catch(error => {

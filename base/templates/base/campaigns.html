@@ -291,7 +291,7 @@
             if (data.success) {
                 showMessage(data.message, data.type);
                 closePopup();
-                syncData();
+                refreshTable();
             } else {
                 showMessage(data.errors, data.type);
             }

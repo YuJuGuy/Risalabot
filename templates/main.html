@@ -43,11 +43,13 @@
                         </div>
                     </div>
                     {% if messages %}
-                        <div id="message-container">
-                            {% for message in messages %}
-                                <div class="message {{ message.tags }}">{{ message }}</div>
-                            {% endfor %}
-                        </div>
+                        <script>
+                            document.addEventListener('DOMContentLoaded', function() {
+                                {% for message in messages %}
+                                    showMessage("{{ message }}", "{{ message.tags }}");
+                                {% endfor %}
+                            });
+                        </script>
                     {% endif %}
                     {% block content %}
                     {% endblock %}

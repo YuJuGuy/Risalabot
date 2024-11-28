@@ -8,7 +8,9 @@ from base.models import Trigger
 from dotenv import load_dotenv  
 import logging
 import json
-from base.models import User, Store, Flow,UserStoreLink, AbandonedCart
+from base.models import User, Store, Flow,UserStoreLink, AbandonedCart, Subscription
+from automations.models import MonthlyInstallations, MonthlyPayments, AppTrial
+
 from .tasks import process_flows_task
 
 # log to a file
@@ -50,13 +52,15 @@ def webhook(request):
                 
                 
                 if "app" in event:
-                    return JsonResponse({"message": "App event"}, status=200)
-                
-                if "order" in event or "abandoned" in event or "customer.login" in event:
-                    process_order_webhook(payload_json)
-                
-                    
+                    logging.info(f"App event processing")
+                    process_app_webhook(payload_json)
 
+                if any(keyword in event for keyword in ["order", "abandoned", "customer.login", "review.added"]):
+                    logging.info(f"Order event processing")
+                    process_flow_webhook(payload_json)
+                
+                # Return a success response after processing
+                return JsonResponse({"message": "Webhook processed successfully"}, status=200)
 
             except json.JSONDecodeError:
                 logging.error("Failed to decode JSON payload")
@@ -69,7 +73,7 @@ def webhook(request):
         return JsonResponse({"message": "Invalid security strategy or missing signature header"}, status=403)
 
 
-def process_order_webhook(payload):
+def process_flow_webhook(payload):
     try:
         event = payload.get('event')
         store_id = str(payload.get('merchant', ''))
@@ -152,5 +156,30 @@ def process_order_webhook(payload):
         
         
 def process_app_webhook(payload):
-    pass
+    store_id = str(payload.get('merchant', ''))
+    store = Store.objects.filter(store_id=store_id).first()
+    event = str(payload.get('event', ''))
+    try:                
+        if store:
+            if event == 'app.subscription.started' or event == 'app.subscription.renewed':
+                MonthlyPayments.objects.create(store=store, reference_number=payload.get('data', {}).get('id', ''), subscribtion=payload.get('data', {}).get('plan_name', ''), amount=payload.get('data', {}).get('price', ''))
+                Store.objects.filter(store_id=store_id).update(subscription_date=datetime.now(timezone.utc), subscribtion=payload.get('data', {}).get('plan_name', ''))
+                logging.info(f"App subscription started for store {store.store_id}")
+        
+            if event == 'app.trial.started':
+                AppTrial.objects.create(store=store, reference_number=payload.get('data', {}).get('id', ''))
+                logging.info(f"App trial started for store {store.store_id}")
+
+            if event == 'app.installed':
+                MonthlyInstallations.objects.create(store=store, reference_number=payload.get('data', {}).get('id', ''))
+                logging.info(f"App installed for store {store.store_id}")
+
+            if event == 'app.subscription.expired' or event == 'app.subscription.canceled':
+                Store.objects.filter(store_id=store_id).update(subscription_date=datetime.now(timezone.utc), subscription='')
+                logging.info(f"App subscription expired for store {store.store_id}")
+
+
+    except Exception as e:
+        logging.error(f"Error processing app webhook: {str(e)}")
+            
 

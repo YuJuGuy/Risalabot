@@ -1,6 +1,7 @@
 from django.contrib import admin
 from .models import User, Subscription, Store, UserStoreLink, Campaign, FlowActionTypes, Flow, FlowStep, SuggestedFlow, SuggestedFlowStep, Trigger, TextConfig, TimeDelayConfig, SuggestedTextConfig, SuggestedTimeDelayConfig, Customer, Group
 from .models import CouponConfig, SuggestedCouponConfig, ActivityLog
+from automations.models import MonthlyInstallations, MonthlyPayments, AppTrial
 # Customize User model admin
 @admin.register(User)
 class UserAdmin(admin.ModelAdmin):
@@ -62,6 +63,23 @@ class SuggestedFlowStepAdmin(admin.ModelAdmin):
 class TriggerAdmin(admin.ModelAdmin):
     list_display = ('name', 'event_type', 'description')
     search_fields = ('name', 'event_type')
+
+@admin.register(MonthlyInstallations)
+class MonthlyInstallationsAdmin(admin.ModelAdmin):
+    list_display = ('store', 'date')
+    search_fields = ('store__store_name', 'date')
+    ordering = ('-date',)
+
+@admin.register(MonthlyPayments)
+class MonthlyPaymentsAdmin(admin.ModelAdmin):
+    list_display = ('store', 'date')
+    search_fields = ('store__store_name', 'date')
+    ordering = ('-date',)
+
+@admin.register(AppTrial)
+class AppTrialAdmin(admin.ModelAdmin):
+    list_display = ('store', 'date', 'reference_number')
+    search_fields = ('store__store_name', 'reference_number')
     
     
 admin.site.register(Customer)

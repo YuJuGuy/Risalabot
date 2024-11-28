@@ -11,6 +11,8 @@ from Risalabot.celery import app as celery_app
 from celery.exceptions import CeleryError
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+import threading
+from . views import sync_data
 
 
 import logging
@@ -69,8 +71,8 @@ def campaign(request, context=None):
                     return JsonResponse({'success': False, 'type': 'error', 'errors': 'لا يوجد أي عملاء في المجموعة المختارة.'}, status=400)
 
                 # Check if the message limit is sufficient
-                if len(customers_numbers) > store.subscription.messages_limit - store.subscription_message_count:
-                    return JsonResponse({'success': False, 'type': 'error', 'errors': 'الرصيد الرسالي غير متاح.'}, status=400)
+                if not store.subscription or len(customers_numbers) > store.subscription.messages_limit - store.subscription_message_count:
+                    return JsonResponse({'success': False, 'type': 'error', 'errors': 'لا يوجد رصيد كافي لانشاء هذه الحملة.'}, status=400)
             else:
                 # Set customers_data and customers_numbers to empty if it's a draft
                 customers_data_serialized = []
@@ -174,8 +176,8 @@ def edit_campaign(request, campaign_id):
                         return JsonResponse({'success': False, 'errors': 'لا يوجد أي عملاء في المجموعة المختارة.'}, status=400)
                     
                     # Check if the message limit is sufficient
-                    if len(customers_numbers) > store.subscription.messages_limit - store.subscription_message_count:
-                        return JsonResponse({'success': False, 'errors': 'الرصيد الرسالي غير متاح.'}, status=400)
+                    if not store.subscription or len(customers_numbers) > store.subscription.messages_limit - store.subscription_message_count:
+                        return JsonResponse({'success': False, 'type': 'error', 'errors': 'لا يوجد رصيد كافي لانشاء هذه الحملة.'}, status=400)
                     
                     data = {
                         'customers_data': customers_data_serialized,
@@ -278,19 +280,19 @@ def campaign_cancel(request, campaign_id):
 
         # Check if the campaign has a task ID (Celery task)
         if campaign.task_id:
-            try:
-                # Try to revoke the task using Celery
-                celery_app.control.revoke(campaign.task_id)
-            except CeleryError as e:
-                # Log the error and display a user-friendly message
-                logger.error(f"فشل إلغاء المهمة: {str(e)}")
-                # Continue to mark the campaign as cancelled
-            # If successfully revoked or if revocation fails, update campaign status
-            campaign.task_id = None
+            # Update campaign status before attempting to revoke
             campaign.status = 'cancelled'
+            campaign.task_id = None
             campaign.save(update_fields=['task_id', 'status'])
-            return JsonResponse({'success': True, 'type': 'success', 'message': 'تم إلغاء الحملة بنجاح.'})
-                
+
+            # Return response immediately for AJAX update
+            response = JsonResponse({'success': True, 'type': 'success', 'message': 'تم إلغاء الحملة بنجاح.'})
+
+            # Start a new thread to revoke the task
+            threading.Thread(target=revoke_task, args=(campaign.task_id,)).start()
+
+            return response
+
         else:
             campaign.status = 'cancelled'
             campaign.save(update_fields=['task_id', 'status'])
@@ -314,3 +316,11 @@ def delete_campaign(request, campaign_id):
             return JsonResponse({'success': False, 'type': 'error', 'errors': 'الحملة غير موجودة.'}, status=400)
     else:
         return JsonResponse({'success': False, 'type': 'error', 'errors': 'طريقة الطلب غير صالحة.'}, status=405)
+
+def revoke_task(task_id):
+    try:
+        celery_app.control.revoke(task_id)
+    except CeleryError as e:
+        logger.error(f"فشل إلغاء المهمة: {str(e)}")
+    except Exception as e:
+        logger.error(f"فشل إلغاء المهمة: {str(e)}")

@@ -104,14 +104,14 @@
                     window.location.href = data.redirect_url;
                     refreshTable();
                 } else {
-                    if (data.errors) {
+                    if (typeof data.errors === 'object') {
                         for (const [field, errors] of Object.entries(data.errors)) {
                             errors.forEach(error => {
                                 showMessage(`${field}: ${error.message}`, 'error');
                             });
                         }
                     } else {
-                        showMessage(data.message, data.type);
+                        showMessage(data.errors, data.type);
                     }
                 }
             })
