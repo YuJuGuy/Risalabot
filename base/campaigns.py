@@ -12,12 +12,42 @@ from celery.exceptions import CeleryError
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 import threading
-from . views import sync_data
+from . authenticate_user import sync_data
 
 
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+
+def validate_campaign_data(campaign_data):
+   try:
+       # Validate the campaign data check for empety fields and return the error messages
+        if campaign_data['msg']:
+            #sanitzie and clean the message
+            if not campaign_data['msg'].strip():
+                return JsonResponse({'success': False, 'type': 'error', 'message': 'يرجى كتابة الرسالة.'}, status=400)
+
+        if campaign_data['customers_group']:
+            if not campaign_data['customers_group'].strip() or campaign_data['customers_group'] == 'اختر مجموعة العملاء' or campaign_data['customers_group'] not in [group.group_id for group in Group.objects.filter(store=UserStoreLink.objects.get(user=request.user).store)]:
+                return JsonResponse({'success': False, 'type': 'error', 'message': 'يرجى تحديد مجموعة صالحة.'}, status=400)
+
+        if campaign_data['scheduled_time']:
+            if not campaign_data['scheduled_time'].strip():
+                return JsonResponse({'success': False, 'type': 'error', 'message': 'يرجى تحديد وقت المخطط.'}, status=400)
+            if campaign_data['scheduled_time'].tzinfo is None or campaign_data['scheduled_time'].tzinfo.utcoffset(campaign_data['scheduled_time']) is None:
+                campaign_data['scheduled_time'] = make_aware(campaign_data['scheduled_time'])
+            if campaign_data['scheduled_time'] < make_aware(datetime.now()):
+                return JsonResponse({'success': False, 'type': 'error', 'message': 'لا يمكن أن يكون الوقت المخطط في الماضي.'}, status=400)
+                
+        if campaign_data['status'] not in ['scheduled', 'draft']:
+            return JsonResponse({'success': False, 'type': 'error', 'message': 'يرجى تحديد حالة صالحة.'}, status=400)
+
+   except KeyError as e:
+       return JsonResponse({'success': False, 'type': 'error', 'message': f'خطاء في البيانات: {str(e)}'}, status=400)
+   except Exception as e:
+       return JsonResponse({'success': False, 'type': 'error', 'message': f'خطاء في البيانات: {str(e)}'}, status=400)
 
 
 
@@ -33,14 +63,15 @@ def campaign(request, context=None):
         store_groups = Group.objects.filter(store=store).order_by('-group_id')
         
         if not store_groups:
-            return JsonResponse({'success': False, 'type': 'error', 'errors': 'لا يوجد مجموعات في المتجر.'}, status=400)
+            return JsonResponse({'success': False, 'type': 'error', 'message': 'لا يوجد مجموعات في المتجر.'}, status=400)
         
     except UserStoreLink.DoesNotExist:
-        return JsonResponse({'success': False, 'type': 'error', 'errors': 'لم يتم ربط المتجر. يرجى ربط متجر أولا.', 'redirect_url': reverse('dashboard')}, status=400)
+        return JsonResponse({'success': False, 'type': 'error', 'message': 'لم يتم ربط المتجر. يرجى ربط متجر أولا.', 'redirect_url': reverse('dashboard')}, status=400)
 
     if request.method == 'POST':
         form = CampaignForm(request.POST, store_groups=store_groups)
         if form.is_valid():
+
             msg = form.cleaned_data['msg']
             status = form.cleaned_data['status']
             group_id = form.cleaned_data['customers_group']
@@ -51,7 +82,7 @@ def campaign(request, context=None):
                 if scheduled_time.tzinfo is None or scheduled_time.tzinfo.utcoffset(scheduled_time) is None:
                     scheduled_time = make_aware(scheduled_time)
                 if scheduled_time < make_aware(datetime.now()):
-                    return JsonResponse({'success': False, 'type': 'error', 'errors': 'لا يمكن أن يكون الوقت المخطط في الماضي.'}, status=400)
+                    return JsonResponse({'success': False, 'type': 'error', 'message': 'لا يمكن أن يكون الوقت المخطط في الماضي.'}, status=400)
                 # Fetch customers only for active campaigns
                 customers_data = Customer.objects.filter(customer_groups__group_id=group_id)
                 customers_numbers = [customer.customer_phone for customer in customers_data]
@@ -68,11 +99,11 @@ def campaign(request, context=None):
                 ]
 
                 if len(customers_data) == 0:
-                    return JsonResponse({'success': False, 'type': 'error', 'errors': 'لا يوجد أي عملاء في المجموعة المختارة.'}, status=400)
+                    return JsonResponse({'success': False, 'type': 'error', 'message': 'لا يوجد أي عملاء في المجموعة المختارة.'}, status=400)
 
                 # Check if the message limit is sufficient
                 if not store.subscription or len(customers_numbers) > store.subscription.messages_limit - store.subscription_message_count:
-                    return JsonResponse({'success': False, 'type': 'error', 'errors': 'لا يوجد رصيد كافي لانشاء هذه الحملة.'}, status=400)
+                    return JsonResponse({'success': False, 'type': 'error', 'message': 'لا يوجد رصيد كافي لانشاء هذه الحملة.'}, status=400)
             else:
                 # Set customers_data and customers_numbers to empty if it's a draft
                 customers_data_serialized = []
@@ -101,7 +132,10 @@ def campaign(request, context=None):
                 return JsonResponse({'success': True, 'type': 'success', 'message': 'تم إنشاء الحملة وتم حفظها بنجاح.', 'redirect_url': reverse('campaigns')})
             else:
                 return JsonResponse({'success': True, 'type': 'success', 'message': 'تم إنشاء الحملة وتم حفظها بنجاح.', 'redirect_url': reverse('campaigns')})
-            
+
+        else:
+            error_messages = form.get_custom_errors()
+            return JsonResponse({'success': False, 'type': 'error', 'message': error_messages}, status=400)
     else:
         form = CampaignForm(store_groups=store_groups)
     
@@ -120,7 +154,7 @@ def edit_campaign(request, campaign_id):
         
         # Only allow editing if the campaign is 'scheduled' or 'draft'
         if campaign.status not in ['scheduled', 'draft']:
-            return JsonResponse({'success': False, 'errors': 'لا يمكن تحديث هذه الحملة لأنها غير مخططة أو مسودة.'}, status=400)
+            return JsonResponse({'success': False, 'type': 'error', 'message': 'لا يمكن تحديث هذه الحملة لأنها غير مخططة أو مسودة.'}, status=400)
         
         # Store the original status before handling the form submission
         original_status = campaign.status
@@ -143,7 +177,7 @@ def edit_campaign(request, campaign_id):
                     campaign.task_id = None  # Clear the task ID if the campaign is no longer scheduled
                     campaign.status = 'draft'  # Update the status to 'draft'
                     campaign.save()  # Save the changes
-                    return JsonResponse({'success': True, 'message': 'تم إلغاء المهمة وحفظ الحملة كمسودة.'})
+                    return JsonResponse({'success': True, 'type': 'success', 'message': 'تم إلغاء المهمة وحفظ الحملة كمسودة.'})
                     
                 # If the status is 'scheduled', validate and reschedule
                 elif new_status == 'scheduled':
@@ -155,7 +189,7 @@ def edit_campaign(request, campaign_id):
                     if scheduled_time.tzinfo is None or scheduled_time.tzinfo.utcoffset(scheduled_time) is None:
                         scheduled_time = make_aware(scheduled_time)
                     if scheduled_time < make_aware(datetime.now()):
-                        return JsonResponse({'success': False, 'errors': 'لا يمكن أن يكون الوقت المخطط في الماضي.'}, status=400)
+                        return JsonResponse({'success': False, 'type': 'success', 'message': 'لا يمكن أن يكون الوقت المخطط في الماضي.'}, status=400)
                     
                     # Fetch customers for the selected group
                     customers_data = Customer.objects.filter(customer_groups__group_id=group_id)
@@ -173,11 +207,11 @@ def edit_campaign(request, campaign_id):
                     ]
 
                     if len(customers_numbers) == 0:
-                        return JsonResponse({'success': False, 'errors': 'لا يوجد أي عملاء في المجموعة المختارة.'}, status=400)
+                        return JsonResponse({'success': False, 'type': 'error', 'message': 'لا يوجد أي عملاء في المجموعة المختارة.'}, status=400)
                     
                     # Check if the message limit is sufficient
                     if not store.subscription or len(customers_numbers) > store.subscription.messages_limit - store.subscription_message_count:
-                        return JsonResponse({'success': False, 'type': 'error', 'errors': 'لا يوجد رصيد كافي لانشاء هذه الحملة.'}, status=400)
+                        return JsonResponse({'success': False, 'type': 'error', 'message': 'لا يوجد رصيد كافي لانشاء هذه الحملة.'}, status=400)
                     
                     data = {
                         'customers_data': customers_data_serialized,
@@ -202,12 +236,12 @@ def edit_campaign(request, campaign_id):
                 campaign.save()
                 return JsonResponse({'success': True, 'type': 'success', 'message': 'تم حفظ الحملة كمسودة.'})
             else:
-                return JsonResponse({'success': False, 'type': 'error', 'errors': 'البيانات غير موجودة.'}, status=400)
+                return JsonResponse({'success': False, 'type': 'error', 'message': 'البيانات غير موجودة.'}, status=400)
 
     except Campaign.DoesNotExist:
-        return JsonResponse({'success': False, 'type': 'error', 'errors': 'الحملة غير موجودة.', 'redirect_url': reverse('campaigns')}, status=400)
+        return JsonResponse({'success': False, 'type': 'error', 'message': 'الحملة غير موجودة.', 'redirect_url': reverse('campaigns')}, status=400)
     except UserStoreLink.DoesNotExist:
-        return JsonResponse({'success': False, 'type': 'error', 'errors': 'لم يتم ربط المتجر. يرجى ربط متجر أولا.', 'redirect_url': reverse('dashboard')}, status=400)
+        return JsonResponse({'success': False, 'type': 'error', 'message': 'لم يتم ربط المتجر. يرجى ربط متجر أولا.', 'redirect_url': reverse('dashboard')}, status=400)
     
     # Render form with initial data
     form = CampaignForm(instance=campaign, store_groups=store_groups)
@@ -276,7 +310,7 @@ def campaign_cancel(request, campaign_id):
 
         # Check if the campaign is scheduled
         if campaign.status != 'scheduled':
-            return JsonResponse({'success': False, 'errors': 'هذه الحملة غير مخططة، لذلك لا يمكن إلغاؤها.'}, status=400)
+            return JsonResponse({'success': False, 'type': 'error', 'message': 'هذه الحملة غير مخططة، لذلك لا يمكن إلغاؤها.'}, status=400)
 
         # Check if the campaign has a task ID (Celery task)
         if campaign.task_id:
@@ -300,7 +334,7 @@ def campaign_cancel(request, campaign_id):
             
     except (Campaign.DoesNotExist, UserStoreLink.DoesNotExist):
         # If either the campaign or the user-store link does not exist
-        return JsonResponse({'success': False, 'type': 'error', 'errors': 'ليس لديك الصلاحية لإلغاء هذه الحملة.'}, status=400)
+        return JsonResponse({'success': False, 'type': 'error', 'message': 'ليس لديك الصلاحية لإلغاء هذه الحملة.'}, status=400)
 
 
 
@@ -313,9 +347,9 @@ def delete_campaign(request, campaign_id):
             campaign.save(update_fields=['status'])
             return JsonResponse({'success': True, 'type': 'success', 'message': 'تم حذف الحملة بنجاح.'})
         except Campaign.DoesNotExist:
-            return JsonResponse({'success': False, 'type': 'error', 'errors': 'الحملة غير موجودة.'}, status=400)
+            return JsonResponse({'success': False, 'type': 'error', 'message': 'الحملة غير موجودة.'}, status=400)
     else:
-        return JsonResponse({'success': False, 'type': 'error', 'errors': 'طريقة الطلب غير صالحة.'}, status=405)
+        return JsonResponse({'success': False, 'type': 'error', 'message': 'طريقة الطلب غير صالحة.'}, status=405)
 
 def revoke_task(task_id):
     try:
@@ -324,3 +358,4 @@ def revoke_task(task_id):
         logger.error(f"فشل إلغاء المهمة: {str(e)}")
     except Exception as e:
         logger.error(f"فشل إلغاء المهمة: {str(e)}")
+

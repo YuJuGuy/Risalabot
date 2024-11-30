@@ -166,8 +166,8 @@
                         <div class="variable-item" onclick="addVariableToMessage('{الدولة}')">
                             <p>الدولة</p>
                         </div>
-                        <div class="variable-item" onclick="addVariableToMessage('{رقم التتبع}')">
-                            <p>رقم التتبع</p>
+                        <div class="variable-item" onclick="addVariableToMessage('{رابط التتبع}')">
+                            <p>رابط التتبع</p>
                         </div>
                         <div class="variable-item" onclick="addVariableToMessage('{الحالة}')">
                             <p>الحالة</p>
@@ -180,9 +180,6 @@
                         </div>
                         <div class="variable-item" onclick="addVariableToMessage('{رابط السلة}')">
                             <p>رابط السلة</p>
-                        </div>
-                        <div class="variable-item coupon-variable" onclick="addVariableToMessage('{الكوبون}')">
-                            <p>الكوبون</p>
                         </div>
                     </div>
                     <p>المتغيرات سوف تستبدل بالقيم المناسبة للعميل المرسل له</p>
@@ -231,8 +228,8 @@
                         <div class="variable-item" onclick="addVariableToMessage('{الدولة}')">
                             <p>الدولة</p>
                         </div>
-                        <div class="variable-item" onclick="addVariableToMessage('{رقم التتبع}')">
-                            <p>رقم التتبع</p>
+                        <div class="variable-item" onclick="addVariableToMessage('{رابط التتبع}')">
+                            <p>رابط التتبع</p>
                         </div>
                         <div class="variable-item" onclick="addVariableToMessage('{الحالة}')">
                             <p>الحالة</p>
@@ -411,8 +408,8 @@ new Sortable(document.getElementById('canvas-steps'), {
                                     <div class="variable-item" onclick="addVariableToMessage('{الدولة}')">
                                         <p>الدولة</p>
                                     </div>
-                                    <div class="variable-item" onclick="addVariableToMessage('{رقم التتبع}')">
-                                        <p>رقم التتبع</p>
+                                    <div class="variable-item" onclick="addVariableToMessage('{رابط التتبع}')">
+                                        <p>رابط التتبع</p>
                                     </div>
                                     <div class="variable-item" onclick="addVariableToMessage('{الحالة}')">
                                         <p>الحالة</p>
@@ -426,9 +423,7 @@ new Sortable(document.getElementById('canvas-steps'), {
                                     <div class="variable-item" onclick="addVariableToMessage('{رابط السلة}')">
                                         <p>رابط السلة</p>
                                     </div>
-                                    <div class="variable-item coupon-variable" onclick="addVariableToMessage('{الكوبون}')">
-                                        <p>الكوبون</p>
-                                    </div>
+
                                     
                                 </div>
                                 <p>المتغيرات سوف تستبدل بالقيم المناسبة للعميل المرسل له</p>
@@ -483,8 +478,8 @@ new Sortable(document.getElementById('canvas-steps'), {
                             <div class="variable-item" onclick="addVariableToMessage('{الدولة}')">
                                 <p>الدولة</p>
                             </div>
-                            <div class="variable-item" onclick="addVariableToMessage('{رقم التتبع}')">
-                                <p>رقم التتبع</p>
+                            <div class="variable-item" onclick="addVariableToMessage('{رابط التتبع}')">
+                                <p>رابط التتبع</p>
                             </div>
                             <div class="variable-item" onclick="addVariableToMessage('{الحالة}')">
                                 <p>الحالة</p>
@@ -821,7 +816,7 @@ document.getElementById('flow-form').addEventListener('submit', function(e) {
             showMessage(data.message, data.type);
             window.location.href = data.redirect_url;
         } else {
-            showMessage(data.errors, data.type);
+            showMessage(data.message, data.type);
         }
     })
     .catch(error => {

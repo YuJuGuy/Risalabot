@@ -27,7 +27,7 @@ def whatsapp_session(request, context=None):
 
     except UserStoreLink.DoesNotExist:
         logger.error(f"No store linked to your account")
-        return JsonResponse({'success': False, 'error': 'No store linked to your account'}, status=404)
+        return JsonResponse({'success': False, 'type': 'error', 'message': 'لا يوجد متجر مرتبط بهذا المستخدم'}, status=404)
     except Exception as e:
         logger.error(f"Error in dashboard view: {str(e)}")
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
@@ -48,7 +48,7 @@ def create_whatsapp_session(request):
     
         return JsonResponse({'success': True, 'data': {'is_connected': user.connected}})
     except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+        return JsonResponse({'success': False, 'type': 'error', 'message': str(e)}, status=500)
 
 @login_required(login_url='login')
 def get_whatsapp_qr_code(request):
@@ -81,7 +81,7 @@ def get_whatsapp_details(request):
 
             })
         else:
-            return JsonResponse({'error': 'Failed to retrieve WhatsApp details'}, status=500)
+            return JsonResponse({'success': False, 'type': 'error', 'message': 'خطأ في جلب بيانات الواتساب'}, status=500)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
     

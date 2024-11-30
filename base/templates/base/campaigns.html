@@ -4,11 +4,84 @@
 {% block content %}
 
 
+
+      <div class="statics-container">
+
+        <div class="statics-card">
+          <div class="statics-icon">
+            <i class="bx bxs-megaphone"></i>
+          </div>
+          <div class="statics-content">
+            <h5>اجمالي الحملات</h5>
+            <h1 id="total-campaigns"></h1>
+          </div>
+        </div>
+
+
+        <div class="statics-card">
+          <div class="statics-icon">
+            <i class="bx bxs-time"></i>
+          </div>
+          <div class="statics-content">
+            <h5>الحملات المجدولة</h5>
+            <h1 id="scheduled-campaigns"></h1>
+          </div>
+        </div>
+
+        <div class="statics-card">
+          <div class="statics-icon">
+            <i class="bx bxs-pencil"></i>
+          </div>
+          <div class="statics-content">
+            <h5>الحملات المسودة</h5>
+            <h1 id="draft-campaigns"></h1>
+          </div>
+        </div>
+
+          <div class="statics-card">
+            <div class="statics-icon">
+              <i class="bx bxs-envelope"></i>
+            </div>
+            <div class="statics-content">
+              <h5>اجمالي الرسائل</h5>
+              <h1 id="total-messages"></h1>
+            </div>
+          </div>
+
+        </div>
+
+  
+
+      <div class="action-bar">
+        <h2 style="margin: 0;">الحملات</h2>
+        <div class="action-buttons">
+          <button id="sync-button" class="sync-button">تحديث البيانات</button>
+
+        <button class="create-button" onclick=showPopup()>
+            <i class="fa-solid fa-plus"></i>
+            <span>إنشاء حملة</span>
+        </button>
+        </div>
+      </div>
+
+
+    <table id="myTable" class="table table-striped hover" style="width:100%">
+      <thead>
+          <tr>
+            <th>الحملة</th>
+            <th>الوقت المجدول</th>
+            <th>الحالة</th>
+            <th>الرسائل المرسلة</th>
+          </tr>
+      </thead>
+
+  </table>
+
   <div class="popup" id="myPopup">
     <div class="campaign-popup-group">
       <span id="closePopupButton" class="close">&times;</span>
     <div class="popup-content-campaign">
-      <form method="POST" id="campaign-form">
+      <form method="POST" id="campaign-form" novalidate>
         {% csrf_token %}
         {{ form.non_field_errors }}
   
@@ -41,21 +114,21 @@
 
         <div class="available-variables">
           <div class="variable-item-container">
-          <div class="variable-item" onclick="addVariableToMessage('{اسم العميل}')">
-            <p>اسم العميل</p>
-          </div>
-          <div class="variable-item" onclick="addVariableToMessage('{الاسم الاول}')">
-            <p>الاسم الاول</p>
-          </div>
-          <div class="variable-item" onclick="addVariableToMessage('{الايميل}')">
-            <p>الايميل</p>
-          </div>
-          <div class="variable-item" onclick="addVariableToMessage('{رقم العميل}')">
-            <p>رقم العميل</p>
-          </div>
-          <div class="variable-item" onclick="addVariableToMessage('{الدولة}')">
-            <p>الدولة</p>
-          </div>
+            <div class="variable-item" onclick="addVariableToMessage('{اسم العميل}')">
+              <p>اسم العميل</p>
+            </div>
+            <div class="variable-item" onclick="addVariableToMessage('{الاسم الاول}')">
+              <p>الاسم الاول</p>
+            </div>
+            <div class="variable-item" onclick="addVariableToMessage('{الايميل}')">
+              <p>الايميل</p>
+            </div>
+            <div class="variable-item" onclick="addVariableToMessage('{رقم العميل}')">
+              <p>رقم العميل</p>
+            </div>
+            <div class="variable-item" onclick="addVariableToMessage('{الدولة}')">
+              <p>الدولة</p>
+            </div>
           </div>
           <p>المتغيرات سوف تستبدل بالقيم المناسبة للعميل المرسل له</p>
         </div>
@@ -80,32 +153,6 @@
     </div>
     </div>
   </div>
-  
-
-      <div class="action-bar">
-        <h2 style="margin: 0;">الحملات</h2>
-        <div class="action-buttons">
-          <button id="sync-button" class="sync-button">تحديث البيانات</button>
-
-        <button class="create-button" onclick=showPopup()>
-            <i class="fa-solid fa-plus"></i>
-            <span>إنشاء حملة</span>
-        </button>
-        </div>
-      </div>
-
-
-    <table id="myTable" class="table table-striped hover" style="width:100%">
-      <thead>
-          <tr>
-            <th>الحملة</th>
-            <th>الوقت المجدول</th>
-            <th>الحالة</th>
-            <th>الرسائل المرسلة</th>
-          </tr>
-      </thead>
-
-  </table>
 
   <div id="get-campaigns-url" data-get-campaigns-url="{% url 'get_campaigns' %}"></div>
   
@@ -121,8 +168,22 @@
         if (myTable) {
             $(myTable).DataTable({
                 ajax: {
-                    url: getCampaignsUrl,
-                    dataSrc: 'data'
+                  url: getCampaignsUrl,
+                  dataSrc: function(json) {
+                    // Update the statistics elements
+                    const totalCampaigns = json.data.length;
+                    const scheduledCampaigns = json.data.filter(campaign => campaign.status === "scheduled").length;
+                    const totalMessages = json.data.reduce((sum, campaign) => sum + campaign.messages_sent, 0);
+                    const draftCampaigns = json.data.filter(campaign => campaign.status === "draft").length;
+        
+                    document.getElementById('total-campaigns').textContent = totalCampaigns;
+                    document.getElementById('scheduled-campaigns').textContent = scheduledCampaigns;
+                    document.getElementById('total-messages').textContent = totalMessages;
+                    document.getElementById('draft-campaigns').textContent = draftCampaigns;
+        
+                    // Return the data for DataTable
+                    return json.data;
+                  }
                 },
                 columns: [
                     { data: 'name' },
@@ -174,6 +235,72 @@
             });
         }
     });
+
+
+    document.addEventListener('DOMContentLoaded', function () {
+      var name = document.getElementById('id_name');
+      var scheduledTime = document.getElementById('id_scheduled_time');
+      var customersGroup = document.getElementById('id_customers_group');
+      var msg = document.getElementById('id_msg');
+
+
+
+      // add event listener to form
+      document.getElementById('campaign-form').addEventListener('submit', function(event) {
+
+          // start by clearing custom validity messages
+          name.setCustomValidity('');
+          scheduledTime.setCustomValidity('');
+          customersGroup.setCustomValidity('');
+          msg.setCustomValidity('');
+          name.style.border = '';
+          scheduledTime.style.border = '';
+          customersGroup.style.border = '';
+          msg.style.border = '';
+
+          if (!name.value) {
+              event.preventDefault();  // Prevent form submission
+              name.setCustomValidity('يرجى ادخال اسم الأتمته');  // Set validity message on the name input
+              name.style.border = '2px solid red';
+          } 
+          
+          else if (!scheduledTime.value) {
+              event.preventDefault();  // Prevent form submission
+              scheduledTime.setCustomValidity('يرجى اختيار وقت المجدول');  // Set validity message on the scheduled time input
+              scheduledTime.style.border = '2px solid red';
+          }
+          
+          else if (!customersGroup.value) {
+              event.preventDefault();  // Prevent form submission
+              customersGroup.setCustomValidity('يرجى اختيار مجموعة العملاء');  // Set validity message on the customers group input
+              customersGroup.style.border = '2px solid red';
+          }
+          
+          else if (!msg.value) {
+              event.preventDefault();  // Prevent form submission
+              msg.setCustomValidity('يرجى ادخال الرسالة');  // Set validity message on the message input
+              msg.style.border = '2px solid red';
+          }
+          
+          else {
+              name.setCustomValidity('');  // Clear custom validity
+              name.style.border = '';  // Remove error styling
+              scheduledTime.setCustomValidity('');  // Clear custom validity
+              scheduledTime.style.border = '';  // Remove error styling
+              customersGroup.setCustomValidity('');  // Clear custom validity
+              customersGroup.style.border = '';  // Remove error styling
+              msg.setCustomValidity('');  // Clear custom validity
+              msg.style.border = '';  // Remove error styling
+
+          }
+
+          
+      });
+
+    
+      
+
+  });
 
     
 
@@ -255,7 +382,7 @@
                 // Refresh the customer and group data display
                 refreshTable();  // Call the function to refresh the table
             } else {
-                showMessage(data.errors, data.type);
+                showMessage(data.message, data.type);
             }
         })
         .catch(error => console.error('Error syncing data:', error));
@@ -293,7 +420,15 @@
                 closePopup();
                 refreshTable();
             } else {
-                showMessage(data.errors, data.type);
+                if (typeof data.message === 'object') {
+                    for (const [field, errors] of Object.entries(data.message)) {
+                        errors.forEach(error => {
+                            showMessage(`${field}: ${error.message}`, 'error');
+                        });
+                    }
+                } else {
+                    showMessage(data.message, data.type);
+                }
             }
         })
         .catch(error => {
@@ -326,7 +461,7 @@
             showMessage(data.message, data.type);
             refreshTable();
           } else {
-            showMessage(data.errors, data.type);
+            showMessage(data.message, data.type);
           }
         })
         .catch(error => {
@@ -350,7 +485,7 @@
             showMessage(data.message, data.type);
             refreshTable();
           } else {
-            showMessage(data.errors, data.type);
+            showMessage(data.message, data.type);
           }
         });
     }
@@ -408,7 +543,7 @@
 
               
                   } else {
-                    showMessage(data.errors, data.type);
+                    showMessage(data.message, data.type);
                   }
               });
       } else {

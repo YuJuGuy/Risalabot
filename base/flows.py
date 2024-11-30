@@ -14,9 +14,18 @@ from django.shortcuts import render
 from django.db.models import F
 from . forms import FlowForm
 from django.core.exceptions import PermissionDenied
+import sys
 
 
 logger = logging.getLogger(__name__)
+
+stream_handler = logging.StreamHandler(sys.stdout)
+stream_handler.setLevel(logging.INFO)
+stream_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+stream_handler.stream.reconfigure(encoding='utf-8')  # Set encoding to UTF-8
+
+# Add the handler to the logger
+logger.addHandler(stream_handler)
 
 
 __all__ = ('celery_app',) 
@@ -30,7 +39,7 @@ def flows(request, context=None):
         user = request.user
         store = UserStoreLink.objects.get(user=request.user).store
     except User.DoesNotExist:
-        return JsonResponse({'success': False, 'type': 'error', 'errors': 'لم يتم العثور على المستخدم.'}, status=404)
+        return JsonResponse({'success': False, 'type': 'error', 'message': 'لم يتم العثور على المستخدم.'}, status=404)
     
     if context is None:
         context = {}
@@ -39,7 +48,7 @@ def flows(request, context=None):
         
         form = FlowForm(request.POST)
         if not store.subscription:
-            return JsonResponse({'success': False, 'type': 'error', 'errors': 'المتجر غير مشترك بالخدمة.'}, status=400)
+            return JsonResponse({'success': False, 'type': 'error', 'message': 'المتجر غير مشترك بالخدمة.'}, status=400)
 
         if form.is_valid():
             # Save the form but don't commit yet, as we need to add the owner
@@ -49,8 +58,8 @@ def flows(request, context=None):
             new_flow.save()  # Now save the flow
             return JsonResponse({'success': True, 'redirect_url': reverse('flow', kwargs={'flow_id': new_flow.id})})
         else:
-            error_messages = form.errors.as_json()
-            return JsonResponse({'success': False, 'type': 'error', 'errors': json.loads(error_messages)}, status=400)
+            error_messages = form.get_custom_errors()
+            return JsonResponse({'success': False, 'type': 'error', 'message': error_messages}, status=400)
 
     else:
         form = FlowForm()
@@ -80,7 +89,7 @@ def get_flows(request):
         return JsonResponse({'success': True, 'data': data})
         
     except User.DoesNotExist:
-        return JsonResponse({'success': False, 'type': 'error', 'errors': 'لم يتم العثور على المستخدم.'}, status=404)
+        return JsonResponse({'success': False, 'type': 'error', 'message': 'لم يتم العثور على المستخدم.'}, status=404)
     
 
     
@@ -164,7 +173,7 @@ def flow_builder(request, flow_id, context=None):
         flow = Flow.objects.get(id=flow_id, owner=request.user)
     except Flow.DoesNotExist:
         if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-            return JsonResponse({'success': False, 'type': 'error', 'errors': 'لم يتم العثور على الأتمتة.'}, status=404)
+            return JsonResponse({'success': False, 'type': 'error', 'message': 'لم يتم العثور على الأتمتة.'}, status=404)
     if context is None:
         context = {}
 
@@ -172,7 +181,7 @@ def flow_builder(request, flow_id, context=None):
         store = UserStoreLink.objects.get(user=request.user).store
         if not store.subscription:
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                return JsonResponse({'success': False, 'type': 'error', 'errors': 'المتجر غير مشترك بالخدمة.'}, status=400)
+                return JsonResponse({'success': False, 'type': 'error', 'message': 'المتجر غير مشترك بالخدمة.'}, status=400)
 
         flow_form = FlowForm(request.POST, instance=flow)
         if flow_form.is_valid():
@@ -184,13 +193,13 @@ def flow_builder(request, flow_id, context=None):
                 steps = validate_steps_data(steps_data)
             except ValidationError as e:
                 if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                    return JsonResponse({'success': False, 'type': 'error', 'errors': str(e)}, status=400)
+                    return JsonResponse({'success': False, 'type': 'error', 'message': str(e)}, status=400)
 
             
             # Check if steps are empty when status is 'active'
             if not steps and request.POST.get('status') == 'active':
                 if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                    return JsonResponse({'success': False, 'errors': 'عليك اضافة خطوة على الاقل.'}, status=400)
+                    return JsonResponse({'success': False, 'type': 'error', 'message': 'عليك اضافة خطوة على الاقل.'}, status=400)
 
             
             try:
@@ -279,13 +288,13 @@ def flow_builder(request, flow_id, context=None):
                     return JsonResponse({'success': True, 'redirect_url': reverse('flows'), 'message': 'تم تحديث الأتمتة بنجاح.', 'type': 'success'})
             except (ValidationError, IntegrityError, PermissionDenied) as e:
                 if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                    return JsonResponse({'success': False, 'errors': str(e)}, status=400)
+                    return JsonResponse({'success': False, 'type': 'error', 'message': str(e)}, status=400)
                
         else:
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                return JsonResponse({'success': False, 'type': 'error', 'errors': flow_form.errors}, status=400)
+                return JsonResponse({'success': False, 'type': 'error', 'message': flow_form.message}, status=400)
             else:
-                return JsonResponse({'success': False, 'type': 'error', 'errors': flow_form.errors}, status=400)
+                return JsonResponse({'success': False, 'type': 'error', 'message': flow_form.message}, status=400)
 
     flow_steps = FlowStep.objects.filter(flow=flow).order_by('order')
     action_types = FlowActionTypes.objects.all()
@@ -310,7 +319,7 @@ def delete_flow(request, flow_id):
             flow.save(update_fields=['status'])
             return JsonResponse({'success': True, 'message': 'تم حذف الأتمتة بنجاح.', 'type': 'success'})
         except Flow.DoesNotExist:
-            return JsonResponse({'success': False, 'errors': 'الأتمتة غير موجودة.', 'type': 'error'})
+            return JsonResponse({'success': False, 'message': 'الأتمتة غير موجودة.', 'type': 'error'})
 
 @login_required
 def activate_suggested_flow(request, suggestion_id):
@@ -341,6 +350,8 @@ def activate_suggested_flow(request, suggestion_id):
             ).filter(
                 suggested_flow=suggested_flow
             ).order_by('order')
+
+             
             
             # Copy steps and their configurations
             for suggested_step in suggested_steps:
@@ -354,61 +365,52 @@ def activate_suggested_flow(request, suggestion_id):
                 )
                 logger.info(f"Created new step {new_step.id}")
                 
-                # Check for existing configurations before creating new ones
-                existing_text_config = TextConfig.objects.filter(flow_step=new_step).exists()
-                existing_delay_config = TimeDelayConfig.objects.filter(flow_step=new_step).exists()
-                existing_coupon_config = CouponConfig.objects.filter(flow_step=new_step).exists()  # Check for coupon config
-                
-                if existing_text_config or existing_delay_config or existing_coupon_config:
-                    logger.warning(f"Configuration already exists for step {new_step.id}")
-                    continue
-                
                 try:
-                    # Try to get the text config
-                    text_config = SuggestedTextConfig.objects.filter(suggested_flow_step=suggested_step).first()
-                    if text_config:
-                        logger.info(f"Creating text config for step {new_step.id}")
-                        TextConfig.objects.create(
-                            flow_step=new_step,
-                            message=text_config.message
-                        )
+                    # Update the text config
+                    if suggested_step.action_type.name == 'sms':
+                        text_config = new_step.text_config  # This already exists due to the signal
+                        suggested_text_config = suggested_step.suggested_text_config
+                        if text_config and suggested_text_config:
+                            logger.info(f"Updating text config for step {new_step.id}")
+                            text_config.message = suggested_text_config.message
+                            text_config.save()
                     
-                    # Try to get the delay config
-                    delay_config = SuggestedTimeDelayConfig.objects.filter(suggested_flow_step=suggested_step).first()
-                    if delay_config:
-                        logger.info(f"Creating delay config for step {new_step.id}")
-                        TimeDelayConfig.objects.create(
-                            flow_step=new_step,
-                            delay_time=delay_config.delay_time,
-                            delay_type=delay_config.delay_type
-                        )
+                    # Update the delay config
+                    elif suggested_step.action_type.name == 'delay':
+                        delay_config = new_step.time_delay_config  # This already exists due to the signal
+                        suggested_delay_config = suggested_step.suggested_time_delay_config
+                        if delay_config and suggested_delay_config:
+                            logger.info(f"Updating delay config for step {new_step.id}")
+                            delay_config.delay_time = suggested_delay_config.delay_time
+                            delay_config.delay_type = suggested_delay_config.delay_type
+                            delay_config.save()
                     
-                    # Try to get the coupon config
-                    coupon_config = SuggestedCouponConfig.objects.filter(suggested_flow_step=suggested_step).first()
-                    if coupon_config:
-                        logger.info(f"Creating coupon config for step {new_step.id}")
-                        CouponConfig.objects.create(
-                            flow_step=new_step,
-                            type=coupon_config.type,
-                            amount=coupon_config.amount,
-                            expire_in=coupon_config.expire_in,
-                            maximum_amount=coupon_config.maximum_amount,
-                            free_shipping=coupon_config.free_shipping,
-                            exclude_sale_products=coupon_config.exclude_sale_products,
-                            message=coupon_config.message
-                        )
-                        
-                    if not text_config and not delay_config and not coupon_config:
+                    # Update the coupon config
+                    elif suggested_step.action_type.name == 'coupon':
+                        coupon_config = new_step.coupon_config  # This already exists due to the signal
+                        suggested_coupon_config = suggested_step.suggested_coupon_config
+                        if coupon_config and suggested_coupon_config:
+                            logger.info(f"Updating coupon config for step {new_step.id}")
+                            coupon_config.type = suggested_coupon_config.type
+                            coupon_config.amount = suggested_coupon_config.amount
+                            coupon_config.expire_in = suggested_coupon_config.expire_in
+                            coupon_config.maximum_amount = suggested_coupon_config.maximum_amount
+                            coupon_config.free_shipping = suggested_coupon_config.free_shipping
+                            coupon_config.exclude_sale_products = suggested_coupon_config.exclude_sale_products
+                            coupon_config.message = suggested_coupon_config.message
+                            coupon_config.save()
+                            
+                    else:
                         logger.warning(f"No configuration found for step {suggested_step.id}")
                         
                 except Exception as step_error:
-                    logger.error(f"Error creating config for step {new_step.id}: {str(step_error)}")
+                    logger.error(f"Error updating config for step {new_step.id}: {str(step_error)}")
                     raise
-            
+                    
             
             return JsonResponse({'success': True, 'redirect_url': reverse('flow', kwargs={'flow_id': new_flow.id})})
             
     except Exception as e:
         logger.error(f"Error activating suggested flow: {str(e)}", exc_info=True)
-        return JsonResponse({'success': False, 'errors': 'حدث خطأ أثناء تنشيط الأتمتة الموصى بها. يرجى المحاولة مره اخرى.', 'type': 'error'})
+        return JsonResponse({'success': False, 'message': 'حدث خطأ أثناء تنشيط الأتمتة الموصى بها. يرجى المحاولة مره اخرى.', 'type': 'error'})
         

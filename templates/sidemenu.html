@@ -35,6 +35,12 @@
                         <i class='bx bxs-megaphone nav__icon'></i>
                         <span class="nav__name">الحملات الترويجية</span>
                     </a>
+
+                    <a href="{% url 'static_bot' %}" class="nav__link {% if request.path == '/static-bot/' %}active{% endif %}">
+                        <i class='bx bxs-bot nav__icon'></i>
+                        <span class="nav__name">الرد التلقائي</span>
+                    </a>
+
                     <a href="{% url 'customers' %}" class="nav__link {% if request.path == '/customers/' %}active{% endif %}">
                         <i class='bx bxs-user-detail nav__icon'></i>
                         <span class="nav__name">العملاء</span>

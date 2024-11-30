@@ -4,7 +4,7 @@
 
 <div class="popup-group-group" id="popup-group">
     <div class="popup-content-group">
-        <form method="post" id="group-creation-form">
+        <form method="post" id="group-creation-form" novalidate> 
             {% csrf_token %}
             {{ form.name }}
             <div id="conditions-container"></div>
@@ -99,7 +99,8 @@
 <meta name="csrf-token" content="{{ csrf_token }}">
 
 <div id="data-urls" data-customers-url="{% url 'get_customers' %}"></div>
-<script src="https://cdn.datatables.net/v/dt/jq-3.7.0/dt-2.1.8/datatables.min.js" onload="initializePage()"></script>
+
+<script src="https://cdn.datatables.net/v/dt/jq-3.7.0/dt-2.1.8/datatables.min.js"></script>
 <script>
 
     document.addEventListener("DOMContentLoaded", function() {
@@ -127,18 +128,43 @@
                         syncData();
                         closePopup(); // Close the popup after successful creation
                     } else {
-                        showMessage(data.message || 'Error creating group.', 'error');
-                        if (data.errors) {
-                            // Handle specific field errors if available
-                            for (const [field, messages] of Object.entries(data.errors)) {
-                                messages.forEach(message => showMessage(`${field}: ${message}`, 'error'));
+                        if (typeof data.message === 'object') {
+                            for (const [field, errors] of Object.entries(data.message)) {
+                                errors.forEach(error => {
+                                    showMessage(`${field}: ${error.message}`, 'error');
+                                });
                             }
+                        } else {
+                            showMessage(data.message, data.type);
                         }
                     }
                 })
                 .catch(error => console.error('Error creating group:', error));
             });
         }
+    });
+
+    document.addEventListener('DOMContentLoaded', function () {
+        // Add event listener to form
+        document.getElementById('group-creation-form').addEventListener('submit', function(event) {
+            // Get all input elements with a specific pattern
+            var inputs = document.querySelectorAll('[id^="id_"], [name^="value_field-"], [name^="min_value_field-"], [name^="max_value_field-"]');
+            // Clear custom validity messages and styles
+            inputs.forEach(function(input) {
+                input.setCustomValidity('');
+                input.style.border = '';
+            });
+    
+            // Loop through each input and apply validation
+            inputs.forEach(function(input) {
+                if (!input.value) {
+                    event.preventDefault();  // Prevent form submission
+                    input.setCustomValidity('يرجى ادخال قيمة');  // Set validity message
+                    input.style.border = '2px solid red';
+                    
+                }
+            });
+        });
     });
 
     

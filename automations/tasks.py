@@ -18,12 +18,12 @@ replacements = {
     '{الايميل}': 'customer_email',
     '{رقم العميل}': 'customer_number',
     '{الدولة}': 'customer_country',
-    '{رقم التتبع}': 'tracking_link',
+    '{رابط التتبع}': 'tracking_link',
     '{الحالة}': 'status_arabic',
     '{السعر}': 'total_amount',
     '{رابط التقييم}': 'rating_link',
     '{رابط السلة}': 'cart_link',
-    '{الكوبون}': 'code'
+    '{الكوبون}': 'code',
 }
 
 

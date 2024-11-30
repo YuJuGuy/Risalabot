@@ -45,12 +45,12 @@ def callback(request):
         
         access_token, refresh_token = get_tokens(code)
         if not access_token:
-            messages.error(request, 'Failed to receive access token from Salla')
+            messages.error(request, 'فشل الحصول على التوكن')
             return redirect('dashboard')
 
         store_info = fetch_store_info(access_token)
         if not store_info:
-            messages.error(request, 'Failed to fetch store information from Salla')
+            messages.error(request, 'فشل الحصول على معلومات المتجر من ساللا')
             return redirect('dashboard')
         
         store_name, store_id, store_email = store_info.get('name'), store_info.get('id'), store_info.get('email')
@@ -62,12 +62,12 @@ def callback(request):
         
         is_new_connection = handle_store_connection(request, user, store_id, store_name, access_token, refresh_token)
         if is_new_connection:
-            messages.success(request, 'Store connected successfully.')
+            messages.success(request, 'تم الاتصال بالمتجر بنجاح.')
 
         return redirect('dashboard')
 
     except Exception as e:
-        messages.error(request, f'An error occurred: {e}')
+        messages.error(request, f'فشل الاتصال بالمتجر: {e}')
         return redirect('dashboard')
     
     
@@ -101,11 +101,11 @@ def fetch_store_info(access_token):
 def authenticate_or_create_user(request, store_email,store_id):
     store_check = UserStoreLink.objects.filter(store__store_id=str(store_id)).first()
     if store_check:
-        messages.error(request, 'Store connected to another user')
+        messages.error(request, 'المتجر مرتبط بمستخدم آخر بالفعل.')
         return None
     
     if not store_email:
-        messages.error(request, 'The store does not have an email address.')
+        messages.error(request, 'المتجر لا يملك عنوان بريد الكتروني.')
         return None
 
     user, created = User.objects.get_or_create(email=store_email, defaults={
@@ -130,7 +130,7 @@ def handle_store_connection(request, user, store_id, store_name, access_token, r
             messages.success(request, 'تم تحديث قاعدة البيانات بنجاح.')
             return False
         else:
-            messages.error(request, 'Disconnect from your current store before connecting to a new one')
+            messages.error(request, 'يرجى الغاء الاتصال بالمتجر القديم قبل الاتصال بالمتجر الجديد.')
             return False
 
     store, created = Store.objects.get_or_create(
@@ -146,7 +146,7 @@ def handle_store_connection(request, user, store_id, store_name, access_token, r
         update_store_tokens(store, access_token, refresh_token)
 
     if UserStoreLink.objects.filter(store=store).exists():
-        messages.error(request, 'This store is already connected to another user.')
+        messages.error(request, 'المتجر مرتبط بمستخدم آخر بالفعل.')
         return False
 
     UserStoreLink.objects.create(user=user, store=store)
@@ -179,10 +179,10 @@ def unlinkstore(request, store_id):
         store.save()
 
         # Removed code that deletes the UserEvent entry
-        messages.success(request, 'You have been disconnected from the store.')
+        messages.success(request, 'تم الغاء الاتصال بالمتجر بنجاح.')
     except UserStoreLink.DoesNotExist:
-        messages.error(request, 'You are not connected to this store.')
+        messages.error(request, 'انت غير مرتبط بالمتجر المطلوب.')
     except Store.DoesNotExist:
-        messages.error(request, 'Store not found.')
+        messages.error(request, 'المتجر غير موجود.')
 
     return redirect('dashboard')

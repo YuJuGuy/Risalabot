@@ -55,7 +55,13 @@ def webhook(request):
                     logging.info(f"App event processing")
                     process_app_webhook(payload_json)
 
-                if any(keyword in event for keyword in ["order", "abandoned", "customer.login", "review.added"]):
+                if "review.added" in event:
+                    if payload_json.get('data', {}).get('rating', '') == 5 or payload_json.get('data', {}).get('rating', '') == '5':
+                        logging.info(f"Review event processing")
+                        process_flow_webhook(payload_json)
+                        
+
+                if any(keyword in event for keyword in ["order", "abandoned", "customer.login"]):
                     logging.info(f"Order event processing")
                     process_flow_webhook(payload_json)
                 

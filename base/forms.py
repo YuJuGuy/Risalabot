@@ -21,6 +21,13 @@ class CampaignForm(forms.ModelForm):
     class Meta:
         model = Campaign
         fields = ['name', 'scheduled_time', 'msg', 'customers_group', 'status']
+        labels = {
+            'name': 'اسم الحملة',
+            'scheduled_time': 'وقت المخطط',
+            'msg': 'نص الرسالة',
+            'customers_group': 'مجموعة العملاء',
+            'status': 'حالة الحملة',
+        }
         widgets = {
             'name': forms.TextInput(attrs={'placeholder': 'أدخل اسم الحملة'}),
             'scheduled_time': forms.DateTimeInput(
@@ -42,6 +49,24 @@ class CampaignForm(forms.ModelForm):
         )
         # Optional: Set HTML attributes for 'customers_group'
         self.fields['customers_group'].widget.attrs.update({'class': 'custom-select'})
+
+        for field_name, field in self.fields.items():
+        # Set custom error messages
+            field.error_messages = {
+                'required': f'يجب إدخال {self.Meta.labels[field_name]}'
+            }
+
+
+    
+    def get_custom_errors(self):
+        """
+        Return errors with field names replaced by their labels in Arabic.
+        """
+        errors = {}
+        for field_name, field_errors in self.errors.items():
+            label = self.Meta.labels.get(field_name, field_name)
+            errors[label] = list(field_errors)
+        return errors
         
         
 class GroupCreationForm(forms.Form):
@@ -105,13 +130,13 @@ class GroupCreationForm(forms.Form):
 class FlowForm(forms.ModelForm):
     class Meta:
         model = Flow
-        fields = ['name','trigger']
+        fields = ['name', 'trigger']
         labels = {
             'name': 'اسم الأتمتة',
-            'trigger': 'المشغل',
+            'trigger': 'المشغل',  # Change the label for 'trigger' to 'المشغل'
         }
         widgets = {
-            'name': forms.TextInput(attrs={'placeholder': 'أدخل اسم التدفق'}),
+            'name': forms.TextInput(attrs={'placeholder': 'أدخل اسم الأتمتة'}),
             'trigger': forms.Select(attrs={'placeholder': 'اختر المشغل'}),
         }
 
@@ -121,7 +146,19 @@ class FlowForm(forms.ModelForm):
         self.fields['trigger'].empty_label = "اختر المشغل"
         
         for field_name, field in self.fields.items():
-            field.error_messages = {'required': f'يجب إدخال {self.Meta.labels[field_name]}'}
-        
-        
+            # Set custom error messages
+            field.error_messages = {
+                'required': f'يجب إدخال {self.Meta.labels[field_name]}'
+            }
+    
+    def get_custom_errors(self):
+        """
+        Return errors with field names replaced by their labels in Arabic.
+        """
+        errors = {}
+        for field_name, field_errors in self.errors.items():
+            label = self.Meta.labels.get(field_name, field_name)
+            errors[label] = list(field_errors)
+        return errors
+
 

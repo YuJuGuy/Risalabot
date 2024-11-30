@@ -33,15 +33,15 @@ def customers_view(request, context=None):
             
             if response.get('success'):
                 # Return a JSON response on successful creation
-                return JsonResponse({'status': 'success', 'message': 'تم إنشاء المجموعة بنجاح.'}, status=200)
+                return JsonResponse({'status': 'success', 'type': 'success','message': 'تم إنشاء المجموعة بنجاح.'}, status=200)
             else:
                 # Return JSON with error messages
                 error_message = response.get('error', {}).get('message', 'حدث خطأ ما.')
                 error_fields = response.get('error', {}).get('fields', {})
-                errors = {field: messages_list for field, messages_list in error_fields.items()}
-                return JsonResponse({'status': 'error', 'message': error_message, 'errors': errors}, status=400)
+                message = {field: messages_list for field, messages_list in error_fields.items()}
+                return JsonResponse({'status': 'error', 'type': 'error','message': error_message, 'message': message}, status=400)
         else:
-            return JsonResponse({'status': 'error', 'message': 'فشل التحقق من صحة النموذج.'}, status=400)
+            return JsonResponse({'status': 'error', 'type': 'error','message': 'فشل التحقق من صحة النموذج.'}, status=400)
 
     context.update({
         'form': form,
@@ -99,7 +99,7 @@ def delete_customer_list(request, group_id):
     if request.method == "POST":
         response = delete_customer_group(request.user, group_id)
         if response.get('success'):
-            return JsonResponse({'status': 'success', 'message': 'تم حذف المجموعة بنجاح.'})
+            return JsonResponse({'status': 'success', 'type': 'success','message': 'تم حذف المجموعة بنجاح.'}, status=200)
         else:
-            return JsonResponse({'status': 'error', 'message': 'فشل حذف المجموعة.'}, status=400)
-    return JsonResponse({'status': 'error', 'message': 'طريقة الطلب غير صالحة.'}, status=405)
+            return JsonResponse({'status': 'error', 'type': 'error','message': 'فشل حذف المجموعة.'}, status=400)
+    return JsonResponse({'status': 'error', 'type': 'error','message': 'طريقة الطلب غير صالحة.'}, status=405)

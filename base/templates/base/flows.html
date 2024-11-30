@@ -2,6 +2,51 @@
 {% load static %}
 
 {% block content %}
+
+    <div class="statics-container">
+
+    <div class="statics-card">
+      <div class="statics-icon">
+        <i class="bx bxs-cog"></i>
+      </div>
+      <div class="statics-content">
+        <h5>اجمالي الأتمتة</h5>
+        <h1 id="total-flows"></h1>
+      </div>
+    </div>
+
+
+    <div class="statics-card">
+      <div class="statics-icon">
+        <i class="bx bxs-envelope"></i>
+      </div>
+      <div class="statics-content">
+        <h5>الأتمتة النشطة</h5>
+        <h1 id="active-flows"></h1>
+      </div>
+    </div>
+
+    <div class="statics-card">
+      <div class="statics-icon">
+        <i class="bx bxs-pencil"></i>
+      </div>
+      <div class="statics-content">
+        <h5>الأتمتة المسودة</h5>
+        <h1 id="draft-flows"></h1>
+      </div>
+    </div>
+
+      <div class="statics-card">
+        <div class="statics-icon">
+          <i class="bx bxs-envelope"></i>
+        </div>
+        <div class="statics-content">
+          <h5>اجمالي الرسائل</h5>
+          <h1 id="total-messages"></h1>
+        </div>
+      </div>
+
+    </div>
     <div class="action-bar">
     <p>الأتمتة</p>
 
@@ -70,7 +115,7 @@
     </div>
 
     <div class="recommended-flows">
-        <p>الأتمتة الموصى بها</p>
+        <h3>الأتمتة الموصى بها</h3>
         <div id="recommended-flows-container" class="recommended-flows-container">
            
             <!-- Suggested Flows will be injected here by JavaScript -->
@@ -104,14 +149,14 @@
                     window.location.href = data.redirect_url;
                     refreshTable();
                 } else {
-                    if (typeof data.errors === 'object') {
-                        for (const [field, errors] of Object.entries(data.errors)) {
+                    if (typeof data.message === 'object') {
+                        for (const [field, errors] of Object.entries(data.message)) {
                             errors.forEach(error => {
                                 showMessage(`${field}: ${error.message}`, 'error');
                             });
                         }
                     } else {
-                        showMessage(data.errors, data.type);
+                        showMessage(data.message, data.type);
                     }
                 }
             })
@@ -282,14 +327,36 @@
     }
 
 
+
     document.addEventListener('DOMContentLoaded', function() {
+        
         const myTable = document.getElementById('myTable');
         if (myTable) {
             $(myTable).DataTable({
                 ajax: {
                     url: getFlowsUrl,
-                    dataSrc: 'data.flows'
-                },
+                    dataSrc: function(data) {
+                        // Log the data to inspect its structure
+                    
+                        // Access the flows array correctly
+                        const flowsArray = data.data.flows || []; // Use an empty array as a fallback
+
+                    
+                        // Update the statistics elements
+                        const totalFlows = flowsArray.length;
+                        const activeFlows = flowsArray.filter(flow => flow.status === "مفعلة").length;
+                        const totalMessages = flowsArray.reduce((sum, flow) => sum + flow.messages_sent, 0);
+                        const draftFlows = flowsArray.filter(flow => flow.status === "مسودة").length; // Assuming "مسودة" is the draft status
+                    
+                        document.getElementById('total-flows').textContent = totalFlows;
+                        document.getElementById('active-flows').textContent = activeFlows;
+                        document.getElementById('total-messages').textContent = totalMessages;
+                        document.getElementById('draft-flows').textContent = draftFlows;
+                    
+                        // Return the flows array for DataTable
+                        return flowsArray;
+                    }
+                  },
                 columns: [
                     { data: 'name' },
                     { data: 'updated_at' },
@@ -344,6 +411,9 @@
                 const flowCard = document.createElement('div');
                 flowCard.className = 'flow-card';
                 flowCard.innerHTML = `
+                     <div class="flow-card-img">
+                        <img src="/static/svgs/${flow.img}" alt="${flow.name}">
+                    </div>
                     <div class="flow-card-body">
                         <div class="title-description">
                             <h3>${flow.name}</h3>
@@ -352,9 +422,6 @@
                         <div class="flow-card-button">
                             <button class="activate-button" onclick="activateSuggestedFlow('${flow.id}')">تفعيل</button>
                         </div>
-                    </div>
-                    <div class="flow-card-img">
-                        <img src="/static/svgs/${flow.img}" alt="${flow.name}">
                     </div>
                 `;
                 recommendedFlowsContainer.appendChild(flowCard);

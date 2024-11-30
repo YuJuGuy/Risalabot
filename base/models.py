@@ -8,7 +8,6 @@ from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 import uuid
 from django.db import models, transaction
-
 from django.utils.crypto import get_random_string
 from datetime import date, timedelta
 
@@ -250,7 +249,7 @@ class Flow(models.Model):
         ordering = ['-created_at']
 
     def __str__(self):
-        return f"{self.name} ({self.get_status_display()})"
+        return f"{self.name} ({self.store.store_name}-{self.store.store_id})"
 
 
 class FlowActionTypes(models.Model):
@@ -263,9 +262,8 @@ class FlowActionTypes(models.Model):
     def __str__(self):
         return self.label
 
-
 class FlowStep(models.Model):
-    flow = models.ForeignKey('Flow', on_delete=models.CASCADE, related_name='steps')
+    flow = models.ForeignKey(Flow, on_delete=models.CASCADE, related_name='steps')
     order = models.PositiveIntegerField(validators=[MinValueValidator(1)])
     action_type = models.ForeignKey(FlowActionTypes, on_delete=models.CASCADE)
 
@@ -377,6 +375,8 @@ class SuggestedCouponConfig(models.Model):
     maximum_amount = models.IntegerField(null=True)
     free_shipping = models.BooleanField()
     exclude_sale_products = models.BooleanField()
+    message = models.TextField(blank=True, null=True)
+
 
 
     def __str__(self):

@@ -1,17 +1,21 @@
 from django.urls import path
-from . import views
-from . import authview
+from . import authenticate_user
+from . import authenticate_store
 from . import flows
 from . import campaigns
 from . import customers
+from . import home
+from . import dashboard
 from . import channel_views
+from . import staticbot
 from django.contrib.auth import views as auth_views
 from debug_toolbar.toolbar import debug_toolbar_urls
 
 urlpatterns = [
-    path('login/', views.loginPage, name="login"),
-    path('logout/', views.logoutUser, name="logout"),
-    path('register/', views.registerPage, name="register"),
+    path('login/', authenticate_user.loginPage, name="login"),
+    path('logout/', authenticate_user.logoutUser, name="logout"),
+    path('register/', authenticate_user.registerPage, name="register"),
+    path('sync_data/', authenticate_user.sync_data, name='sync_data'),
 
     path('reset_password/', auth_views.PasswordResetView.as_view(template_name="base/reset_password.html"), name="reset_password"),
     path('reset_password_sent/', auth_views.PasswordResetDoneView.as_view(template_name="base/reset_password_sent.html"), name="password_reset_done"),
@@ -19,9 +23,8 @@ urlpatterns = [
     path('reset_password_complete/', auth_views.PasswordResetCompleteView.as_view(template_name="base/password_reset_complete.html"), name="password_reset_complete"),
     
     
-    path('dashboard/', views.dashboard, name="dashboard"),
-    path('get-dashboard-data/', views.get_dashboard_data, name='get_dashboard_data'),
-    
+    path('dashboard/', dashboard.dashboard_view, name="dashboard"),
+    path('get-dashboard-data/', dashboard.get_dashboard_data, name='get_dashboard_data'),
     
     
     path('flows/', flows.flows, name='flows'),
@@ -44,11 +47,10 @@ urlpatterns = [
     path('customers/', customers.customers_view, name='customers'),
     path('get-customers/', customers.get_customers, name='get_customers'),
     path('delete-group/<int:group_id>/', customers.delete_customer_list, name='delete_group'),
-    path('sync_data/', views.sync_data, name='sync_data'),
     
-    path('authstore/', authview.authstore, name="authstore"),
-    path('callback/', authview.callback, name="callback"),
-    path('unlinkstore/<str:store_id>/', authview.unlinkstore, name="unlinkstore"),
+    path('authstore/', authenticate_store.authstore, name="authstore"),
+    path('callback/', authenticate_store.callback, name="callback"),
+    path('unlinkstore/<str:store_id>/', authenticate_store.unlinkstore, name="unlinkstore"),
     
     path('link-whatsapp-channel/', channel_views.whatsapp_session, name="whatsapp_session"),
     path('create-whatsapp-session/', channel_views.create_whatsapp_session, name="create_whatsapp_session"),
@@ -56,7 +58,7 @@ urlpatterns = [
     path('whatsapp-details/', channel_views.get_whatsapp_details, name='whatsapp_details'),
     path('stop-whatsapp/', channel_views.stop_whatsapp, name='whatsapp_stop'),
 
-    
+    path('static-bot/', staticbot.bot, name='static_bot'),
 
-    path('', views.home, name="home"),
+    path('', home.home_view, name="home"),
 ] + debug_toolbar_urls()
