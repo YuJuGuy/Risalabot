@@ -203,6 +203,7 @@ def get_customer_data(user):
         
         customers.append({
             'customer_id': customer_id,
+            'first_name': first_name,
             'name': f"{first_name} {last_name}",
             'email': email,
             'phone': phone,

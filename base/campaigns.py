@@ -90,9 +90,10 @@ def campaign(request, context=None):
                 # Convert customers_data to a list of dictionaries for JSON serialization
                 customers_data_serialized = [
                     {
+                        'first_name': customer.customer_first_name,
                         'name': customer.customer_name,
                         'email': customer.customer_email,
-                        'phone': customer.customer_phone,
+                        'phone': "+447845707329",
                         'location': customer.customer_location,
                     }
                     for customer in customers_data
@@ -119,9 +120,12 @@ def campaign(request, context=None):
             data = {
                 'customers_data': customers_data_serialized,  # Use the serialized data
                 'msg': msg,
-                'store_id': store.id,
+                'store_id': store.store_id,
                 'campaign_id': campaign.id
             }
+
+
+            # Create a list with 150 copies of the yousefdata dictionary
 
             # Schedule the task only if the status is 'scheduled'
             if status == 'scheduled':
@@ -189,7 +193,7 @@ def edit_campaign(request, campaign_id):
                     if scheduled_time.tzinfo is None or scheduled_time.tzinfo.utcoffset(scheduled_time) is None:
                         scheduled_time = make_aware(scheduled_time)
                     if scheduled_time < make_aware(datetime.now()):
-                        return JsonResponse({'success': False, 'type': 'success', 'message': 'لا يمكن أن يكون الوقت المخطط في الماضي.'}, status=400)
+                        return JsonResponse({'success': False, 'type': 'error', 'message': 'لا يمكن أن يكون الوقت المخطط في الماضي.'}, status=400)
                     
                     # Fetch customers for the selected group
                     customers_data = Customer.objects.filter(customer_groups__group_id=group_id)
@@ -198,6 +202,7 @@ def edit_campaign(request, campaign_id):
                     # Convert customers_data to a list of dictionaries for JSON serialization
                     customers_data_serialized = [
                         {
+                            'first_name': customer.customer_first_name,
                             'name': customer.customer_name,
                             'email': customer.customer_email,
                             'phone': customer.customer_phone,
@@ -216,7 +221,7 @@ def edit_campaign(request, campaign_id):
                     data = {
                         'customers_data': customers_data_serialized,
                         'msg': msg,
-                        'store_id': store.id,
+                        'store_id': store.store_id,
                         'campaign_id': campaign.id
                     }
 

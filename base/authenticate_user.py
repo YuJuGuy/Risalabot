@@ -9,6 +9,7 @@ from . models import User, Store, UserStoreLink, Campaign, Flow, Customer, Group
 from django.http import JsonResponse
 from django.utils.crypto import get_random_string
 from Risalabot.celery import app as celery_app
+from . apis import get_customer_data
 from . decorators import check_token_validity
 
 from datetime import datetime
@@ -126,6 +127,7 @@ def sync_data(request):
     # Create the customer entry
             customer_obj = Customer.objects.create(
                 store=store,
+                customer_first_name=customer['first_name'],
                 customer_name=customer['name'],
                 customer_email=customer['email'],
                 customer_phone=customer['phone'],

@@ -25,6 +25,7 @@ class Subscription(models.Model):
     name = models.CharField(max_length=255)
     messages_limit = models.IntegerField()  # Field to store the message limit for the subscription
     description = models.TextField()
+    staticbot = models.BooleanField(default=False)
 
     def __str__(self):
         return self.name
@@ -71,6 +72,7 @@ class Group(models.Model):
 class Customer(models.Model):
     store = models.ForeignKey(Store, on_delete=models.CASCADE)
     customer_name = models.CharField(max_length=255)
+    customer_first_name = models.CharField(max_length=255, blank=True, null=True)
     customer_email = models.CharField(max_length=255, blank=True, null=True)
     customer_phone = models.CharField(max_length=255)
     customer_location = models.CharField(max_length=255)
