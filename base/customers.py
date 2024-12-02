@@ -14,13 +14,15 @@ from base.apis import create_customer_group, delete_customer_group
 @login_required(login_url='login')
 @check_token_validity
 def customers_view(request, context=None):
+    if context is None:
+        context = {}
     try:
         store = UserStoreLink.objects.get(user=request.user).store
     except UserStoreLink.DoesNotExist:
-        return JsonResponse({'type': 'error', 'message': 'No store linked. Please link a store first.'}, status=400)
+        logger.error(f"No store linked to user {request.user.id}")
+        return redirect('dashboard')
     
-    if context is None:
-        context = {}
+
 
     form = GroupCreationForm()
     if request.method == 'POST':
@@ -39,7 +41,7 @@ def customers_view(request, context=None):
                 error_message = response.get('error', {}).get('message', 'حدث خطأ ما.')
                 error_fields = response.get('error', {}).get('fields', {})
                 message = {field: messages_list for field, messages_list in error_fields.items()}
-                return JsonResponse({'status': 'error', 'type': 'error','message': error_message, 'message': message}, status=400)
+                return JsonResponse({'status': 'error', 'type': 'error','message': error_message}, status=400)
         else:
             return JsonResponse({'status': 'error', 'type': 'error','message': 'فشل التحقق من صحة النموذج.'}, status=400)
 

@@ -20,25 +20,36 @@ logger = logging.getLogger(__name__)
 @login_required(login_url='login')
 @check_token_validity
 def dashboard_view(request, context=None):
-    # Initialize default values
+    # Ensure context is properly passed and not overwritten
     if context is None:
         context = {}
-    
+
+    # Initialize default values for context
     context.update({
-        'store': None,
+        'store': None,  # Default store is None
     })
 
     try:
-        # Get store data if it exists
+        # Try to fetch the store linked to the user
         store_link = UserStoreLink.objects.select_related('store').get(user=request.user)
         store = store_link.store
+        
+        # Add the store to the context for use in the template
+        context['store'] = store
 
     except UserStoreLink.DoesNotExist:
-        logger.error(f"No store linked to your account")
+        logger.error(f"No store linked to user {request.user.id}")
+        context.update({
+            'error_message': "لم يتم ربط المتجر بحسابك. يرجى ربط المتجر أولا."
+        })
+        return render(request, 'base/dashboard.html', context)
+
     except Exception as e:
-        logger.error(f"Error in dashboard view: {str(e)}")
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)   
+        logger.error(f"Unexpected error in dashboard view for user {request.user.id}: {str(e)}")
+        return render(request, 'base/error_page.html', {'error_message': str(e)})
+
     return render(request, 'base/dashboard.html', context)
+
 
 
 def get_dashboard_data(request):

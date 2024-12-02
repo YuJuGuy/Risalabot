@@ -7,17 +7,9 @@ from django.utils.crypto import get_random_string
 from base.models import Store, Campaign, UserStoreLink, Flow, FlowStep, TextConfig, TimeDelayConfig, CouponConfig, AbandonedCart
 import logging
 import pytz
-from celery import current_app
-from redis.exceptions import LockError
-from django.conf import settings
-from redis import Redis
-
-# Initialize Redis connection (centralize this if used elsewhere)
-redis_instance = Redis(host='localhost', port=6379, db=0)
 
 logging.basicConfig(level=logging.INFO)
 ksa_timezone = pytz.timezone("Asia/Riyadh")
-
 
 
 
@@ -39,26 +31,25 @@ replacements = {
 
 def send_whatsapp_message(store, number, msg, session):
     """
-    Send a WhatsApp message and update message count atomically.
+    Send a WhatsApp message to the given number and return whether it was successful.
+
+    :param store: Store object (for message limit tracking)
+    :param number: The phone number of the customer
+    :param msg: The message text to send
+    :param session: The session identifier for the WhatsApp API
+    :return: (bool, str) - success flag, status message
     """
+    messages_limit = store.subscription.messages_limit
 
-    # Lock the store row
-    with transaction.atomic():
-        store = Store.objects.select_for_update().get(id=store.id)
-        messages_limit = store.subscription.messages_limit
+    if store.subscription_message_count >= messages_limit:
+        return False, f"Message limit reached: {store.subscription_message_count} messages sent."
 
-        if store.subscription_message_count >= messages_limit:
-            return False, f"Message limit reached: {store.subscription_message_count} messages sent."
-
-        # Increment the message count
-        store.subscription_message_count += 1
-        store.save(update_fields=['subscription_message_count'])
-
-    # Proceed with sending the message
     url = 'http://localhost:3000/api/sendText'
     headers = {'accept': 'application/json', 'Content-Type': 'application/json'}
 
+    print(number)
     number = clean_number(number)
+    print(number)
     data = {
         'chatId': number,
         "text": msg,
@@ -67,81 +58,81 @@ def send_whatsapp_message(store, number, msg, session):
 
     try:
         response = requests.post(url, headers=headers, json=data)
-        logging.info(response.json())
         if response.status_code in [200, 201]:
             return True, "Message sent successfully."
         else:
             return False, f"Failed to send message. Status code: {response.status_code}"
     except requests.exceptions.RequestException as e:
         return False, f"Error occurred when sending message: {e}"
-
     
     
 @shared_task(bind=True, max_retries=3)
 def send_whatsapp_message_task(self, data):
-    # Use Celery's Redis connection
-
-    lock_key = f"store_{data['store_id']}_lock"
-    lock = redis_instance.lock(lock_key, timeout=60)  # Lock expires after 60 seconds
-
     try:
-        if not lock.acquire(blocking=True):
-            logging.info(f"Task is already processing messages for store {data['store_id']}")
-            return None  # Exit if another task is already processing
+        # Access the first dictionary in the data list
+        if isinstance(data, list):
+            data = data[0]
 
-        # Proceed with task logic
         store = Store.objects.get(store_id=data['store_id'])
+        
+        # Check if the campaign exists and has the correct status
         campaign = Campaign.objects.get(id=data['campaign_id'], store=store)
-
         if campaign.status != 'scheduled':
             logging.info(f"Campaign with id {data['campaign_id']} is not scheduled")
             return None
 
         session = UserStoreLink.objects.filter(store=store).first().user.session_id
-
-        sent_count = 0
-        failed_count = 0
-
-        for customer in data['customers_data']:
-            store.refresh_from_db()
-
-            if store.subscription_message_count >= store.subscription.messages_limit:
-                logging.info("Message limit reached. Stopping further processing.")
-                break  # Stop sending messages if the limit is reached
-
-            if '{' in data['msg']:
-                replacements = {
-                    '{اسم العميل}': customer.get('name', ''),
-                    '{رقم العميل}': customer.get('phone', ''),
-                    '{الايميل}': customer.get('email', ''),
-                    '{الاسم الاول}': customer.get('first_name', ''),
-                    '{الدولة}': customer.get('location', ''),
-                }
-                for placeholder, value in replacements.items():
-                    data['msg'] = data['msg'].replace(placeholder, value)
-
-            success, message = send_whatsapp_message(store, customer['phone'], data['msg'], session)
-            if success:
-                sent_count += 1
-                with transaction.atomic():
-                    campaign.messages_sent += 1
-                    campaign.save(update_fields=['messages_sent'])
-            else:
-                failed_count += 1
-
-        campaign.status = 'sent' if failed_count == 0 else 'failed'
-        campaign.save(update_fields=['status'])
-
     except Store.DoesNotExist:
         logging.info(f"Store with id {data['store_id']} does not exist.")
+        return None
     except Campaign.DoesNotExist:
         logging.info(f"Campaign with id {data['campaign_id']} does not exist")
-    except LockError as e:
-        logging.error(f"Failed to acquire lock: {e}")
+        return None
     except Exception as e:
         logging.error(f"Unexpected error: {e}")
-    finally:
-        lock.release()
+        return None
+
+    sent_count = 0
+    failed_count = 0  # Track failed messages
+
+    # Sending messages in batch or all at once
+    for customer in data['customers_data']:
+        # Only process replacements if the message contains placeholders
+        if '{' in data['msg']:
+            replacements = {
+                '{اسم العميل}': customer.get('name', ''),
+                '{رقم العميل}': customer.get('phone', ''),
+                '{الايميل}': customer.get('email', ''),
+                '{الاسم الاول}': customer.get('first_name', ''),
+                '{الدولة}': customer.get('location', ''),
+                # Add other placeholders here as needed
+            }
+            # Apply all replacements in one loop
+            for placeholder, value in replacements.items():
+                data['msg'] = data['msg'].replace(placeholder, value)
+
+        # Send the WhatsApp message
+        success, message = send_whatsapp_message(store, customer['phone'], data['msg'], session)
+        if success:
+            sent_count += 1
+            with transaction.atomic():
+                campaign.messages_sent += 1
+                campaign.save(update_fields=['messages_sent'])
+        else:
+            failed_count += 1
+
+    # Update campaign status
+    campaign.status = 'sent' if failed_count == 0 else 'failed'
+    campaign.save(update_fields=['status'])
+
+    # Schedule next batch if there's more messages and a schedule_next_in is provided
+    if data.get('schedule_next_in'):
+        self.apply_async(
+            args=[data],
+            countdown=data['schedule_next_in']
+        )
+
+    return None
 
 
 

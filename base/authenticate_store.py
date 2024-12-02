@@ -50,17 +50,17 @@ def callback(request):
 
         store_info = fetch_store_info(access_token)
         if not store_info:
-            messages.error(request, 'فشل الحصول على معلومات المتجر من ساللا')
+            messages.error(request, 'فشل الحصول على معلومات المتجر من سلة')
             return redirect('dashboard')
         
-        store_name, store_id, store_email = store_info.get('name'), store_info.get('id'), store_info.get('email')
+        store_name, store_id, store_email, store_domain = store_info.get('name'), store_info.get('id'), store_info.get('email'), store_info.get('domain')
         
         # Check if the user is authenticated
         user = authenticate_or_create_user(request, store_email,store_id) if not request.user.is_authenticated else request.user
         if not user:
             return redirect('dashboard')
         
-        is_new_connection = handle_store_connection(request, user, store_id, store_name, access_token, refresh_token)
+        is_new_connection = handle_store_connection(request, user, store_id, store_name, store_domain, access_token, refresh_token)
         if is_new_connection:
             messages.success(request, 'تم الاتصال بالمتجر بنجاح.')
 
@@ -121,7 +121,7 @@ def authenticate_or_create_user(request, store_email,store_id):
     return user    
 
 
-def handle_store_connection(request, user, store_id, store_name, access_token, refresh_token):
+def handle_store_connection(request, user, store_id, store_name, store_domain, access_token, refresh_token):
     user_store_link = UserStoreLink.objects.filter(user=user).first()
     if user_store_link:
         existing_store_id = str(user_store_link.store.store_id).strip()
@@ -137,6 +137,7 @@ def handle_store_connection(request, user, store_id, store_name, access_token, r
         store_id=store_id,
         defaults={
             'store_name': store_name,
+            'store_domain': store_domain,
             'access_token': access_token,
             'refresh_token': refresh_token
         }

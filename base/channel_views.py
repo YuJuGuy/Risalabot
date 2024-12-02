@@ -4,35 +4,32 @@ from django.contrib.auth.decorators import login_required
 from automations.whatsapp_api import whatsapp_create_session, whatsapp_details, get_session_status, logout_user, stop_session
 from base.decorators import check_token_validity
 from base.models import UserStoreLink
+from django.shortcuts import redirect
 import logging
 
 logger = logging.getLogger(__name__)
 
 
 
+
 @login_required(login_url='login')
 @check_token_validity
 def whatsapp_session(request, context=None):
+    # Use the context passed from the decorator (don't re-initialize it)
     if context is None:
         context = {}
 
     try:
-        # Get store data if it exists
-        store_link = UserStoreLink.objects.select_related('store').get(user=request.user)
-        store = store_link.store
-        
-        context.update({
-            'store': store,
-        })
-
+        # Try to fetch the store linked to the user
+        store = UserStoreLink.objects.get(user=request.user).store
+        context['store'] = store  # Add store to context
     except UserStoreLink.DoesNotExist:
-        logger.error(f"No store linked to your account")
-        return JsonResponse({'success': False, 'type': 'error', 'message': 'لا يوجد متجر مرتبط بهذا المستخدم'}, status=404)
-    except Exception as e:
-        logger.error(f"Error in dashboard view: {str(e)}")
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+        logger.error(f"No store linked to user {request.user.id}")
+        return redirect('dashboard')  # Redirect to dashboard if no store linked
 
+    # Continue with rendering the template if the store exists
     return render(request, 'base/whatsapp_session.html', context)
+
 
 @login_required(login_url='login')
 def create_whatsapp_session(request):
@@ -62,6 +59,7 @@ def get_whatsapp_qr_code(request):
             response_data['qr'] = result['qr']
         return JsonResponse(response_data)
     except Exception as e:
+        print(e)
         return JsonResponse({'success': False, 'message': 'An error occurred', 'error': str(e)})
     
 
@@ -76,7 +74,6 @@ def get_whatsapp_details(request):
             return JsonResponse({
                 'id': results.get('id'),
                 'name': results.get('name'),
-                'about': results.get('about'),
                 'profile_picture': results.get('profile_picture')
 
             })

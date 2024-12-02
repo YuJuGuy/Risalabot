@@ -32,6 +32,7 @@ class Subscription(models.Model):
     
 class Store(models.Model):
     store_name = models.CharField(max_length=255)
+    store_domain = models.CharField(max_length=255, blank=True, null=True)
     store_id = models.CharField(max_length=255, unique=True)
     access_token = models.CharField(max_length=255, blank=True, null=True)
     refresh_token = models.CharField(max_length=255, blank=True, null=True)
@@ -49,13 +50,18 @@ class Store(models.Model):
 
     def __str__(self):
         return self.store_name + ' - ' + self.store_id
+
+
     
 class UserStoreLink(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    store = models.ForeignKey(Store, on_delete=models.CASCADE)
+    store = models.ForeignKey(Store, on_delete=models.CASCADE, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
     def __str__(self):
-        return f'{self.user.email} : {self.store.store_name} : {self.store.store_id}'
+        return f'{self.user.email}'
+
+
     
     
 class Group(models.Model):
@@ -192,7 +198,7 @@ class Flow(models.Model):
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='flows')
-    store = models.ForeignKey(Store, on_delete=models.CASCADE, related_name='flows')  # Add this line
+    store = models.ForeignKey(Store, on_delete=models.CASCADE)  # Add this line
     name = models.CharField(max_length=255)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -419,7 +425,7 @@ class ActivityLog(models.Model):
         ('campaign', 'الحملة'),
     ]
 
-    store = models.ForeignKey(Store, on_delete=models.CASCADE, related_name='activity_logs')
+    store = models.ForeignKey(Store, on_delete=models.CASCADE)
     source_type = models.CharField(max_length=10, choices=SOURCE_TYPE_CHOICES)
     source_id = models.UUIDField()  # ID of the Flow or Campaign
     activity_type = models.CharField(max_length=10, choices=ACTIVITY_TYPE_CHOICES)
@@ -457,7 +463,7 @@ def log_activity(store, source_type, source_id, activity_type, diff_count):
         
 
 class AbandonedCart(models.Model):
-    store = models.ForeignKey(Store, on_delete=models.CASCADE, related_name='abandoned_carts')
+    store = models.ForeignKey(Store, on_delete=models.CASCADE)
     customer_id = models.CharField(max_length=255)
     cart_id = models.CharField(max_length=255)
     flow_id = models.UUIDField()

@@ -1,7 +1,7 @@
 import requests
 import base64
 import time
-from base.models import User
+from base.models import User, UserStoreLink
 
 
 def get_session_status(session):
@@ -54,7 +54,33 @@ def whatsapp_create_session(user):
     # No session exists, proceed to create a new session
     print("Creating a new session")
     url = "http://localhost:3000/api/sessions/start"
-    data = {"name": session}
+    data = {
+        "name": session,
+        "start": True,
+        "config": {
+            "metadata": {
+            "user.id": UserStoreLink.objects.filter(user=user).first().store.store_id,
+            "user.name": UserStoreLink.objects.filter(user=user).first().store.store_name
+            },
+                "proxy": None,
+                "debug": False,
+                "noweb": {
+                "store": {
+                    "enabled": True,
+                    "fullSync": False
+                }
+                },
+            "webhooks": [
+            {
+                "url": "http://192.168.0.119:8000/whatsapp",
+                "events": [
+                "message",
+                "session.status"
+                ],
+            }
+            ]
+        }
+        }
     response = requests.post(url, headers=headers, json=data)
     
     if response.status_code in [200, 201]:
@@ -78,16 +104,7 @@ def whatsapp_details(user):
         id = response_data['id']
         name = response_data['pushName']
         
-        # Fetch about info
-        about_url = f"http://localhost:3000/api/contacts/about"
-        about_params = {"contactId": id, "session": session}
-        about_response = requests.get(about_url, headers=headers, params=about_params)
-        
-        if about_response.status_code in [200, 201]:
-            about_data = about_response.json()
-            about = about_data.get('about')
-        else:
-            about = None  # or handle the error accordingly
+    
 
         # Fetch profile picture
         profile_pic_url = "http://localhost:3000/api/contacts/profile-picture"
@@ -103,7 +120,6 @@ def whatsapp_details(user):
         return {
             'id': id,
             'name': name,
-            'about': about,
             'profile_picture': profile_picture,
         }
     else:

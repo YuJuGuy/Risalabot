@@ -35,6 +35,12 @@ def verify_signature(payload, signature):
 
     return hmac.compare_digest(expected_signature, signature)
 
+@csrf_exempt
+@require_POST
+def whatsapp_hook(request):
+    print(request.body)
+    return JsonResponse({"message": "Webhook processed successfully"}, status=200)
+
 
 @csrf_exempt
 @require_POST
@@ -54,16 +60,19 @@ def webhook(request):
                 if "app" in event:
                     logging.info(f"App event processing")
                     process_app_webhook(payload_json)
+                    return JsonResponse({"message": "Webhook processed successfully"}, status=200)
 
                 if "review.added" in event:
                     if payload_json.get('data', {}).get('rating', '') == 5 or payload_json.get('data', {}).get('rating', '') == '5':
                         logging.info(f"Review event processing")
                         process_flow_webhook(payload_json)
-                        
+                        return JsonResponse({"message": "Webhook processed successfully"}, status=200)
 
                 if any(keyword in event for keyword in ["order", "abandoned", "customer.login"]):
                     logging.info(f"Order event processing")
+                    print(payload_json)
                     process_flow_webhook(payload_json)
+                    return JsonResponse({"message": "Webhook processed successfully"}, status=200)
                 
                 # Return a success response after processing
                 return JsonResponse({"message": "Webhook processed successfully"}, status=200)
@@ -159,6 +168,8 @@ def process_flow_webhook(payload):
 
     except Exception as e:
         logging.error(f"Error processing webhook: {str(e)}")
+
+    
         
         
 def process_app_webhook(payload):

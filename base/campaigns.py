@@ -55,18 +55,23 @@ def validate_campaign_data(campaign_data):
 @login_required(login_url='login')
 @check_token_validity
 def campaign(request, context=None):
+    
     if context is None:
         context = {}
+
     try:
-        store = UserStoreLink.objects.get(user=request.user).store
-        # get all groups for the store
+        user_store_link = UserStoreLink.objects.get(user=request.user)
+        store = user_store_link.store
         store_groups = Group.objects.filter(store=store).order_by('-group_id')
-        
+
         if not store_groups:
-            return JsonResponse({'success': False, 'type': 'error', 'message': 'لا يوجد مجموعات في المتجر.'}, status=400)
-        
+            messages.error(request, 'لا يوجد عملاء او مجموعات في المتجر.') 
+            
     except UserStoreLink.DoesNotExist:
-        return JsonResponse({'success': False, 'type': 'error', 'message': 'لم يتم ربط المتجر. يرجى ربط متجر أولا.', 'redirect_url': reverse('dashboard')}, status=400)
+        return redirect('dashboard')
+    except Exception as e:
+        return JsonResponse({'success': False, 'type': 'error', 'message': f'خطاء في البيانات: {str(e)}', 'redirect_url': reverse('dashboard')}, status=400)
+
 
     if request.method == 'POST':
         form = CampaignForm(request.POST, store_groups=store_groups)

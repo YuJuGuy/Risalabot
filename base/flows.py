@@ -15,7 +15,7 @@ from django.db.models import F
 from . forms import FlowForm
 from django.core.exceptions import PermissionDenied
 import sys
-
+from django.shortcuts import redirect
 
 logger = logging.getLogger(__name__)
 
@@ -35,17 +35,18 @@ __all__ = ('celery_app',)
 @login_required(login_url='login')
 @check_token_validity
 def flows(request, context=None):
-    try:
-        user = request.user
-        store = UserStoreLink.objects.get(user=request.user).store
-    except User.DoesNotExist:
-        return JsonResponse({'success': False, 'type': 'error', 'message': 'لم يتم العثور على المستخدم.'}, status=404)
-    
+    # Ensure context is never overwritten, but rather updated
     if context is None:
         context = {}
-    
+
+    try:
+        # Assuming this is now guaranteed to be valid from the decorator
+        user_store_link = UserStoreLink.objects.get(user=request.user)
+        store = user_store_link.store
+    except UserStoreLink.DoesNotExist:
+        return redirect('dashboard')
+
     if request.method == 'POST':
-        
         form = FlowForm(request.POST)
         if not store.subscription:
             return JsonResponse({'success': False, 'type': 'error', 'message': 'المتجر غير مشترك بالخدمة.'}, status=400)
@@ -63,13 +64,14 @@ def flows(request, context=None):
 
     else:
         form = FlowForm()
-    
-    
+
     context.update({
         'form': form,
         'triggers': Trigger.objects.all(),
     })
+    
     return render(request, 'base/flows.html', context)
+
 
 
 @login_required(login_url='login')
@@ -169,11 +171,19 @@ def validate_steps_data(steps_data):
 @require_http_methods(["GET", "POST"])
 @check_token_validity
 def flow_builder(request, flow_id, context=None):
+
     try:
+        user = request.user
+        store = UserStoreLink.objects.get(user=request.user).store
         flow = Flow.objects.get(id=flow_id, owner=request.user)
+    except UserStoreLink.DoesNotExist:
+        logger.error(f"No store linked to your account")
+        return JsonResponse({'success': False, 'type': 'error', 'message': 'لم يتم العثور على المستخدم.'}, status=404)
     except Flow.DoesNotExist:
         if request.headers.get('x-requested-with') == 'XMLHttpRequest':
             return JsonResponse({'success': False, 'type': 'error', 'message': 'لم يتم العثور على الأتمتة.'}, status=404)
+
+            
     if context is None:
         context = {}
 
@@ -409,8 +419,18 @@ def activate_suggested_flow(request, suggestion_id):
                     
             
             return JsonResponse({'success': True, 'redirect_url': reverse('flow', kwargs={'flow_id': new_flow.id})})
-            
+
+    except SuggestedFlow.DoesNotExist:
+        logger.error(f"Suggested flow {suggestion_id} does not exist")
+        return JsonResponse({'success': False, 'message': 'الأتمتة الموصى بها غير موجودة.', 'type': 'error'})
+    except User.DoesNotExist:
+        logger.error(f"User {request.user.id} does not exist")
+        return JsonResponse({'success': False, 'message': 'المستخدم غير موجود.', 'type': 'error'})
+    except UserStoreLink.DoesNotExist:
+        logger.error(f"User {request.user.id} is not linked to a store")
+        return JsonResponse({'success': False, 'message': 'المستخدم غير مرتبط بمتجر.', 'type': 'error'})
     except Exception as e:
         logger.error(f"Error activating suggested flow: {str(e)}", exc_info=True)
-        return JsonResponse({'success': False, 'message': 'حدث خطأ أثناء تنشيط الأتمتة الموصى بها. يرجى المحاولة مره اخرى.', 'type': 'error'})
+        return JsonResponse({'success': False, 'message': 'حدث خطاء في تنشيط الأتمتة الموصى بها. يرجى المحاولة مره اخرى.', 'type': 'error'})
+            
         

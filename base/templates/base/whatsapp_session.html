@@ -66,7 +66,7 @@
                     .then(data => {
                         loadingSpinner.style.display = 'none'; // Hide spinner
         
-                        if (data.id && data.name && data.about && data.profile_picture) {
+                        if (data.id && data.name && data.profile_picture) {
                             const imgDiv = document.createElement('div');
                             imgDiv.classList.add('image-container');
                             const profileImage = document.createElement('img');
@@ -79,11 +79,6 @@
                             nameElement.classList.add('nameElement');
                             nameElement.innerText = `${data.name}`;
                             detailsContainer.appendChild(nameElement);
-        
-                            const aboutElement = document.createElement('p');
-                            aboutElement.classList.add('aboutElement');
-                            aboutElement.innerText = `الحالة: ${data.about}`;
-                            detailsContainer.appendChild(aboutElement);
         
                             const logoutButton = document.createElement('button');
                             logoutButton.classList.add('logout-button');
