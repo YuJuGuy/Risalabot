@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
-from automations.whatsapp_api import whatsapp_create_session, whatsapp_details, get_session_status, logout_user, stop_session
+from automations.whatsapp_api import whatsapp_create_session, whatsapp_details, get_session_status, logout_user, stop_session, start_session, delete_session, get_qr_code
 from base.decorators import check_token_validity
 from base.models import UserStoreLink
 from django.shortcuts import redirect
@@ -39,9 +39,13 @@ def create_whatsapp_session(request):
         if status == "WORKING":
             user.connected = True
             user.save()
-        else:
+        elif status == "FAILED":
+            delete_session(user)
             user.connected = False
             user.save()    
+        else:
+            user.connected = False
+            user.save()
     
         return JsonResponse({'success': True, 'data': {'is_connected': user.connected}})
     except Exception as e:
@@ -50,13 +54,15 @@ def create_whatsapp_session(request):
 @login_required(login_url='login')
 def get_whatsapp_qr_code(request):
     try:
-        result = whatsapp_create_session(request.user)
-        response_data = {
-            'success': result['success'],
-            'message': result.get('message', '')
-        }
-        if 'qr' in result:
-            response_data['qr'] = result['qr']
+        success = whatsapp_create_session(request.user)
+        if success:
+            qr_code = get_qr_code(request.user.session_id)
+            if qr_code['success']:
+                response_data = {'success': True, 'qr': qr_code['qr']}
+            else:
+                response_data = {'success': False, 'message': 'Failed to get QR code'}
+        else:
+            response_data = {'success': False, 'message': 'Failed to create WhatsApp session'}
         return JsonResponse(response_data)
     except Exception as e:
         print(e)

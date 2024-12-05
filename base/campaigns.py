@@ -12,6 +12,8 @@ from celery.exceptions import CeleryError
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 import threading
+from django.core.exceptions import ObjectDoesNotExist
+
 from . authenticate_user import sync_data
 
 
@@ -65,7 +67,7 @@ def campaign(request, context=None):
         store_groups = Group.objects.filter(store=store).order_by('-group_id')
 
         if not store_groups:
-            messages.error(request, 'لا يوجد عملاء او مجموعات في المتجر.') 
+            messages.info(request, 'لا يوجد عملاء او مجموعات في المتجر. يرجى تحديث البيانات.') 
             
     except UserStoreLink.DoesNotExist:
         return redirect('dashboard')
@@ -98,7 +100,7 @@ def campaign(request, context=None):
                         'first_name': customer.customer_first_name,
                         'name': customer.customer_name,
                         'email': customer.customer_email,
-                        'phone': "+447845707329",
+                        'phone': customer.customer_phone,
                         'location': customer.customer_location,
                     }
                     for customer in customers_data
@@ -268,45 +270,53 @@ def edit_campaign(request, campaign_id):
 @login_required
 def get_campaign_data(request, campaign_id=None):
     try:
-        # Fetch a specific campaign by ID
-        store = UserStoreLink.objects.get(user=request.user).store
+        # Fetch the store associated with the user
+        store = UserStoreLink.objects.select_related('store').get(user=request.user).store
+
         if campaign_id:
-            campaign = Campaign.objects.get(id=campaign_id, store=UserStoreLink.objects.get(user=request.user).store)
+            # Fetch a specific campaign
+            campaign = Campaign.objects.filter(id=campaign_id, store=store).select_related('store').first()
+            if not campaign:
+                return JsonResponse({'success': False, 'type': 'error', 'error': 'لم يتم العثور على الحملة.'}, status=404)
+
             data = {
                 'name': campaign.name,
-                'scheduled_time': campaign.scheduled_time.strftime('%Y-%m-%d %H:%M'),  # Adjust format as per input type
+                'scheduled_time': campaign.scheduled_time.strftime('%Y-%m-%d %H:%M'),  # Adjust format as needed
                 'customers_group': campaign.customers_group,
                 'status': campaign.status,
                 'status_display': dict(Campaign.status_choices).get(campaign.status, campaign.status),
                 'msg': campaign.msg,
-                'edit_url': reverse('edit_campaign', args=[campaign.id]),  # Add edit URL
-                'delete_url': reverse('campaign_delete', args=[campaign.id])  # Add delete URL
+                'edit_url': reverse('edit_campaign', args=[campaign.id]),  # Edit campaign URL
+                'delete_url': reverse('campaign_delete', args=[campaign.id])  # Delete campaign URL
             }
-                        
-
-                
-            return JsonResponse({'success': True, 'data': data})
+            return JsonResponse({'success': True, 'data': data}, status=200)
         else:
-            # Fetch all campaigns
-            campaigns = Campaign.objects.filter(store=store, status__in=['scheduled', 'failed', 'sent', 'draft','cancelled']).order_by('-scheduled_time')
+            # Fetch all campaigns for the store
+            campaigns = Campaign.objects.filter(
+                store=store, 
+                status__in=['scheduled', 'failed', 'sent', 'draft', 'cancelled']
+            ).select_related('store').order_by('-scheduled_time')
+
+            # Prepare data for all campaigns
             data = [{
                 'id': campaign.id,
                 'name': campaign.name,
-                'scheduled_time': campaign.scheduled_time.strftime('%Y-%m-%d %H:%M'),  # Adjust format as per input type
+                'scheduled_time': campaign.scheduled_time.strftime('%Y-%m-%d %H:%M'),  # Adjust format as needed
                 'messages_sent': campaign.messages_sent,
                 'status': campaign.status,
                 'status_display': dict(Campaign.status_choices).get(campaign.status, campaign.status),
-                'edit_url': reverse('edit_campaign', args=[campaign.id]),  # Add edit URL for each campaign
-                'delete_url': reverse('campaign_delete', args=[campaign.id]),  # Add delete URL for each campaign
-                'cancel_url': reverse('campaign_cancel', args=[campaign.id])
-            } for campaign in campaigns
-                    ]
-            
-            
+                'edit_url': reverse('edit_campaign', args=[campaign.id]),  # Edit campaign URL
+                'delete_url': reverse('campaign_delete', args=[campaign.id]),  # Delete campaign URL
+                'cancel_url': reverse('campaign_cancel', args=[campaign.id])  # Cancel campaign URL
+            } for campaign in campaigns]
+
             return JsonResponse({'success': True, 'data': data}, status=200)
-    except Campaign.DoesNotExist:
-        return JsonResponse({'success': False, 'type': 'error', 'error': 'لم يتم العثور على الحملة.'}, status=404)
+
+    except ObjectDoesNotExist:
+        logger.error(f"Campaign or Store not found for user {request.user.id}")
+        return JsonResponse({'success': False, 'type': 'error', 'error': 'لم يتم العثور على الحملة أو المتجر.'}, status=404)
     except Exception as e:
+        logger.exception(f"Error in get_campaign_data: {str(e)}")
         return JsonResponse({'success': False, 'type': 'error', 'error': str(e)}, status=500)
 
     

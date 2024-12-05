@@ -126,10 +126,25 @@
 }
 
 /* ========== MEDIA QUERIES ==========*/
-@media screen and (max-width: 320px) {
-
+@media screen and (max-width: 768px) {
+  .mobile-sidenav {
+    display: none;
+  }
+  .sidenav {
+    display: none;
+  }
+  .mobile-sidenav.active {
+    display: block;
+  }
 }
 
+@media screen and (min-width: 769px) {
+  .mobile-sidenav {
+    display: none;
+  }
+  .sidenav {
+    display: block;
+  }
 
   .sidenav{
     width: var(--nav-width); /* Keep the navbar expanded */
@@ -140,7 +155,7 @@
   .nav__icon {
     font-size: 1.3rem;
   }
-
+  
   /* Element opacity */
   .nav__logo-name, 
   .nav__name, 
@@ -148,4 +163,7 @@
   .nav__dropdown-icon {
     opacity: 1; /* Always visible */
   }
+  
+
+}
 

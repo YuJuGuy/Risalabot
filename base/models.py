@@ -17,6 +17,8 @@ class User(AbstractUser):
     email = models.EmailField(max_length=200, unique=True)
     session_id = models.CharField(max_length=200, unique=True, null=True)
     connected = models.BooleanField(default=False)
+    phone_number = models.CharField(max_length=255, blank=True, null=True)
+
     
     
     USERNAME_FIELD = 'email' 
@@ -47,6 +49,7 @@ class Store(models.Model):
     total_clicks = models.IntegerField(default=0)
     total_messages_sent = models.IntegerField(default=0)
     subscription_date = models.DateTimeField(default=timezone.now)
+    botenabled = models.BooleanField(default=False)
 
     def __str__(self):
         return self.store_name + ' - ' + self.store_id
@@ -60,6 +63,43 @@ class UserStoreLink(models.Model):
 
     def __str__(self):
         return f'{self.user.email}'
+
+
+class Notification(models.Model):
+    store = models.ForeignKey(Store, on_delete=models.CASCADE)
+    message = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f'{self.store.store_name} - {self.created_at}'
+
+
+
+class StaticBot(models.Model):
+    store = models.ForeignKey(Store, on_delete=models.CASCADE)
+    message = models.TextField()
+    # condition only choices 1 and 2
+    condition_choices = (
+        ('Exact Text', 'النص بالضبط'),
+        ('Has Text', 'يحتوي على النص'),
+    )
+    condition = models.CharField(max_length=255, choices=condition_choices)
+
+    def __str__(self):
+        return f'{self.store.store_name} - {self.name}'
+
+
+class StaticBotStart(models.Model):
+    enabled = models.BooleanField(default=False)
+    store = models.OneToOneField(Store, on_delete=models.CASCADE)
+    message = models.TextField()
+    hours = models.IntegerField(validators=[MinValueValidator(1)])
+
+
+class StaticBotLog(models.Model):
+    bot = models.ForeignKey(StaticBot, on_delete=models.CASCADE)
+    customer = models.CharField(max_length=255)
+    time = models.DateTimeField(auto_now_add=True)
 
 
     

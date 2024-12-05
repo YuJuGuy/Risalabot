@@ -92,7 +92,7 @@ def get_tokens(code):
 def fetch_store_info(access_token):
     headers = {'Authorization': f'Bearer {access_token}'}
     response = requests.get(SALLA_STORE_INFO_URL, headers=headers)
-
+    print(response.json().get('data'))
     if response.status_code == 200:
         return response.json().get('data')
     return None

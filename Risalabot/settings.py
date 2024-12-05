@@ -24,7 +24,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-ik6it2t*c($$@nh!&+3nno-87#xw0r!gg)r((2^bdf#2)oplkj'
+SECRET_KEY = os.getenv('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     
     'base.apps.BaseConfig',
     'automations.apps.AutomationsConfig',
+    'debug_toolbar',
 
 ]
 
@@ -63,6 +64,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    "debug_toolbar.middleware.DebugToolbarMiddleware",
 ]
 
 ROOT_URLCONF = 'Risalabot.urls'
@@ -101,7 +103,10 @@ DATABASES = {
 
 
 
-
+INTERNAL_IPS = [
+    '127.0.0.1',
+    'localhost'
+]
 
 
 

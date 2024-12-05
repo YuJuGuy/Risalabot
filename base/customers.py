@@ -9,6 +9,9 @@ from django.contrib import messages
 from django.db.models import Count
 from base.forms import GroupCreationForm
 from base.apis import create_customer_group, delete_customer_group
+from django.db import connection
+from django.db.models import Prefetch
+
 
 
 @login_required(login_url='login')
@@ -17,7 +20,7 @@ def customers_view(request, context=None):
     if context is None:
         context = {}
     try:
-        store = UserStoreLink.objects.get(user=request.user).store
+        store = UserStoreLink.objects.select_related('store').get(user=request.user).store
     except UserStoreLink.DoesNotExist:
         logger.error(f"No store linked to user {request.user.id}")
         return redirect('dashboard')
@@ -48,6 +51,7 @@ def customers_view(request, context=None):
     context.update({
         'form': form,
     })
+
     
     return render(request, 'base/customer_list.html', context)
 
@@ -58,40 +62,42 @@ def customers_view(request, context=None):
 def get_customers(request):
     try:
         # Get the store associated with the logged-in user
-        store = UserStoreLink.objects.get(user=request.user).store
+        store = UserStoreLink.objects.select_related('store').get(user=request.user).store
 
-        # Retrieve customers for the specific store
-        customers_list = Customer.objects.filter(store=store)
+        # Filter groups to exclude 'جميع العملاء' and prefetch the groups efficiently
+        groups_qs = Group.objects.filter(store=store).exclude(name='جميع العملاء')
+        customer_groups_prefetch = Prefetch('customer_groups', queryset=groups_qs, to_attr='filtered_groups')
 
-        # Prepare customer data
+        # Fetch customers with the pre-fetched groups
+        customers_list = Customer.objects.filter(store=store).prefetch_related(customer_groups_prefetch)
+
+        # Prepare customer data, using the pre-fetched filtered groups
         customers_data = [{
             'name': customer.customer_name,
             'email': customer.customer_email,
             'phone': customer.customer_phone,
             'location': customer.customer_location,
-            'groups': list(customer.customer_groups.values_list('name', flat=True).exclude(name='جميع العملاء')),  # Group IDs
+            'groups': [group.name for group in customer.filtered_groups],  # Use pre-fetched groups
             'updated_at': customer.customer_updated_at.strftime('%Y-%m-%d %H:%M')
         } for customer in customers_list]
-        
 
         # Calculate group counts
-
-        # Create a dictionary of group IDs to names
         group_data = (
             Group.objects.filter(store=store).exclude(name='جميع العملاء')
             .annotate(customer_count=Count('customers'))  # Count related customers for each group
-            .values('group_id', 'name', customer_count=Count('customers'))  # Include group ID, name, and customer count
-
+            .values('group_id', 'name', 'customer_count')  # Include group ID, name, and customer count
         )
 
         # Convert to list of dictionaries for easier JSON handling
         group_data_list = list(group_data)
-        
+
+
         return JsonResponse({
             'customers': customers_data,
             'group_data': group_data_list,  # List of dictionaries with 'name' and 'customer_count'
             'total_count': len(customers_list),
         }, status=200)
+
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 

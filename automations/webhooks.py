@@ -4,22 +4,16 @@ from django.views.decorators.http import require_POST
 import hashlib
 import hmac
 import os
-from base.models import Trigger
 from dotenv import load_dotenv  
 import logging
 import json
-from base.models import User, Store, Flow,UserStoreLink, AbandonedCart, Subscription
+from base.models import User, Store, Flow,UserStoreLink, AbandonedCart, Subscription,Trigger
 from automations.models import MonthlyInstallations, MonthlyPayments, AppTrial
-
 from .tasks import process_flows_task
 
 # log to a file
 
 logger = logging.getLogger(__name__)
-
-class FlowBuilderError(Exception):
-    """Custom exception for Flow Builder specific errors"""
-    pass
 
 
 load_dotenv()
@@ -35,11 +29,6 @@ def verify_signature(payload, signature):
 
     return hmac.compare_digest(expected_signature, signature)
 
-@csrf_exempt
-@require_POST
-def whatsapp_hook(request):
-    print(request.body)
-    return JsonResponse({"message": "Webhook processed successfully"}, status=200)
 
 
 @csrf_exempt

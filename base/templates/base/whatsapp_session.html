@@ -94,20 +94,51 @@
                         detailsContainer.innerText = 'An error occurred while fetching the WhatsApp details.';
                     });
             }
-        
+
+            let isFetchingQRCode = false;
             function fetchQRCode() {
+                if (isFetchingQRCode) return; // Prevent multiple requests
+                isFetchingQRCode = true; // Lock to prevent duplicate requests
+            
+                fetch("{% url 'create_whatsapp_session' %}")
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            if (data.data.is_connected) {
+                                // User is connected, fetch WhatsApp details
+                                document.getElementById('whatsapp-details-container').style.display = 'flex';
+                                document.getElementById('qr-code-container').style.display = 'none';
+                                fetchWhatsAppDetails();
+                            } else {
+                                // User is not connected, reload QR code
+                                document.getElementById('whatsapp-details-container').style.display = 'none';
+                                document.getElementById('qr-code-container').style.display = 'flex';
+                                loadQRCodeImage();
+                            }
+                        } else {
+                            showMessage('حدث خطأ أثناء إنشاء جلسة واتساب.');
+                        }
+                    })
+                    .catch(error => {
+                        showMessage('حدث خطأ أثناء إنشاء جلسة واتساب.');
+                    })
+                    .finally(() => {
+                        isFetchingQRCode = false; // Unlock after the request completes
+                    });
+            }
+            
+            function loadQRCodeImage() {
                 const qrCodeContainer = document.getElementById('qr-code-container');
                 const loadingSpinner = document.getElementById('loading-spinner');
                 
                 qrCodeContainer.innerHTML = ''; // Clear existing QR code
                 qrCodeContainer.appendChild(loadingSpinner); // Show spinner
                 loadingSpinner.style.display = 'block';
-        
+            
                 fetch("{% url 'get_whatsapp_qr_code' %}")
                     .then(response => response.json())
                     .then(data => {
                         loadingSpinner.style.display = 'none'; // Hide spinner
-                        
                         if (data.success) {
                             if (data.qr) {
                                 const imgDiv = document.createElement('div');
@@ -117,7 +148,7 @@
                                 qrImage.alt = "QR Code";
                                 imgDiv.appendChild(qrImage);
                                 qrCodeContainer.appendChild(imgDiv);
-        
+            
                                 const reloadButton = document.createElement('button');
                                 reloadButton.classList.add('reload-button');
                                 reloadButton.id = 'reload-button';
@@ -131,40 +162,33 @@
                         }
                     })
                     .catch(error => {
-                        loadingSpinner.style.display = 'none'; // Hide spinner
                         qrCodeContainer.innerText = 'An error occurred while fetching the QR code.';
                     });
             }
+            
+            
         
             // Event delegation for dynamically created buttons
             document.addEventListener('click', function (event) {
                 if (event.target.id === 'reload-button') {
-                    fetch("{% url 'create_whatsapp_session' %}")
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            if (data.data.is_connected) {
-                                document.getElementById('whatsapp-details-container').style.display = 'flex';
-                                document.getElementById('qr-code-container').style.display = 'none';
-                                fetchWhatsAppDetails();
-                            } else {
-                                document.getElementById('whatsapp-details-container').style.display = 'none';
-                                document.getElementById('qr-code-container').style.display = 'flex';
-                                stopWhatsAppSession();
-                            }
-                        }
-                    })
-                    .catch(error => {
-                        showMessage('حدث خطأ أثناء إنشاء جلسة واتساب.');
-                    });
-                }else if (event.target.id === 'logout-button') {
+                    fetchQRCode();
+                } else if (event.target.id === 'logout-button') {
                     document.getElementById('whatsapp-details-container').style.display = 'none';
-                    document.getElementById('qr-code-container').style.display = 'flex';
+                    qrCodeContainer = document.getElementById('qr-code-container')
+                    qrCodeContainer.innerHTML = '';
+                    qrCodeContainer.style.display = 'flex';
                     stopWhatsAppSession();
                 }
             });
+            
 
             function stopWhatsAppSession() {
+                const qrCodeContainer = document.getElementById('qr-code-container');
+                const loadingSpinner = document.getElementById('loading-spinner');
+                qrCodeContainer.innerHTML = ''; // Clear existing QR code
+                qrCodeContainer.appendChild(loadingSpinner); // Show spinner
+                loadingSpinner.style.display = 'block';
+
                 fetch("{% url 'whatsapp_stop' %}", {
                     method: 'POST',
                     headers: {

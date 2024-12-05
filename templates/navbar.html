@@ -13,9 +13,61 @@
       <a href={% url 'home' %} class="support">
         الدعم الفني
       </a>
-      <a href={% url 'home' %} class="logo-cont">
-        <i class='bx bxs-bell' style='color:#ffffff'></i>
-      </a>
-      
+        <ul class="notification-drop">
+          <li class="item">
+            <i class='bx bxs-bell' style='color:#ffffff'></i>
+            {% if notifications%} 
+            <span class="btn__badge pulse-button ">{{notifications.count}}</span>     
+            <ul>
+              {% for notification in notifications %}
+              <li>{{notification.message}}</li>
+              {% endfor %}
+            </ul>
+            {% endif %}
+          </li>
+        </ul>
       </div>
+
+      <div class="hamburger-menu" onclick="toggleSidenav()">
+        <i class="bx bx-menu" style="color: white; font-size: 30px;"></i>
+      </div>
+      
     </header>
+
+    <div class="mobile-sidenav" id="sidenavbar">
+      <nav class="nav__container">
+        <div class="nav__list">
+          <div class="nav__items">
+            <a href="{% url 'dashboard' %}" class="nav__link {% if request.path == '/dashboard/' %}active{% endif %}">
+              <i class='bx bxs-dashboard nav__icon'></i>
+              <span class="nav__name">الداشبورد</span>
+            </a>
+            <a href="{% url 'flows' %}" class="nav__link {% if request.path == '/flows/' %}active{% endif %}">
+              <i class='bx bx-cog nav__icon'></i>
+              <span class="nav__name">الأتمتة</span>
+            </a>
+            <a href="{% url 'campaigns' %}" class="nav__link {% if request.path == '/campaigns/' %}active{% endif %}">
+              <i class='bx bxs-megaphone nav__icon'></i>
+              <span class="nav__name">الحملات الترويجية</span>
+            </a>
+            <a href="{% url 'static_bot' %}" class="nav__link {% if request.path == '/static-bot/' %}active{% endif %}">
+              <i class='bx bxs-bot nav__icon'></i>
+              <span class="nav__name">الرد التلقائي</span>
+            </a>
+            <a href="{% url 'customers' %}" class="nav__link {% if request.path == '/customers/' %}active{% endif %}">
+              <i class='bx bxs-user-detail nav__icon'></i>
+              <span class="nav__name">العملاء</span>
+            </a>
+            <a href="{% url 'whatsapp_session' %}" class="nav__link {% if request.path == '/link-channel/' %}active{% endif %}">
+              <i class='bx bxl-whatsapp-square nav__icon'></i>
+              <span class="nav__name">ربط الواتساب</span>
+            </a>
+          </div>
+        </div>
+      </nav>
+    
+      <a href="{% url 'logout' %}" class="nav__link nav__logout">
+        <i class='bx bx-log-out nav__icon'></i>
+        <span class="nav__name">تسجيل الخروج</span>
+      </a>
+    </div>

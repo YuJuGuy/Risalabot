@@ -1,7 +1,9 @@
 from django.contrib import admin
 from .models import User, Subscription, Store, UserStoreLink, Campaign, FlowActionTypes, Flow, FlowStep, SuggestedFlow, SuggestedFlowStep, Trigger, TextConfig, TimeDelayConfig, SuggestedTextConfig, SuggestedTimeDelayConfig, Customer, Group
-from .models import CouponConfig, SuggestedCouponConfig, ActivityLog
+from .models import CouponConfig, SuggestedCouponConfig, ActivityLog, Notification, StaticBot
 from automations.models import MonthlyInstallations, MonthlyPayments, AppTrial
+from django.http import HttpResponseRedirect
+
 # Customize User model admin
 @admin.register(User)
 class UserAdmin(admin.ModelAdmin):
@@ -80,9 +82,45 @@ class MonthlyPaymentsAdmin(admin.ModelAdmin):
 class AppTrialAdmin(admin.ModelAdmin):
     list_display = ('store', 'date', 'reference_number')
     search_fields = ('store__store_name', 'reference_number')
+
+def duplicate_product(modeladmin, request, queryset):
+    for obj in queryset:
+        # Create a copy of the selected object (excluding the primary key)
+        obj.pk = None  # Remove the primary key to create a new instance
+        obj.save()
+
+        # Optionally, add a success message
+        
+    # Redirect to the current page to see the duplicated products
+    return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+
+duplicate_product.short_description = "Duplicate selected products"
+
+class NotificationAdmin(admin.ModelAdmin):
+    list_display = ('store', 'message')
+    search_fields = ('store__store_name', 'message')
     
-    
-admin.site.register(Customer)
+    actions = [duplicate_product] 
+
+
+
+admin.site.register(Notification, NotificationAdmin)
+
+
+class CustomerAdmin(admin.ModelAdmin):
+    list_display = ('customer_name', 'customer_email', 'customer_phone', 'customer_location')
+    search_fields = ('customer_name', 'customer_email', 'customer_phone', 'customer_location')
+
+    actions = [duplicate_product] 
+
+
+class ActivitylogAdmin(admin.ModelAdmin):
+    actions = [duplicate_product]
+
+
+
+admin.site.register(Customer, CustomerAdmin)
+admin.site.register(StaticBot)
 admin.site.register(Group)
 admin.site.register(Subscription)
 admin.site.register(UserStoreLink)
@@ -93,7 +131,7 @@ admin.site.register(CouponConfig)
 admin.site.register(SuggestedTextConfig)
 admin.site.register(SuggestedTimeDelayConfig)
 admin.site.register(SuggestedCouponConfig)
-admin.site.register(ActivityLog)
+admin.site.register(ActivityLog, ActivitylogAdmin)
 
 
 

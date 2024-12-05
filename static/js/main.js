@@ -28,6 +28,16 @@ document.addEventListener('DOMContentLoaded', function() {
     // Function to update subcategory visibility based on event type selection
 });
 
+$(document).ready(function() {
+    $(".notification-drop .item").on('click',function() {
+      $(this).find('ul').toggle();
+    });
+  });
+
+function toggleSidenav() {
+    document.getElementById("sidenavbar").classList.toggle("active");
+  }
+
 
 function showMessage(message, type) {
     const messageDisplay = document.getElementById('message-display');

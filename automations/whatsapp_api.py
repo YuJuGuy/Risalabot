@@ -33,26 +33,6 @@ def whatsapp_create_session(user):
     session = user.session_id
     headers = {'accept': 'application/json', 'Content-Type': 'application/json'}
 
-    while True:
-        # Check if session already exists and its status
-        status = get_session_status(session)
-        if status == "WORKING":
-            user.connected = True
-            user.save()
-            return {'success': True}
-        elif status == "SCAN_QR_CODE":
-            return get_qr_code(session)
-        elif status == "STARTING":
-            # Wait for session to start
-            time.sleep(3)
-            continue
-        elif status == "FAILED":
-            return {'success': False}
-        else:
-            break
-
-    # No session exists, proceed to create a new session
-    print("Creating a new session")
     url = "http://localhost:3000/api/sessions/start"
     data = {
         "name": session,
@@ -60,7 +40,6 @@ def whatsapp_create_session(user):
         "config": {
             "metadata": {
             "user.id": UserStoreLink.objects.filter(user=user).first().store.store_id,
-            "user.name": UserStoreLink.objects.filter(user=user).first().store.store_name
             },
                 "proxy": None,
                 "debug": False,
@@ -84,9 +63,7 @@ def whatsapp_create_session(user):
     response = requests.post(url, headers=headers, json=data)
     
     if response.status_code in [200, 201]:
-        # Wait for the session to start and fetch its status again
-        time.sleep(3)
-        return whatsapp_create_session(user)
+        return {'success': True}
     else:
         return {'success': False}
     
@@ -169,6 +146,23 @@ def stop_session(user):
     response = requests.post(url, headers=headers, json=data)
     
     if response.status_code in [200, 201]:
+        return {'success': True}
+    else:
+        return {'success': False}
+
+
+def delete_session(user):
+    session = user.session_id
+    headers = {'accept': 'application/json', 'Content-Type': 'application/json'}
+    # Delete the session
+    url = f"http://localhost:3000/api/sessions/{session}"
+    response = requests.delete(url, headers=headers, json=data)
+    logger.info(f"Deleting session for user: {user.email}")
+
+    
+    if response.status_code in [200, 201]:
+        user.connected = False
+        user.save()
         return {'success': True}
     else:
         return {'success': False}
