@@ -146,6 +146,8 @@ def stop_session(user):
     response = requests.post(url, headers=headers, json=data)
     
     if response.status_code in [200, 201]:
+        user.connected = False
+        user.save()
         return {'success': True}
     else:
         return {'success': False}
@@ -156,7 +158,7 @@ def delete_session(user):
     headers = {'accept': 'application/json', 'Content-Type': 'application/json'}
     # Delete the session
     url = f"http://localhost:3000/api/sessions/{session}"
-    response = requests.delete(url, headers=headers, json=data)
+    response = requests.delete(url, headers=headers)
     logger.info(f"Deleting session for user: {user.email}")
 
     
@@ -166,3 +168,28 @@ def delete_session(user):
         return {'success': True}
     else:
         return {'success': False}
+
+
+def send_whatsapp_message(number, msg, session):
+    url = 'http://localhost:3000/api/sendText'
+    headers = {'accept': 'application/json', 'Content-Type': 'application/json'}
+    number = clean_number(number)
+    data = {
+        'chatId': number,
+        "text": msg,
+        "session": session
+    }
+
+    try:
+        response = requests.post(url, headers=headers, json=data)
+        if response.status_code in [200, 201]:
+            return {'success': True}
+        else:
+            return {'success': False}
+    except requests.exceptions.RequestException as e:
+        return False, f"Error occurred when sending message: {e}"
+
+def clean_number(number):
+    #remove the + and spaces from the number
+    return number.replace('+', '').replace(' ', '')
+    

@@ -1,6 +1,6 @@
 from django.contrib import admin
 from .models import User, Subscription, Store, UserStoreLink, Campaign, FlowActionTypes, Flow, FlowStep, SuggestedFlow, SuggestedFlowStep, Trigger, TextConfig, TimeDelayConfig, SuggestedTextConfig, SuggestedTimeDelayConfig, Customer, Group
-from .models import CouponConfig, SuggestedCouponConfig, ActivityLog, Notification, StaticBot
+from .models import CouponConfig, SuggestedCouponConfig, ActivityLog, Notification, StaticBot, StaticBotLog, StaticBotStart, StaticBotMessage, StaticBotStartMessage
 from automations.models import MonthlyInstallations, MonthlyPayments, AppTrial
 from django.http import HttpResponseRedirect
 
@@ -121,6 +121,10 @@ class ActivitylogAdmin(admin.ModelAdmin):
 
 admin.site.register(Customer, CustomerAdmin)
 admin.site.register(StaticBot)
+admin.site.register(StaticBotMessage)
+admin.site.register(StaticBotStartMessage)
+admin.site.register(StaticBotLog)
+admin.site.register(StaticBotStart)
 admin.site.register(Group)
 admin.site.register(Subscription)
 admin.site.register(UserStoreLink)

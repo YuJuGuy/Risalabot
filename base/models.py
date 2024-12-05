@@ -78,28 +78,102 @@ class Notification(models.Model):
 class StaticBot(models.Model):
     store = models.ForeignKey(Store, on_delete=models.CASCADE)
     message = models.TextField()
+    return_message = models.TextField()
+
     # condition only choices 1 and 2
-    condition_choices = (
-        ('Exact Text', 'النص بالضبط'),
-        ('Has Text', 'يحتوي على النص'),
+    CONDITION_CHOICES = (
+        (1, 'النص بالضبط'),  # Exact text
+        (2, 'يحتوي على النص'),  # Contains text
     )
-    condition = models.CharField(max_length=255, choices=condition_choices)
+    condition = models.IntegerField(choices=CONDITION_CHOICES, default=1)
+
+    
+    class Meta:
+        unique_together = ('store', 'message')
+
+    def clean(self):
+        # Validate unique messages per store
+        if StaticBot.objects.filter(store=self.store, message=self.message).exclude(id=self.id).exists():
+            raise ValidationError("لا يمكن أن يتكرر النص لنفس المتجر.")
 
     def __str__(self):
-        return f'{self.store.store_name} - {self.name}'
+        return f'{self.store.store_name} - {self.message}'
+
 
 
 class StaticBotStart(models.Model):
+    CONDITION_CHOICES = (
+        (1, 'النص بالضبط'),  # Exact text
+        (2, 'يحتوي على النص'),  # Contains text
+        (3, 'أي نص'),  # Any text
+    )
     enabled = models.BooleanField(default=False)
     store = models.OneToOneField(Store, on_delete=models.CASCADE)
+    condition = models.IntegerField(choices=CONDITION_CHOICES, default=3)
     message = models.TextField()
+    return_message = models.TextField()
     hours = models.IntegerField(validators=[MinValueValidator(1)])
 
 
+
+
+    def __str__(self):
+        return f'{self.store.store_name} {self.store.store_id} - {self.enabled}'
+
 class StaticBotLog(models.Model):
-    bot = models.ForeignKey(StaticBot, on_delete=models.CASCADE)
+    store = models.ForeignKey(Store, on_delete=models.CASCADE)
     customer = models.CharField(max_length=255)
-    time = models.DateTimeField(auto_now_add=True)
+    time = models.DateTimeField()
+
+class StaticBotMessage(models.Model):
+    store = models.ForeignKey(Store, on_delete=models.CASCADE)
+    bot = models.ForeignKey(StaticBot, on_delete=models.CASCADE)
+    count = models.IntegerField(default=0)
+
+    def save(self, *args, **kwargs):
+        # Check if the instance already exists to calculate the difference
+        if self.pk is not None:
+            old_instance = StaticBotMessage.objects.get(pk=self.pk)
+            increment = self.count - old_instance.count  # Calculate how much is added
+        else:
+            increment = self.count  # For new instances, the entire count is the increment
+
+        # Update store fields only if there is a positive increment
+        if increment > 0:
+            self.store.total_messages_sent += increment
+            self.store.subscription_message_count += increment
+            self.store.save(update_fields=['total_messages_sent', 'subscription_message_count'])
+
+        # Call the original save method
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f'{self.store.store_name} - {self.bot.message}'
+
+
+class StaticBotStartMessage(models.Model):
+    store = models.ForeignKey(Store, on_delete=models.CASCADE)
+    count = models.IntegerField(default=0)
+
+    def save(self, *args, **kwargs):
+        # Check if the instance already exists to calculate the increment
+        if self.pk is not None:
+            old_instance = StaticBotStartMessage.objects.get(pk=self.pk)
+            increment = self.count - old_instance.count  # Calculate the difference
+        else:
+            increment = self.count  # For new instances, the entire count is the increment
+
+        # Update store fields only if there is a positive increment
+        if increment > 0:
+            self.store.total_messages_sent += increment
+            self.store.subscription_message_count += increment
+            self.store.save(update_fields=['total_messages_sent', 'subscription_message_count'])
+
+        # Call the original save method
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f'{self.store.store_name} - {self.count}'
 
 
     

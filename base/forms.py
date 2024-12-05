@@ -1,6 +1,6 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
-from . models import User , Campaign, Flow
+from . models import User , Campaign, Flow, StaticBotStart
 from django.core.exceptions import ValidationError
 import json
 
@@ -160,5 +160,46 @@ class FlowForm(forms.ModelForm):
             label = self.Meta.labels.get(field_name, field_name)
             errors[label] = list(field_errors)
         return errors
+
+class StaticBotStartForm(forms.ModelForm):
+    class Meta:
+        model = StaticBotStart
+        fields = ['enabled', 'condition', 'message', 'hours']
+
+        labels = {
+            'enabled': 'مفعل',
+            'condition': 'الشرط',
+            'message': 'الرسالة',
+            'hours': 'الساعات',
+        }
+        widgets = {
+            'enabled': forms.CheckboxInput(),
+            'condition': forms.Select(attrs={'placeholder': 'اختر الشرط'}),
+            'message': forms.Textarea(attrs={'placeholder': 'ادخل الرسالة هنا'}),
+            'hours': forms.NumberInput(),
+        }
+
+
+        def __init__(self, *args, **kwargs):
+            super(StaticBotStartForm, self).__init__(*args, **kwargs)
+            # Customize the empty label for the trigger field            
+            for field_name, field in self.fields.items():
+                # Set custom error messages
+                field.error_messages = {
+                    'required': f'يجب إدخال {self.Meta.labels[field_name]}'
+                }
+        
+        def get_custom_errors(self):
+            """
+            Return errors with field names replaced by their labels in Arabic.
+            """
+            errors = {}
+            for field_name, field_errors in self.errors.items():
+                label = self.Meta.labels.get(field_name, field_name)
+                errors[label] = list(field_errors)
+            return errors
+
+
+
 
 

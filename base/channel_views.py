@@ -40,9 +40,7 @@ def create_whatsapp_session(request):
             user.connected = True
             user.save()
         elif status == "FAILED":
-            delete_session(user)
-            user.connected = False
-            user.save()    
+            delete_session(user) 
         else:
             user.connected = False
             user.save()
@@ -97,8 +95,6 @@ def stop_whatsapp(request):
     if request.method == 'POST':
         result = stop_session(request.user)
         if result['success']:
-            request.user.connected = False
-            request.user.save()
             return JsonResponse({'success': True})
         else:
             return JsonResponse({'success': False})

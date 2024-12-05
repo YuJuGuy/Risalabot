@@ -7,6 +7,7 @@ from django.utils.crypto import get_random_string
 from base.models import Store, Campaign, UserStoreLink, Flow, FlowStep, TextConfig, TimeDelayConfig, CouponConfig, AbandonedCart
 import logging
 import pytz
+from automations.whatsapp_api import send_whatsapp_message
 
 logging.basicConfig(level=logging.INFO)
 ksa_timezone = pytz.timezone("Asia/Riyadh")
@@ -29,41 +30,7 @@ replacements = {
 
 
 
-def send_whatsapp_message(store, number, msg, session):
-    """
-    Send a WhatsApp message to the given number and return whether it was successful.
 
-    :param store: Store object (for message limit tracking)
-    :param number: The phone number of the customer
-    :param msg: The message text to send
-    :param session: The session identifier for the WhatsApp API
-    :return: (bool, str) - success flag, status message
-    """
-    messages_limit = store.subscription.messages_limit
-
-    if store.subscription_message_count >= messages_limit:
-        return False, f"Message limit reached: {store.subscription_message_count} messages sent."
-
-    url = 'http://localhost:3000/api/sendText'
-    headers = {'accept': 'application/json', 'Content-Type': 'application/json'}
-
-    print(number)
-    number = clean_number(number)
-    print(number)
-    data = {
-        'chatId': number,
-        "text": msg,
-        "session": session
-    }
-
-    try:
-        response = requests.post(url, headers=headers, json=data)
-        if response.status_code in [200, 201]:
-            return True, "Message sent successfully."
-        else:
-            return False, f"Failed to send message. Status code: {response.status_code}"
-    except requests.exceptions.RequestException as e:
-        return False, f"Error occurred when sending message: {e}"
     
     
 @shared_task(bind=True, max_retries=3)
@@ -74,6 +41,12 @@ def send_whatsapp_message_task(self, data):
             data = data[0]
 
         store = Store.objects.get(store_id=data['store_id'])
+
+        userstorelink = UserStoreLink.objects.get(store=store)
+        user = userstorelink.user
+
+        if not user.connected:
+            logging.info("User is not connected.")
         
         # Check if the campaign exists and has the correct status
         campaign = Campaign.objects.get(id=data['campaign_id'], store=store)
@@ -112,7 +85,10 @@ def send_whatsapp_message_task(self, data):
                 data['msg'] = data['msg'].replace(placeholder, value)
 
         # Send the WhatsApp message
-        success, message = send_whatsapp_message(store, customer['phone'], data['msg'], session)
+        messages_limit = store.subscription.messages_limit
+        if store.subscription_message_count >= messages_limit:
+            return False, f"Message limit reached: {store.subscription_message_count} messages sent."
+        success, message = send_whatsapp_message(customer['phone'], data['msg'], session)
         if success:
             sent_count += 1
             with transaction.atomic():
@@ -154,6 +130,9 @@ def process_flows_task(self, flow_ids, flow_data, current_step_index=0):
     except Store.DoesNotExist:
         logging.info(f"Store with id {flow_data['store_id']} does not exist.")
         return None
+
+    if not user.connected:
+        logging.info("User is not connected.")
 
     for flow in flows:
         # Order flow steps and process starting from the current step
@@ -224,7 +203,10 @@ def process_flows_task(self, flow_ids, flow_data, current_step_index=0):
                     if result['success']:
                         # Handle success, coupon creation was successful
                         logging.info("Coupon created successfully:", result['data'])
-                        success, message = send_whatsapp_message(store, flow_data['customer_phone'],coupon_config.message, session)
+                        messages_limit = store.subscription.messages_limit
+                        if store.subscription_message_count >= messages_limit:
+                            return False, f"Message limit reached: {store.subscription_message_count} messages sent."
+                        success, message = send_whatsapp_message(flow_data['customer_phone'],coupon_config.message, session)
                         if success:
                             with transaction.atomic():
                                 flow.messages_sent += 1
@@ -278,10 +260,7 @@ def convert_delay_to_seconds(delay_time, delay_type):
     
     
 
-def clean_number(number):
-    #remove the + and spaces from the number
-    return number.replace('+', '').replace(' ', '')
-    
+
     
     
 
