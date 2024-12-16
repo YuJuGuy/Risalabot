@@ -19,7 +19,7 @@ def whatsapp_hook(request):
     try:
         body_data = json.loads(body_unicode)
     except json.JSONDecodeError:
-        return JsonResponse({"error": "Invalid JSON"}, status=400)
+        return JsonResponse({"message": "Webhook processed successfully"}, status=200)
 
     if body_data.get('event') == 'session.status':
         session_status_process(body_data)
@@ -44,7 +44,10 @@ def session_status_process(body_unicode):
         logger.error("Phone number is missing in session data.")
         return
 
-    user = UserStoreLink.objects.filter(store__store_id=store_id).first()
+    store = Store.objects.filter(store_id=store_id).first()
+    user_store_link = UserStoreLink.objects.get(store__store_id=store_id)
+    user = user_store_link.user
+
     if not user:
         logger.error(f"No user found for store_id: {store_id}")
         return
@@ -115,17 +118,10 @@ def message_process(body_unicode):
 
         payload_message = body_unicode.get('payload', {}).get('body')
         if not recent_log_exists and staticbotstart and staticbotstart.enabled:
-            # Use staticbotstart only when there's no recent log
-            logger.info(f"Using StaticBotStart for message processing.")
-            if staticbotstart.condition == 1:  # Exact text
-                if payload_message == staticbotstart.message:
-                    success = send_whatsapp_message(from_number, staticbotstart.return_message, user.session_id)
-            elif staticbotstart.condition == 2:  # Contains text
-                if payload_message in staticbot.message:
-                    success = send_whatsapp_message(from_number, staticbotstart.return_message, user.session_id)
-            elif staticbotstart.condition == 3:  # Any text
-                success = send_whatsapp_message(from_number, staticbotstart.return_message, user.session_id)
 
+
+            success = send_whatsapp_message(from_number, staticbotstart.return_message, user.session_id)
+            
             if success:
                 StaticBotLog.objects.create(
                     customer=from_number,

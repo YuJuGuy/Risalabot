@@ -3,66 +3,338 @@
 
 {% block content %}
 
-
-{%if not botenabled%}
+{% if not botenabled %}
 <div class="feature-alert">
     <p>هذه الميزه فقط لمشتركين باقة البرو والبرميم</p>
 </div>
 {% endif %}
 
-<form id="startbotform" novalidate method="post">
-    {% csrf_token %}
-    {% for field in form %}
-    {{field}}
-    {% endfor %}
-    <div class="button-row">
-        <button class="save-button" type="submit" id="saveButton">حفظ</button>
+<div class="bots-container">
+    <label class="toggle-switch">
+        <input type="checkbox" id="bot-toggle">
+        <span class="slider"></span>
+    </label>
+
+    <!-- Start Static Bot Section -->
+    <div class="startbot-container" id="startbot-container">
+        <div class="startbot-header">
+            <p>البوت الرئيسي</p>
+            <p id="enabled"></p>
+            <p class="bot-message" id="message"></p>
+            <p id="hours"></p>
+            <button class="accordion-header"><i class='bx bxs-edit' style='color:#00ffa2'></i></button>
+        </div>
+        <div class="accordion-content" id="startbot-accordion-content">
+            <form id="startbot-form" novalidate method="post">
+                {% csrf_token %}
+                <div class="startbotform">
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="startbot-enabled" name="enabled">
+                        <span class="slider"></span>
+                    </label>
+                    <div class="startbot-div">
+                        <label for="startbot-message">الرسالة المرجعية:</label>
+                        <textarea id="startbot-message" name="return_message" placeholder="ادخل الرسالة"></textarea>
+                    </div>
+                    <div class="startbot-div">
+                    <label for="startbot-message">عدد الساعات قبل الارسال لنفس العميل:</label>
+                    <input type="number" id="startbot-hours" name="hours" placeholder="عدد الساعات">
+                    </div>
+                    <div class="button-row">
+                        <button class="save-button" type="submit">حفظ</button>
+                    </div>
+                </div>
+            </form>
+        </div>
     </div>
-</form>
+
+    <button class="add-button" id="add-bot-button"><i class='bx bx-plus' style='color:#fff'></i></button>
+
+
+    <!-- Static Bots Section -->
+    <div class="bot-list" id="bot-list"></div>
+    </div>
 
 
 
-<meta name="csrfmiddlewaretoken" content="{{ csrf_token }}">
-
+<div id="delete-bot-popup" class="popup-overlay">
+    <div class="delete-popup-content">
+        <h2>حذف البوت</h2>
+        <p>هل تريد حذف البوت؟</p>
+        <button id="confirm-delete-button">حذف</button>
+        <button id="cancel-delete-button">العودة</button>
+    </div>
+</div>
 
 <script>
-    // on page load show message
+    document.addEventListener("DOMContentLoaded", function () {
+        initializeAccordion();
+        fetchBots();
+    });
+    
+    function initializeAccordion() {
+        const accordionHeaders = document.querySelectorAll(".accordion-header");
+    
+        accordionHeaders.forEach((header) => {
+            header.addEventListener("click", function () {
+                const container = this.closest(".startbot-container, .bot-container");
+                if (container) {
+                    const content = container.querySelector(".accordion-content");
+                    if (content) {
+                        // Toggle maxHeight based on current state
+                        const isOpen = content.style.maxHeight !== "";
+                        document.querySelectorAll(".accordion-content").forEach((otherContent) => {
+                            if (otherContent !== content) {
+                                otherContent.style.maxHeight = null; // Close other contents
+                            }
+                        });
+                        content.style.maxHeight = isOpen ? null : content.scrollHeight + "px"; // Toggle current content
+                    }
+                }
+            });
+        });
+    }
+    
+    // Fetch data for both Start Bot and Static Bots
+    function fetchBots() {
+        fetch('/get-bots/')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Populate StartStaticBot data
+                    const startBot = data.start_bot;
+                    if (startBot) {
+                        document.getElementById('startbot-enabled').checked = startBot.enabled;
+                        document.getElementById('startbot-message').value = startBot.return_message;
+                        document.getElementById('startbot-hours').value = startBot.hours;
+                        document.getElementById('enabled').textContent = startBot.enabled ? 'مفعل' : 'غير مفعل';
+                        document.getElementById('enabled').style.color = startBot.enabled ? '#00FFA2' : 'grey';
+                        document.getElementById('message').textContent = startBot.return_message;
 
+                        document.getElementById('hours').textContent = startBot.hours;
+                    }
+    
+                    // Populate Static Bots
+                    const botList = document.getElementById('bot-list');
+                    botList.innerHTML = '';
+                    data.static_bots.forEach(bot => {
+                        const botDiv = document.createElement('div');
+                        botDiv.classList.add('bot-container');
+                        botDiv.innerHTML = `
+                            <div class="startbot-header">
+                                بوت مخصص
+                                <div>
+                                    <button class="accordion-header"><i class='bx bxs-edit' style='color:#00ffa2'></i></button>
+                                    <button class="accordion-header" onclick="deleteBot('${bot.id}')"><i class='bx bxs-trash' style='color:red'></i></button>
+                                </div>
+                            </div>
+                            <div class="accordion-content">
+                                <form class="staticbot-edit-form" novalidate method="post" data-id="${bot.id}">
+                                    <label for="message-${bot.id}">الرسالة:</label>
+                                    <textarea id="message-${bot.id}" name="message">${bot.message}</textarea>
+                                    <label for="return_message-${bot.id}">الرسالة المرجعية:</label>
+                                    <textarea id="return_message-${bot.id}" name="return_message">${bot.return_message}</textarea>
+                                    <label for="condition-${bot.id}">الشروط:</label>
+                                    <select id="condition-${bot.id}" name="condition">
+                                        <option value="1" ${bot.condition === 1 ? 'selected' : ''}>النص بالضبط</option>
+                                        <option value="2" ${bot.condition === 2 ? 'selected' : ''}>يحتوي على النص</option>
+                                    </select>
+                                    <div class="button-row">
+                                        <button type="submit" class="save-button">حفظ</button>
+                                    </div>
+                                </form>
+                            </div>
+                        `;
+                        botList.appendChild(botDiv);
+    
+                        // Initialize accordion for this bot
+                        initializeAccordion();
+                        
+                        const editForm = botDiv.querySelector('.staticbot-edit-form');
+                        editForm.addEventListener('submit', function (e) {
+                            e.preventDefault();
+                        
+                            const botId = this.dataset.id; // Pass the bot ID
+                            const formData = {
+                                id: botId,
+                                message: this.querySelector('[name="message"]').value,
+                                return_message: this.querySelector('[name="return_message"]').value,
+                                condition: this.querySelector('[name="condition"]').value,
+                            };
+                        
+                            fetch('/staticbot/', {
+                                method: 'PUT',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                                },
+                                body: JSON.stringify(formData)
+                            })
+                                .then(response => response.json())
+                                .then(data => {
+                                    showMessage(data.message, data.type);
+                                    if (data.success) {
+                                        fetchBots(); // Refresh the bots list
+                                    }
+                                });
+                        });
+                    });
+                } else {
+                    alert('Failed to fetch bot data.');
+                }
+            });
+    }
 
-    document.addEventListener("DOMContentLoaded", function() {
-        const startBotForm = document.getElementById('startbotform');
-        if (startBotForm) {
-            startBotForm.addEventListener('submit', function(event) {
-                event.preventDefault(); // Prevent the default form submission
-        
-                const formData = new FormData(startBotForm);
-                fetch('/static-bot/', { // replace with the actual URL
-                    method: 'POST',
-                    headers: {
-                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-                    },
-                    body: formData
-                })
+    // Save StartStaticBot
+    document.getElementById('startbot-form').addEventListener('submit', function (e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+
+        fetch('/startbot/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: formData
+        })
+            .then(response => response.json())
+            .then(data => {
+                showMessage(data.message, data.type);
+                if (data.success) {
+                    fetchBots();
+                }
+            });
+    });
+
+    // Add New StaticBot
+    document.getElementById('add-bot-button').addEventListener('click', function () {
+        const botList = document.getElementById('bot-list');
+        const uniqueId = `bot-${Date.now()}`; // Generate a unique ID for the new bot form
+        const newBotDiv = document.createElement('div');
+        newBotDiv.classList.add('bot-container');
+        newBotDiv.innerHTML = `
+            <div class="startbot-header">
+                بوت جديد
+                <div>
+                <button class="accordion-header"><i class='bx bxs-edit' style='color:#00ffa2'></i></button>
+                <button class="accordion-header" onclick="removeBot(this)"><i class='bx bxs-trash' style='color:red'></i></button>
+                </div>
+            </div>
+            <div class="accordion-content">
+                <form class="staticbot-form" novalidate method="post" id="${uniqueId}">
+                    <label for="message-${uniqueId}">الرسالة:</label>
+                    <textarea id="message-${uniqueId}" name="message" placeholder="ادخل الرسالة"></textarea>
+                    <label for="return_message-${uniqueId}">الرسالة المرجعية:</label>
+                    <textarea id="return_message-${uniqueId}" name="return_message" placeholder="ادخل الرسالة المرجعية"></textarea>
+                    <label for="condition-${uniqueId}">الشروط:</label>
+                    <select id="condition-${uniqueId}" name="condition">
+                        <option value="1">النص بالضبط</option>
+                        <option value="2">يحتوي على النص</option>
+                    </select>
+                    <div class="button-row">
+                        <button type="submit" class="save-button">حفظ</button>
+                    </div>
+                </form>
+            </div>
+        `;
+        botList.appendChild(newBotDiv);
+    
+        // Initialize accordion for the new bot
+        initializeAccordion();
+    
+        const newBotForm = document.getElementById(uniqueId);
+        newBotForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            const formData = new FormData(newBotForm);
+    
+            fetch('/staticbot/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: formData
+            })
                 .then(response => response.json())
                 .then(data => {
-                    if (data.status === 'success') {
+                    if (data.success) {
                         showMessage(data.message, data.type);
+                        fetchBots(); // Refresh list
                     } else {
-                        if (typeof data.message === 'object') {
-                            for (const [field, errors] of Object.entries(data.message)) {
-                                errors.forEach(error => {
-                                    showMessage(`${field}: ${error.message}`, 'error');
-                                });
-                            }
-                        } else {
-                            showMessage(data.message, data.type);
-                        }
+                        showMessage(data.message, data.type);
                     }
                 })
-                .catch(error => console.error('Error creating group:', error));
-            });
-        }
+                .catch(error => console.error('Fetch error:', error));
+        });
     });
-    </script>
+
+
+    removeBot = (button) => {
+        button.closest('.bot-container').remove();
+    }
+
+
+    function deleteBot(botId) {
+        // Show the custom confirm box
+        const confirmDeletePopup = document.getElementById('delete-bot-popup');
+        confirmDeletePopup.style.display = 'flex';
+    
+        // Remove previous event listeners to prevent duplication
+        const confirmDeleteButton = document.getElementById('confirm-delete-button');
+        const cancelDeleteButton = document.getElementById('cancel-delete-button');
+    
+        // Clone the button to remove old listeners
+        const newConfirmDeleteButton = confirmDeleteButton.cloneNode(true);
+        confirmDeleteButton.parentNode.replaceChild(newConfirmDeleteButton, confirmDeleteButton);
+    
+        const newCancelDeleteButton = cancelDeleteButton.cloneNode(true);
+        cancelDeleteButton.parentNode.replaceChild(newCancelDeleteButton, cancelDeleteButton);
+    
+        // Add fresh listeners
+        newConfirmDeleteButton.addEventListener('click', function () {
+            confirmDeletePopup.style.display = 'none';
+            deleteBotConfirmed(botId);
+        });
+    
+        newCancelDeleteButton.addEventListener('click', function () {
+            confirmDeletePopup.style.display = 'none';
+        });
+    }
+    
+
+    function deleteBotConfirmed(botId) {
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    
+        fetch(`/delete-bot/${botId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken
+            }
+        })
+            .then(response => {
+                // Handle both success and failure statuses
+                if (response.ok) {
+                    return response.json();
+                } else {
+                    throw new Error(`Failed to delete bot with ID ${botId}: ${response.status}`);
+                }
+            })
+            .then(data => {
+                if (data.success) {
+                    showMessage(data.message, data.type);
+                    fetchBots(); // Refresh list
+                }
+                else {
+                    showMessage(data.message, data.type);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showMessage(`An error occurred: ${error.message}`, 'error');
+            });
+    }
+    
+    
+    
+</script>
 
 {% endblock %}

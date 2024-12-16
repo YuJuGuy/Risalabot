@@ -102,15 +102,8 @@ class StaticBot(models.Model):
 
 
 class StaticBotStart(models.Model):
-    CONDITION_CHOICES = (
-        (1, 'النص بالضبط'),  # Exact text
-        (2, 'يحتوي على النص'),  # Contains text
-        (3, 'أي نص'),  # Any text
-    )
     enabled = models.BooleanField(default=False)
     store = models.OneToOneField(Store, on_delete=models.CASCADE)
-    condition = models.IntegerField(choices=CONDITION_CHOICES, default=3)
-    message = models.TextField()
     return_message = models.TextField()
     hours = models.IntegerField(validators=[MinValueValidator(1)])
 
@@ -124,6 +117,9 @@ class StaticBotLog(models.Model):
     store = models.ForeignKey(Store, on_delete=models.CASCADE)
     customer = models.CharField(max_length=255)
     time = models.DateTimeField()
+
+    def __str__(self):
+        return f'{self.store.store_id} - {self.customer} - {self.time}'
 
 class StaticBotMessage(models.Model):
     store = models.ForeignKey(Store, on_delete=models.CASCADE)

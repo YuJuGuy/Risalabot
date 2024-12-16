@@ -59,6 +59,10 @@ urlpatterns = [
     path('stop-whatsapp/', channel_views.stop_whatsapp, name='whatsapp_stop'),
 
     path('static-bot/', staticbot.bot, name='static_bot'),
+    path('get-bots/', staticbot.get_bot, name='get_bots'),
+    path('startbot/', staticbot.start_static_bot_post, name='startbot'),
+    path('staticbot/', staticbot.static_bot_post, name='staticbot'),
+    path('delete-bot/<int:bot_id>/', staticbot.delete_static_bot, name='delete_bot'),
 
     path('', home.home_view, name="home"),
 ] + debug_toolbar_urls()
