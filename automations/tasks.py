@@ -4,7 +4,7 @@ from django.db import transaction
 from base.apis import create_coupon
 from datetime import datetime, timedelta, timezone
 from django.utils.crypto import get_random_string
-from base.models import Store, Campaign, UserStoreLink, Flow, FlowStep, TextConfig, TimeDelayConfig, CouponConfig, AbandonedCart
+from base.models import Store, Campaign, UserStoreLink, Flow, FlowStep, TextConfig, TimeDelayConfig, CouponConfig, AbandonedCart, Notification
 import logging
 import pytz
 from automations.whatsapp_api import send_whatsapp_message
@@ -44,9 +44,13 @@ def send_whatsapp_message_task(self, data):
 
         userstorelink = UserStoreLink.objects.get(store=store)
         user = userstorelink.user
+        
 
         if not user.connected:
             logging.info("User is not connected.")
+            Notification.objects.create(store=store, message="الواتساب غير متصل. يرجى تحديث البيانات.")
+            return None
+            return
         
         # Check if the campaign exists and has the correct status
         campaign = Campaign.objects.get(id=data['campaign_id'], store=store)

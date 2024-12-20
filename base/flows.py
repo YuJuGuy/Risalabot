@@ -5,7 +5,7 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
 from . decorators import check_token_validity
-from . models import User, UserStoreLink,Trigger, FlowActionTypes, Flow, FlowStep, SuggestedFlow, SuggestedFlowStep, TextConfig, TimeDelayConfig,SuggestedTextConfig, SuggestedTimeDelayConfig, CouponConfig, SuggestedCouponConfig
+from . models import User, UserStoreLink,Trigger, FlowActionTypes, Flow, FlowStep, SuggestedFlow, SuggestedFlowStep, TextConfig, TimeDelayConfig,SuggestedTextConfig, SuggestedTimeDelayConfig, CouponConfig, SuggestedCouponConfig, Notification
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 import json
@@ -43,6 +43,8 @@ def flows(request, context=None):
         # Assuming this is now guaranteed to be valid from the decorator
         user_store_link = UserStoreLink.objects.get(user=request.user)
         store = user_store_link.store
+        context['notification_count'] = Notification.objects.filter(store=store).count()
+        context['notifications'] = Notification.objects.filter(store=store).order_by('-created_at')
     except UserStoreLink.DoesNotExist:
         return redirect('dashboard')
 

@@ -9,7 +9,6 @@ from . import dashboard
 from . import channel_views
 from . import staticbot
 from django.contrib.auth import views as auth_views
-from debug_toolbar.toolbar import debug_toolbar_urls
 
 urlpatterns = [
     path('login/', authenticate_user.loginPage, name="login"),
@@ -52,17 +51,18 @@ urlpatterns = [
     path('callback/', authenticate_store.callback, name="callback"),
     path('unlinkstore/<str:store_id>/', authenticate_store.unlinkstore, name="unlinkstore"),
     
-    path('link-whatsapp-channel/', channel_views.whatsapp_session, name="whatsapp_session"),
+    path('channel/', channel_views.whatsapp_session, name="whatsapp_session"),
     path('create-whatsapp-session/', channel_views.create_whatsapp_session, name="create_whatsapp_session"),
     path('get-whatsapp-qr-code/', channel_views.get_whatsapp_qr_code, name='get_whatsapp_qr_code'),
     path('whatsapp-details/', channel_views.get_whatsapp_details, name='whatsapp_details'),
     path('stop-whatsapp/', channel_views.stop_whatsapp, name='whatsapp_stop'),
 
-    path('static-bot/', staticbot.bot, name='static_bot'),
+    path('bot/', staticbot.bot, name='static_bot'),
     path('get-bots/', staticbot.get_bot, name='get_bots'),
     path('startbot/', staticbot.start_static_bot_post, name='startbot'),
     path('staticbot/', staticbot.static_bot_post, name='staticbot'),
+    path('toggle-botenabled/', staticbot.toggle_bot_enabled, name='toggle_bot_enabled'),
     path('delete-bot/<int:bot_id>/', staticbot.delete_static_bot, name='delete_bot'),
 
     path('', home.home_view, name="home"),
-] + debug_toolbar_urls()
+]

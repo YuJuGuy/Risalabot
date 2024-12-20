@@ -48,7 +48,6 @@ INSTALLED_APPS = [
     
     'base.apps.BaseConfig',
     'automations.apps.AutomationsConfig',
-    'debug_toolbar',
 
 ]
 
@@ -64,7 +63,6 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    "debug_toolbar.middleware.DebugToolbarMiddleware",
 ]
 
 ROOT_URLCONF = 'Risalabot.urls'
@@ -101,7 +99,15 @@ DATABASES = {
 }
 
 
-
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://127.0.0.1:6379/1",
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        },
+    }
+}
 
 INTERNAL_IPS = [
     '127.0.0.1',
@@ -215,7 +221,7 @@ LOGGING = {
 CELERY_BEAT_SCHEDULE = {
     'update-total-customers-every-30-minutes': {
         'task': 'automations.recurring_tasks.update_total_customers',  # Adjust this to match your task path
-        'schedule': crontab(minute='*/30'),  # Runs every 30 minutes
+        'schedule': crontab(minute='*/2'),  # Runs every 30 minutes
     },
     
     'update-customer-subscription-daily': {

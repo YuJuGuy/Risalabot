@@ -1,16 +1,46 @@
+from math import log
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from . import admin_messages
 import json
-from base.models import User, Store, UserStoreLink, StaticBot, StaticBotStart, StaticBotLog, StaticBotMessage, StaticBotStartMessage
+from base.models import User, Store, UserStoreLink, StaticBot, StaticBotStart, StaticBotLog, StaticBotMessage, StaticBotStartMessage, Notification
 import logging
-from automations.whatsapp_api import send_whatsapp_message
+from automations.whatsapp_api import send_whatsapp_message, stop_session
 from datetime import timedelta
+from django.core.cache import cache
+from datetime import datetime
 from django.utils.timezone import now
 
 logger = logging.getLogger(__name__)
 
+
+def stop_or_store_session(session_id, user=None):
+    # Fetch the session data from cache
+    data = cache.get(session_id)
+    
+    # If data is not found in cache, store it with current time and set a 3-minute expiration
+    if not data:
+        # Store session with the current time and optional user
+        cache.set(session_id, {'time': datetime.now(), 'user': user}, 180)
+        logger.info(f"Session {session_id} stored with user: {user}.")
+        return
+
+    # Check if the session's data is older than 2 minutes
+    session_time = data.get('time')
+    if session_time:
+        if datetime.now() - session_time > timedelta(seconds=120):
+            # Ensure that 'user' exists before calling stop_session
+            user = data.get('user')
+            if user:
+                stop_session(user)
+                logger.info(f"Session {session_id} is older than 2 minutes, so it was stopped.")
+            else:
+                logger.warning(f"Session {session_id} has no user associated, cannot stop.")
+        else:
+            logger.info(f"Session {session_id} is not older than 2 minutes, so it was not stopped.")
+    else:
+        logger.warning(f"Session {session_id} data is invalid, missing 'time' field.")
 
 @csrf_exempt
 @require_POST
@@ -35,18 +65,25 @@ def session_status_process(body_unicode):
     me_data = body_unicode.get('me', {})
     store_id = body_unicode.get('metadata', '').get('user.id')
     number = me_data.get('id') if me_data else None
-
-    if session_status not in ['WORKING', 'FAILED', 'STOPPED']:
+    
+    store = Store.objects.filter(store_id=store_id).first()
+    user_store_link = UserStoreLink.objects.get(store__store_id=store_id)
+    user = user_store_link.user
+    
+    if session_status not in ['WORKING', 'FAILED', 'STOPPED', 'SCAN_QR_CODE']:
         logger.error(f"Unknown session status: {session_status}")
+        return
+
+    if session_status == 'SCAN_QR_CODE':
+        logger.info(f"Session {user.session_id} is handled by function stop_or_store_session.")
+        stop_or_store_session(user.session_id, user)
         return
         
     if not number:
         logger.error("Phone number is missing in session data.")
         return
 
-    store = Store.objects.filter(store_id=store_id).first()
-    user_store_link = UserStoreLink.objects.get(store__store_id=store_id)
-    user = user_store_link.user
+
 
     if not user:
         logger.error(f"No user found for store_id: {store_id}")
@@ -84,6 +121,7 @@ def message_process(body_unicode):
 
     if not user.connected:
         logger.info("User is not connected.")
+        Notification.objects.create(store=store, message="الواتساب غير متصل. يرجى تحديث البيانات.")
         return
 
     if not store.subscription.staticbot:

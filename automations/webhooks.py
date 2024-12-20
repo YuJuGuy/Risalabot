@@ -7,7 +7,7 @@ import os
 from dotenv import load_dotenv  
 import logging
 import json
-from base.models import User, Store, Flow,UserStoreLink, AbandonedCart, Subscription,Trigger
+from base.models import User, Store, Flow,UserStoreLink, AbandonedCart, Subscription,Trigger, Notification
 from automations.models import MonthlyInstallations, MonthlyPayments, AppTrial
 from .tasks import process_flows_task
 
@@ -171,18 +171,22 @@ def process_app_webhook(payload):
                 MonthlyPayments.objects.create(store=store, reference_number=payload.get('data', {}).get('id', ''), subscribtion=payload.get('data', {}).get('plan_name', ''), amount=payload.get('data', {}).get('price', ''))
                 Store.objects.filter(store_id=store_id).update(subscription_date=datetime.now(timezone.utc), subscribtion=payload.get('data', {}).get('plan_name', ''))
                 logging.info(f"App subscription started for store {store.store_id}")
-        
+                Notification.objects.create(store=store, message=f"تم تفعيل الاشتراك للمتجر {store.store_id}")
+
             if event == 'app.trial.started':
                 AppTrial.objects.create(store=store, reference_number=payload.get('data', {}).get('id', ''))
                 logging.info(f"App trial started for store {store.store_id}")
+                Notification.objects.create(store=store, message=f"تم تفعيل التجربة للمتجر {store.store_id}")
 
             if event == 'app.installed':
                 MonthlyInstallations.objects.create(store=store, reference_number=payload.get('data', {}).get('id', ''))
                 logging.info(f"App installed for store {store.store_id}")
+                Notification.objects.create(store=store, message=f"تم تثبيت التطبيق للمتجر {store.store_id}")
 
             if event == 'app.subscription.expired' or event == 'app.subscription.canceled':
                 Store.objects.filter(store_id=store_id).update(subscription_date=datetime.now(timezone.utc), subscription='')
                 logging.info(f"App subscription expired for store {store.store_id}")
+                Notification.objects.create(store=store, message=f"انتهت صلاحية الاشتراك للمتجر {store.store_id}")
 
 
     except Exception as e:

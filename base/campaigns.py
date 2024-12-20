@@ -1,4 +1,4 @@
-from .models import Campaign, UserStoreLink, Group, Customer
+from .models import Campaign, UserStoreLink, Group, Customer, Notification
 from .forms import CampaignForm
 from .decorators import check_token_validity
 from django.shortcuts import render, redirect
@@ -65,6 +65,8 @@ def campaign(request, context=None):
         user_store_link = UserStoreLink.objects.get(user=request.user)
         store = user_store_link.store
         store_groups = Group.objects.filter(store=store).order_by('-group_id')
+        context['notification_count'] = Notification.objects.filter(store=store).count()
+        context['notifications'] = Notification.objects.filter(store=store).order_by('-created_at')
 
         if not store_groups:
             messages.info(request, 'لا يوجد عملاء او مجموعات في المتجر. يرجى تحديث البيانات.') 

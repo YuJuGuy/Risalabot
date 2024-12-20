@@ -101,6 +101,8 @@
 <div id="data-urls" data-customers-url="{% url 'get_customers' %}"></div>
 
 <script src="https://cdn.datatables.net/v/dt/jq-3.7.0/dt-2.1.8/datatables.min.js"></script>
+<script src="https://cdn.datatables.net/responsive/3.0.3/js/dataTables.responsive.js"></script>
+<script src="https://cdn.datatables.net/responsive/3.0.3/js/responsive.dataTables.js"></script>
 <script>
 
     document.addEventListener("DOMContentLoaded", function() {
@@ -117,7 +119,7 @@
                 fetch('/customers/', { // replace with the actual URL
                     method: 'POST',
                     headers: {
-                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
                     },
                     body: formData
                 })
@@ -180,7 +182,7 @@
         fetch('/sync_data/', {
             method: 'POST',
             headers: {
-                'X-CSRFToken': document.querySelector('[name=csrf-token]').content,
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
                 'Content-Type': 'application/json'
             }
         })
@@ -199,21 +201,29 @@
 
     
     const customersUrl = document.getElementById('data-urls')?.dataset.customersUrl;
-    if (!customersUrl) {
-        console.error('Customer URL is not defined. Check if the data-urls element has the correct data attribute.');
-    }
-    document.addEventListener('DOMContentLoaded', function() {
+
+    document.addEventListener('DOMContentLoaded', function () {
+        if (!customersUrl) {
+            console.error('Customer URL is not defined. Check if the data-urls element has the correct data attribute.');
+            return;
+        }
+
         const myTable = document.getElementById('myTable');
         if (myTable) {
             $(myTable).DataTable({
-                data: [],  // Start with an empty array, data will be added dynamically
+                responsive: true, // Enables responsiveness
+                ajax: {
+                    url: customersUrl, // Fetch data dynamically from the server
+                    type: 'GET',
+                    dataSrc: '' // Adjust this based on the structure of your returned JSON
+                },
                 columns: [
-                    { data: 'name' },
-                    { data: 'email' },
-                    { data: 'phone' },
-                    { data: 'location' },
-                    { data: 'groups' },
-                    { data: 'updated_at' },
+                    { data: 'name' },          // Maps to 'name' in your JSON data
+                    { data: 'email' },         // Maps to 'email'
+                    { data: 'phone' },         // Maps to 'phone'
+                    { data: 'location' },      // Maps to 'location'
+                    { data: 'groups' },        // Maps to 'groups'
+                    { data: 'updated_at' }     // Maps to 'updated_at'
                 ],
                 paging: true,
                 pageLength: 25,
@@ -263,7 +273,7 @@
                 fetch(`/delete-group/${groupIdToDelete}/`, {
                     method: 'POST',
                     headers: {
-                        'X-CSRFToken': document.querySelector('[name=csrf-token]').content,
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
                         'Content-Type': 'application/json'
                     }
                 })

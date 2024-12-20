@@ -4,7 +4,7 @@ from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
 from base.decorators import check_token_validity
-from base.models import UserStoreLink, Customer, Group
+from base.models import UserStoreLink, Customer, Group, Notification
 from django.contrib import messages
 from django.db.models import Count
 from base.forms import GroupCreationForm
@@ -19,8 +19,13 @@ from django.db.models import Prefetch
 def customers_view(request, context=None):
     if context is None:
         context = {}
+
     try:
         store = UserStoreLink.objects.select_related('store').get(user=request.user).store
+        context['store'] = store
+        context['notification_count'] = Notification.objects.filter(store=store).count()
+        context['notifications'] = Notification.objects.filter(store=store).order_by('-created_at')
+
     except UserStoreLink.DoesNotExist:
         logger.error(f"No store linked to user {request.user.id}")
         return redirect('dashboard')

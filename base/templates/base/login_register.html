@@ -18,6 +18,12 @@
 
     </head>
     <body>
+        <div class='message-display' id='message-display'>
+            <div id="message-display-content">
+                <div class="message-icon" id="message-icon"></div>
+                <p id="message-content"></p>
+            </div>
+        </div>
         <div class="trcontainer">
 
 
@@ -27,20 +33,16 @@
             <div class="logo-container"><img src="{% static 'svgs/RisalabotBlack.svg' %}" alt="RisalaBot Logo" class="logo-image"></div>
             <div class="login-text-small">سجل دخولك للتمكن من الوصول الى خدماتنا</div>
         </div>
-        <form class="login-form" method="post" action="">
+        <form id="login-form" class="login-form" method="post" action="">
             {% csrf_token %}
             <label for="email">البريد الإلكتروني</label>
             <input class="input-field" id="username" name="email" type="email">
-            <label for="password">كلمة المرور </label>
+            <div id="email-error" class="error-message"></div>
+        
+            <label for="password">كلمة المرور</label>
             <input class="input-field" type="password" name="password" id="password">
-            {% if messages %}
-                <ul>
-                    {% for message in messages %}
-                        <li>{{ message }}</li>
-                    {% endfor %}
-                </ul>
-            {% endif %}
-
+            <div id="password-error" class="error-message"></div>
+        
             <button type="submit" class="submit-button">تسجيل الدخول</button>
             <div class="titles">
                 <div class="forgot-password">
@@ -56,7 +58,7 @@
             <div class="logo-container"><img src="{% static 'svgs/RisalabotBlack.svg' %}" alt="RisalaBot Logo" class="logo-image"></div>
           <div class="login-text-small">انشئ حساب جديد للتمكن من الوصول الى خدماتنا</div>
         </div>
-        <form class="login-form" method="post" action="">
+        <form class="login-form" method="post" id="register-form">
           {% csrf_token %}
           {% for field in form %}
           <div class="input-field-wrapper">
@@ -64,13 +66,6 @@
             {{ field }}
           </div>
           {% endfor %}
-          {% if messages %}
-          <ul>
-              {% for message in messages %}
-                  <li>{{ message }}</li>
-              {% endfor %}
-              </ul>
-          {% endif %}
           <button type="submit" class="submit-button">إنشاء حساب جديد</button>
           <div class="titles">
             <div class="login-text-small">لديك حساب؟ <a href="{% url 'login' %}" class="register-link">تسجيل الدخول</a></div>
@@ -82,4 +77,69 @@
 
         </div>
     </body>
+    <script src="{% static 'js/main.js' %}"></script>
+    <script>
+        // if login form is there
+        if (document.getElementById("login-form")) {
+            document.addEventListener("DOMContentLoaded", function () {
+                const form = document.getElementById("login-form");
+            
+                form.addEventListener("submit", function (e) {
+                    e.preventDefault(); // Prevent default form submission
+            
+                    const formData = new FormData(form); // Gather form data
+        
+                fetch("", {
+                    method: "POST",
+                    headers: {
+                        "X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken]").value,
+                    },
+                    body: formData,
+                })
+                    .then((response) => response.json())
+                    .then((data) => {
+    
+                        if (data.success) {
+                            window.location.href = data.redirect_url; // Redirect on success
+                        } else {
+                            // Show errors in real-time
+                            showMessage(data.message, data.type);
+                        }
+                    })
+                    .catch((error) => console.error("Error:", error));
+            });
+        });
+
+        }
+        if (document.getElementById("register-form")) {
+        document.addEventListener("DOMContentLoaded", function () {
+            const form = document.getElementById("register-form");
+        
+            form.addEventListener("submit", function (e) {
+                e.preventDefault(); // Prevent default form submission
+        
+                const formData = new FormData(form); // Gather form data
+        
+                fetch("", {
+                    method: "POST",
+                    headers: {
+                        "X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken]").value,
+                    },
+                    body: formData,
+                })
+                    .then((response) => response.json())
+                    .then((data) => {
+    
+                        if (data.success) {
+                            window.location.href = data.redirect_url; // Redirect on success
+                        } else {
+                            // Show errors in real-time
+                            showMessage(data.message, data.type);
+                        }
+                    })
+                    .catch((error) => console.error("Error:", error));
+            });
+        });
+        }
+    </script>        
 </html>

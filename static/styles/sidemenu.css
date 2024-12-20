@@ -130,11 +130,41 @@
   .mobile-sidenav {
     display: none;
   }
+  .nav__logout{
+    margin-top: 0;
+  }
+  .nav__container{
+    margin-top: 1rem;
+    padding-bottom: 0;
+  }
+  .nav__items{
+    padding: .5rem;
+    row-gap: 2rem;
+  }
   .sidenav {
     display: none;
   }
   .mobile-sidenav.active {
-    display: block;
+    display: flex;
+    height: calc(100vh - 4.5rem);
+    justify-content: center;
+    transition: .4s;
+    position: absolute;
+    z-index: 99;
+    background-color: white;
+    width: 100%;
+  }
+
+  .nav__icon{
+    font-size: 1.5rem;
+  }
+  .nav__name{
+    font-size: 2rem;
+    text-align: center;
+  }
+
+  .nav__link{
+    justify-content: center;
   }
 }
 

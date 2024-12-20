@@ -55,7 +55,14 @@ html, body {
 
 /*========== Header ==========*/
 
-
+.notification-time {
+  display: block; /* Ensures the time appears on a new line */
+  font-size: 0.85em; /* Slightly smaller font size */
+  color: #888; /* Light gray color for the timestamp */
+  margin-top: 4px; /* Space between the message and time */
+  text-align: left;
+  direction: ltr;
+}
 
 .notification-drop {
   font-family: var(--body-font);
@@ -177,7 +184,7 @@ html, body {
 }
 
 
-.left-container{
+.left-container, .login-register-container{
   display: flex;
   align-items: center;
   gap : 1.5rem;
@@ -194,6 +201,22 @@ html, body {
 }
 
 .login-btn:hover {
+  transition: background-color 0.15s ease-in, color 0.15s ease-in, box-shadow 0.15s ease-in; /* Added ease-in */
+  background-color: #fff;
+  color: #212121;
+}
+
+.register-btn{
+  border-radius: 5.0rem;
+  border: 1px solid #fff;
+  padding: 0.5rem 1rem;
+  font-family: inherit;
+  background-color: #fff;
+  font-weight: 800;
+  color: #212121;
+}
+
+.register-btn:hover {
   transition: background-color 0.15s ease-in, color 0.15s ease-in, box-shadow 0.15s ease-in; /* Added ease-in */
   background-color: #fff;
   color: #212121;
@@ -254,6 +277,14 @@ html, body {
     padding: 0 0.5rem;
   }
 
+  .login-btn, .register-btn {
+    padding: 0.5rem .5rem;
+  }
+
+  .register-btn{
+    display: none;
+  }
+
   .hamburger-menu {
     display: block;
     cursor: pointer;
@@ -311,6 +342,13 @@ html, body {
   --tw-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
   --tw-shadow-colored: 0 20px 25px -5px var(--tw-shadow-color), 0 8px 10px -6px var(--tw-shadow-color);
   box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
+  
+}
+
+@media screen and (max-width: 768px) {
+  .message-display {
+    width: 80%;
+  }
   
 }
 
@@ -461,6 +499,26 @@ img {
     display: none;
 }
 
+@media screen and (max-width: 768px) {
+  .popup{
+    padding: 1rem !important;
+  }
+
+  .popup-content-campaign{
+    width: 100% !important;
+  }
+
+  .campaign-popup-group{
+    margin: 1rem !important;
+    min-height: 0 !important;
+  }
+
+  .campaign-visualization{
+    display: none !important;
+  }
+  
+}
+
 .popup-group, .campaign-popup-group{
   margin: 10%;
   display: flex;
@@ -469,6 +527,24 @@ img {
   overflow: hidden;
   width: 100%;
   min-height: 40%;
+}
+
+@media screen and (max-width: 768px) {
+  .popup-group{
+    margin: auto;
+    padding: 1.5rem !important;
+    min-height: 0 !important;
+
+  }
+  
+  .modal{
+    overflow-y: scroll;
+  }
+
+  .close{
+    top: 0rem !important;
+    right: 0rem !important;
+  }
 }
 
 .campaign-popup-group{
@@ -493,6 +569,13 @@ img {
   width: 50%;
   font-weight: bolder;
   border-radius: 5px;
+}
+
+@media screen and (max-width: 768px) {
+  .popup-content-flow{
+    width: 80%;
+    margin: 10% auto;
+  }
 }
 
 .popup-content-flow form{
@@ -616,13 +699,14 @@ img {
 
 .metrics-container{
   padding: 2rem;
-  width: 100%;
   display: flex;
   flex-direction: row;
   gap: 2rem;
   flex-wrap: wrap;
   justify-content: center;
 }
+
+
 
 
 .metric-card{
@@ -659,6 +743,34 @@ img {
   justify-content: center;
 }
 
+@media screen and (max-width: 768px) {
+
+  .metrics-container{
+    margin: 0rem;
+    padding: 1rem;
+    gap: 1rem;
+  }
+  
+  .metric-card{
+    flex-direction: column;
+    padding: .5rem;
+    flex: 1 1 calc(50% - 2rem);
+    min-width: 0;
+    max-width: calc(50% - 15px);
+    gap: 1rem;
+  }
+
+  .metric-icon{
+    width: 100%;
+  }
+  .metric-content {
+    width: 100% !important;
+    text-align: center;
+    gap: 1rem;
+  }
+
+}
+
 .metric-content h5{
   font-size: 1rem;
   font-weight: 500;
@@ -685,6 +797,14 @@ img {
   justify-content: flex-start;
   flex-direction: row;
   gap: 2rem;
+}
+
+@media screen and (max-width: 768px) {
+  .chart-container-wrapper{
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
 }
 
 .chart-container{
@@ -722,6 +842,16 @@ img {
   display: flex;
   text-align: right;
   justify-content: space-between;
+}
+
+@media screen and (max-width: 768px) {
+  .chart-header{    
+    display: flex;
+    width: 100%;
+    flex-direction: column;
+    gap: .5rem;
+}
+  
 }
 .chart-title{
   font-size: 1.5rem;
@@ -909,7 +1039,13 @@ font-size: 0.875rem;
   box-sizing: border-box;
   background-color: #fff;
   box-shadow: rgba(55, 63, 71, 10%) 0px 0px 0px 1px, rgba(55, 63, 71, 16%) 0px 1px 4px;
+}
 
+@media screen and (max-width: 768px) {
+  #myTable_wrapper{
+    padding: 0;
+  }
+  
 }
 
 .dt-column-order{
@@ -942,6 +1078,16 @@ font-size: 0.875rem;
   border-radius: 8px;
   box-shadow: rgba(55, 63, 71, 5%) 0px 0px 0px 1px, rgba(55, 63, 71, 16%) 0px 1px 4px;
   background-color: #fff;
+}
+
+@media screen and (max-width: 768px) {
+  .customers-card-container,
+  .group-card-container {
+    flex: 0 0 calc(50% - 15px); /* Changed to 50% width with fixed flex-grow and flex-shrink */
+    max-width: calc(50% - 15px); /* Added max-width to maintain consistent sizing */
+    min-width: 0;
+  }
+  
 }
 
 .group-card-container {
@@ -1157,6 +1303,14 @@ select{
   width: 40%;
   text-align: center; /* Center content horizontally */
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); /* Optional: Add box shadow for depth */
+}
+
+@media screen and (max-width: 768px) {
+  .popup-content-group {
+    margin: 1rem;
+    width: 100%;
+  }
+  
 }
 
 .popup-content-group form {
@@ -1435,6 +1589,13 @@ td i {
   z-index: 122;
 }
 
+@media screen and (max-width: 768px) {
+  .dropdown-content{
+    min-width: 0;
+  }
+  
+}
+
 /* Show dropdown content */
 .dropdown-content.show {
   display: flex;
@@ -1495,6 +1656,24 @@ td i {
   align-items: center;
 }
 
+@media screen and (max-width: 768px) {
+  .statics-card{
+    flex: 1 1 calc(50% - 2rem);
+    max-width: calc(50% - 15px);
+    min-width: 0;
+    flex-direction: column;
+    padding: .5rem;
+    gap: 1rem;
+  }
+  .statics-container{
+    margin: 1rem;
+  }
+  .statics-content{
+    width: 100% !important;
+    text-align: center;
+    gap: 1rem;
+  }
+}
 .statics-icon{
   width: 20%;
   display: flex;
@@ -1861,6 +2040,20 @@ td i {
 
 }
 
+@media screen and (max-width: 768px) {
+  .step{
+    width: 25%;
+  }
+  .save-buttons{
+    display: flex;
+    flex-direction: row;
+    gap: 1rem;
+  }
+  .steps-list{
+    width: auto;
+  }
+}
+
 .connection-line {
   position: absolute;
   background-color: #333;
@@ -1901,6 +2094,13 @@ td i {
   font-weight: bold;
   width: 10%;
   position: relative;
+}
+
+@media screen and (max-width: 768px) {
+  .trigger{
+    width: 25%;
+  }
+  
 }
 
 
@@ -2033,6 +2233,13 @@ td i {
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Subtle shadow for depth */
   border-radius: 5px;
   height: auto;
+}
+
+@media screen and (max-width: 768px) {
+  .modal-content {
+    width: 100%;
+  }
+  
 }
 
 .close {
@@ -2227,17 +2434,24 @@ td i {
 }
 
 
-.startbotform{
+.startbotform, .staticbot-edit-form, .staticbot-form{
   display: flex;
   flex-direction: row;
   gap: 1rem;
   justify-content: space-around;
-  align-items: end;
+  align-items: center;
   flex-wrap: wrap;
   padding: .5rem;
 }
+@media screen and (max-width: 768px) {
+  .startbotform, .staticbot-edit-form, .staticbot-form{
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+}
 
-.startbotform textarea{
+.startbotform textarea, .staticbot-edit-form textarea, .staticbot-form textarea{
   resize: none;
   padding: 0.5rem;
   border-radius: 4px;
@@ -2246,7 +2460,7 @@ td i {
   font: inherit;
 }
 
-.startbotform input{
+.startbotform input, .staticbot-edit-form input, .staticbot-form input{
   padding: 0.5rem;
   border-radius: 4px;
   border: 1px solid #ccc;
@@ -2261,6 +2475,17 @@ td i {
   justify-content: center;
   margin: 2rem;
   padding: 1rem;
+}
+
+.botstoggle-container{
+  display: flex;
+  flex-direction: row;
+  gap: 1rem;
+}
+
+.botstoggle-container h3{
+  font-weight: bold;
+
 }
 
 .bot-list{
@@ -2312,7 +2537,7 @@ td i {
   margin: 0;
 }
 
-.bot-message{
+.bot-message, .bot-return-message{
   text-overflow: ellipsis;
   overflow: hidden;
   white-space: nowrap;
@@ -2328,6 +2553,13 @@ td i {
   display: flex;
   flex-direction: column;
   width: 25%;
+}
+
+@media screen and (max-width: 768px) {
+  .startbot-div{
+    width: 100%;
+  }
+  
 }
 
 .startbot-div label{

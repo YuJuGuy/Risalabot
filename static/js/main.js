@@ -28,11 +28,18 @@ document.addEventListener('DOMContentLoaded', function() {
     // Function to update subcategory visibility based on event type selection
 });
 
-$(document).ready(function() {
-    $(".notification-drop .item").on('click',function() {
-      $(this).find('ul').toggle();
+document.addEventListener("DOMContentLoaded", function() {
+    const items = document.querySelectorAll(".notification-drop .item");
+    
+    items.forEach(item => {
+        item.addEventListener('click', function() {
+            const ul = this.querySelector('ul');
+            if (ul) {
+                ul.style.display = (ul.style.display === 'none' || ul.style.display === '') ? 'block' : 'none';
+            }
+        });
     });
-  });
+});
 
 function toggleSidenav() {
     document.getElementById("sidenavbar").classList.toggle("active");

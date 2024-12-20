@@ -12,7 +12,9 @@
         <link rel="stylesheet" href="{% static 'styles/sidemenu.css' %}">
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/boxicons@latest/css/boxicons.min.css">
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-        <link href="https://cdn.datatables.net/v/dt/jq-3.7.0/dt-2.1.8/datatables.min.css" rel="stylesheet">
+        <link href="https://cdn.datatables.net/2.1.8/css/dataTables.dataTables.css" rel="stylesheet">
+        <link href="https://cdn.datatables.net/responsive/3.0.3/css/responsive.dataTables.css" rel="stylesheet">
+
         <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css" />
 
         
@@ -26,7 +28,10 @@
         <div class="overlay-content">
             <div class="overlay-container">
                 <h2>{{ token_message }}</h2>
-                <button class="reauth-button" onclick="window.location.href='{% url 'authstore' %}'">أعد الاتصال</button>
+                <div class="buttons">
+                    <button class="reauth-button" onclick="window.location.href='{% url 'authstore' %}'">أعد الاتصال</button>
+                    <button class="reauth-button" onclick="window.location.href='{% url 'logout' %}'">تسجيل الخروج</button>
+                </div>
             </div>
         </div>
         {% endif %}
@@ -60,6 +65,7 @@
     </body>
     <script src="https://kit.fontawesome.com/985ffc9040.js" crossorigin="anonymous"></script>
     <script src="{% static 'js/main.js' %}"></script>
+
 
 
 </html>

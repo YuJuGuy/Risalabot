@@ -3,17 +3,20 @@
 
 {% block content %}
 
-{% if not botenabled %}
+{% if not botallowed %}
 <div class="feature-alert">
     <p>هذه الميزه فقط لمشتركين باقة البرو والبرميم</p>
 </div>
 {% endif %}
 
 <div class="bots-container">
-    <label class="toggle-switch">
-        <input type="checkbox" id="bot-toggle">
-        <span class="slider"></span>
-    </label>
+    <div class="botstoggle-container">
+        <h3>تفعيل الرد التلقائي</h3>
+        <label class="toggle-switch">
+            <input type="checkbox" id="bot-toggle">
+            <span class="slider"></span>
+        </label>
+    </div>
 
     <!-- Start Static Bot Section -->
     <div class="startbot-container" id="startbot-container">
@@ -68,32 +71,35 @@
 
 <script>
     document.addEventListener("DOMContentLoaded", function () {
-        initializeAccordion();
+
         fetchBots();
+        initializeAccordion();
+
     });
     
-    function initializeAccordion() {
-        const accordionHeaders = document.querySelectorAll(".accordion-header");
-    
-        accordionHeaders.forEach((header) => {
-            header.addEventListener("click", function () {
-                const container = this.closest(".startbot-container, .bot-container");
-                if (container) {
-                    const content = container.querySelector(".accordion-content");
-                    if (content) {
-                        // Toggle maxHeight based on current state
-                        const isOpen = content.style.maxHeight !== "";
-                        document.querySelectorAll(".accordion-content").forEach((otherContent) => {
-                            if (otherContent !== content) {
-                                otherContent.style.maxHeight = null; // Close other contents
-                            }
-                        });
-                        content.style.maxHeight = isOpen ? null : content.scrollHeight + "px"; // Toggle current content
-                    }
+function initializeAccordion() {
+    const botsContainer = document.querySelector('.bots-container'); // Common ancestor for all accordions
+
+    botsContainer.addEventListener('click', function (event) {
+        const header = event.target.closest('.accordion-header'); // Check if the clicked element is a header
+        if (header) {
+            const container = header.closest(".startbot-container, .bot-container");
+            if (container) {
+                const content = container.querySelector(".accordion-content");
+                if (content) {
+                    const isOpen = content.style.maxHeight !== "";
+                    document.querySelectorAll(".accordion-content").forEach((otherContent) => {
+                        if (otherContent !== content) {
+                            otherContent.style.maxHeight = null; // Close all other accordions
+                        }
+                    });
+                    content.style.maxHeight = isOpen ? null : content.scrollHeight + "px"; // Toggle current accordion
                 }
-            });
-        });
-    }
+            }
+        }
+    });
+}
+
     
     // Fetch data for both Start Bot and Static Bots
     function fetchBots() {
@@ -104,6 +110,7 @@
                     // Populate StartStaticBot data
                     const startBot = data.start_bot;
                     if (startBot) {
+                        document.getElementById('bot-toggle').checked = startBot.botenabled;
                         document.getElementById('startbot-enabled').checked = startBot.enabled;
                         document.getElementById('startbot-message').value = startBot.return_message;
                         document.getElementById('startbot-hours').value = startBot.hours;
@@ -122,7 +129,10 @@
                         botDiv.classList.add('bot-container');
                         botDiv.innerHTML = `
                             <div class="startbot-header">
-                                بوت مخصص
+                                <p>بوت مخصص</p>
+                                <p class="bot-message" id="bot-message-${bot.id}">${bot.message}</p>
+                                <p class="bot-return-message" id="bot-return-message-${bot.id}">${bot.return_message}</p>
+                                <p class="bot-condition" id="bot-condition-${bot.id}">${bot.condition === 1 ? 'النص بالضبط' : 'يحتوي على النص'}</p>
                                 <div>
                                     <button class="accordion-header"><i class='bx bxs-edit' style='color:#00ffa2'></i></button>
                                     <button class="accordion-header" onclick="deleteBot('${bot.id}')"><i class='bx bxs-trash' style='color:red'></i></button>
@@ -130,15 +140,21 @@
                             </div>
                             <div class="accordion-content">
                                 <form class="staticbot-edit-form" novalidate method="post" data-id="${bot.id}">
-                                    <label for="message-${bot.id}">الرسالة:</label>
-                                    <textarea id="message-${bot.id}" name="message">${bot.message}</textarea>
-                                    <label for="return_message-${bot.id}">الرسالة المرجعية:</label>
-                                    <textarea id="return_message-${bot.id}" name="return_message">${bot.return_message}</textarea>
+                                    <div class="startbot-div">
                                     <label for="condition-${bot.id}">الشروط:</label>
                                     <select id="condition-${bot.id}" name="condition">
                                         <option value="1" ${bot.condition === 1 ? 'selected' : ''}>النص بالضبط</option>
                                         <option value="2" ${bot.condition === 2 ? 'selected' : ''}>يحتوي على النص</option>
                                     </select>
+                                    </div>
+                                    <div class="startbot-div">
+                                    <label for="message-${bot.id}">الرسالة:</label>
+                                    <textarea id="message-${bot.id}" name="message">${bot.message}</textarea>
+                                    </div>
+                                    <div class="startbot-div">
+                                    <label for="return_message-${bot.id}">الرسالة المرجعية:</label>
+                                    <textarea id="return_message-${bot.id}" name="return_message">${bot.return_message}</textarea>
+                                    </div>
                                     <div class="button-row">
                                         <button type="submit" class="save-button">حفظ</button>
                                     </div>
@@ -185,6 +201,26 @@
             });
     }
 
+    document.getElementById('bot-toggle').addEventListener('change', function () {
+        const botenabled = this.checked;
+        fetch('/toggle-botenabled/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ botenabled: botenabled }) // Send as JSON
+
+        })
+            .then(response => response.json())
+            .then(data => {
+                showMessage(data.message, data.type);
+                if (data.success) {
+                    fetchBots(); // Refresh the bots list
+                }
+            });
+    });
+
     // Save StartStaticBot
     document.getElementById('startbot-form').addEventListener('submit', function (e) {
         e.preventDefault();
@@ -214,7 +250,7 @@
         newBotDiv.classList.add('bot-container');
         newBotDiv.innerHTML = `
             <div class="startbot-header">
-                بوت جديد
+                <p>بوت مخصص</p>
                 <div>
                 <button class="accordion-header"><i class='bx bxs-edit' style='color:#00ffa2'></i></button>
                 <button class="accordion-header" onclick="removeBot(this)"><i class='bx bxs-trash' style='color:red'></i></button>
@@ -222,15 +258,22 @@
             </div>
             <div class="accordion-content">
                 <form class="staticbot-form" novalidate method="post" id="${uniqueId}">
-                    <label for="message-${uniqueId}">الرسالة:</label>
-                    <textarea id="message-${uniqueId}" name="message" placeholder="ادخل الرسالة"></textarea>
-                    <label for="return_message-${uniqueId}">الرسالة المرجعية:</label>
-                    <textarea id="return_message-${uniqueId}" name="return_message" placeholder="ادخل الرسالة المرجعية"></textarea>
+                    <div class="startbot-div">
                     <label for="condition-${uniqueId}">الشروط:</label>
                     <select id="condition-${uniqueId}" name="condition">
                         <option value="1">النص بالضبط</option>
                         <option value="2">يحتوي على النص</option>
                     </select>
+                    </div>
+                    <div class="startbot-div">
+                    <label for="message-${uniqueId}">الرسالة:</label>
+                    <textarea id="message-${uniqueId}" name="message" placeholder="ادخل الرسالة"></textarea>
+                    </div>
+                    <div class="startbot-div">
+                    <label for="return_message-${uniqueId}">الرسالة المرجعية:</label>
+                    <textarea id="return_message-${uniqueId}" name="return_message" placeholder="ادخل الرسالة المرجعية"></textarea>
+                    </div>
+
                     <div class="button-row">
                         <button type="submit" class="save-button">حفظ</button>
                     </div>
@@ -240,7 +283,6 @@
         botList.appendChild(newBotDiv);
     
         // Initialize accordion for the new bot
-        initializeAccordion();
     
         const newBotForm = document.getElementById(uniqueId);
         newBotForm.addEventListener('submit', function (e) {

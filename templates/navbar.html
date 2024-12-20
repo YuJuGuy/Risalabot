@@ -1,7 +1,7 @@
 {% load static %}
     <header class="header">
       <div class="logo-container">
-        <a href="{% url 'home' %}">
+        <a href="{% url 'dashboard' %}">
             <img src="{% static 'svgs/Risalabot.svg' %}" alt="RisalaBot Logo" class="logo-image">
         </a>
     </div>
@@ -20,7 +20,10 @@
             <span class="btn__badge pulse-button ">{{notifications.count}}</span>     
             <ul>
               {% for notification in notifications %}
-              <li>{{notification.message}}</li>
+              <li>
+                  {{notification.message}}
+                  <span class="notification-time">{{notification.created_at|timesince}} ago</span>
+              </li>
               {% endfor %}
             </ul>
             {% endif %}
@@ -50,7 +53,7 @@
               <i class='bx bxs-megaphone nav__icon'></i>
               <span class="nav__name">الحملات الترويجية</span>
             </a>
-            <a href="{% url 'static_bot' %}" class="nav__link {% if request.path == '/static-bot/' %}active{% endif %}">
+            <a href="{% url 'static_bot' %}" class="nav__link {% if request.path == '/bot/' %}active{% endif %}">
               <i class='bx bxs-bot nav__icon'></i>
               <span class="nav__name">الرد التلقائي</span>
             </a>
@@ -58,16 +61,15 @@
               <i class='bx bxs-user-detail nav__icon'></i>
               <span class="nav__name">العملاء</span>
             </a>
-            <a href="{% url 'whatsapp_session' %}" class="nav__link {% if request.path == '/link-channel/' %}active{% endif %}">
+            <a href="{% url 'whatsapp_session' %}" class="nav__link {% if request.path == '/channel/' %}active{% endif %}">
               <i class='bx bxl-whatsapp-square nav__icon'></i>
               <span class="nav__name">ربط الواتساب</span>
+            </a>
+            <a href="{% url 'logout' %}" class="nav__link nav__logout">
+              <i class='bx bx-log-out nav__icon'></i>
+              <span class="nav__name">تسجيل الخروج</span>
             </a>
           </div>
         </div>
       </nav>
-    
-      <a href="{% url 'logout' %}" class="nav__link nav__logout">
-        <i class='bx bx-log-out nav__icon'></i>
-        <span class="nav__name">تسجيل الخروج</span>
-      </a>
     </div>

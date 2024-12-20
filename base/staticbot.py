@@ -1,6 +1,7 @@
+import re
 from django.shortcuts import render
 from django.http import HttpResponse
-from base.models import User, Store, Subscription, UserStoreLink, StaticBotStart
+from base.models import User, Store, Subscription, UserStoreLink, StaticBotStart, Notification, StaticBot
 from django.contrib.auth.decorators import login_required
 from base.decorators import check_token_validity
 from django.http import JsonResponse
@@ -23,26 +24,34 @@ def bot(request, context=None):
     if context is None:
         context = {}
 
+    context.update({
+        'notifications': None,  # Initialize notifications
+        'notification_count': 0  # Initialize notification count
+    })
+
     try:
         # Get store data if it exists
         store_link = UserStoreLink.objects.select_related('store').get(user=request.user)
         store = store_link.store
         subscription = Subscription.objects.get(store=store)
-        botenabled = subscription.staticbot
+        botallowed = subscription.staticbot
+        context['notification_count'] = Notification.objects.filter(store=store).count()
+        context['notifications'] = Notification.objects.filter(store=store).order_by('-created_at')
+        
 
     except UserStoreLink.DoesNotExist:
         logger.error(f"No store linked to your account")
         return redirect('dashboard')
     # if subscription is blank
     except Subscription.DoesNotExist:
-        botenabled = False
+        botallowed = False
     except Exception as e:
         logger.error(f"Error in dashboard view: {str(e)}")
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
     context.update({
-        'botenabled': botenabled,
+        'botallowed': botallowed,
     })
 
     return render(request, 'base/staticbot.html', context)
@@ -50,30 +59,34 @@ def bot(request, context=None):
 
 @login_required(login_url='login')
 def get_bot(request):
-    # Fetch data for both StaticBotStart and StaticBots.
     try:
-        # Fetch store data with related user and subscription
+        # Fetch the store data and subscription efficiently in a single query
         store_link = UserStoreLink.objects.select_related('store').get(user=request.user)
         store = store_link.store
 
-
-        # Fetch StaticBotStart
-        bot_start = StaticBotStart.objects.filter(store=store).first()
+        # Fetch StaticBotStart using one query
+        bot_start = StaticBotStart.objects.filter(store=store).only('enabled', 'return_message', 'hours').first()
         start_bot_data = {
             'enabled': bot_start.enabled if bot_start else False,
             'return_message': bot_start.return_message if bot_start else "",
             'hours': bot_start.hours if bot_start else 0,
+            'botenabled': store.botenabled
         }
 
-        # Fetch all StaticBots
-        static_bots = StaticBot.objects.filter(store=store)
-        static_bot_data = [{
-            'id': bot.id,
-            'message': bot.message,
-            'return_message': bot.return_message,
-            'condition': bot.condition,
-            'condition_display': dict(StaticBot.CONDITION_CHOICES).get(bot.condition),
-        } for bot in static_bots]
+        # Fetch StaticBots with optimized fields
+        static_bots = StaticBot.objects.filter(store=store).only('id', 'message', 'return_message', 'condition')
+
+        # Build StaticBots data without additional queries
+        static_bot_data = [
+            {
+                'id': bot.id,
+                'message': bot.message,
+                'return_message': bot.return_message,
+                'condition': bot.condition,
+                'condition_display': dict(StaticBot.CONDITION_CHOICES).get(bot.condition),
+            }
+            for bot in static_bots
+        ]
 
         return JsonResponse({
             'success': True,
@@ -172,6 +185,51 @@ def static_bot_post(request):
         return JsonResponse({'success': False, 'message': 'لا يوجد متجر مرتبط بالمستخدم'}, status=404)
     except Exception as e:
         return JsonResponse({'success': False, 'message': str(e)}, status=500)
+
+
+def toggle_bot_enabled(request):
+    if request.method == 'POST':
+        try:
+            # Parse the JSON body
+            body = json.loads(request.body)
+            botenabled = body.get('botenabled', None)  # Extract the `botenabled` field
+
+            # Retrieve the user's store
+            store = UserStoreLink.objects.select_related('store').get(user=request.user).store
+            
+            # Retrieve the bot instance
+            bot_start = StaticBotStart.objects.get(store=store)
+
+            # Update and save the bot status
+            store.botenabled = botenabled
+            store.save()
+
+            return JsonResponse({
+                'success': True,
+                'type': 'success',
+                'message': 'تم تغيير حالة الرد التلقائي',
+                'enabled': store.botenabled
+            }, status=200)
+
+        except StaticBotStart.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'type': 'error',
+                'message': 'لم يتم العثور على بوت'
+            }, status=404)
+        
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'type': 'error',
+                'message': str(e)
+            }, status=500)
+    else:
+        return JsonResponse({
+            'success': False,
+            'type': 'error',
+            'message': 'Invalid request method.'
+        }, status=405)
 
 
 @login_required(login_url='login')

@@ -36,7 +36,7 @@
                         <span class="nav__name">الحملات الترويجية</span>
                     </a>
 
-                    <a href="{% url 'static_bot' %}" class="nav__link {% if request.path == '/static-bot/' %}active{% endif %}">
+                    <a href="{% url 'static_bot' %}" class="nav__link {% if request.path == '/bot/' %}active{% endif %}">
                         <i class='bx bxs-bot nav__icon'></i>
                         <span class="nav__name">الرد التلقائي</span>
                     </a>
@@ -46,7 +46,7 @@
                         <span class="nav__name">العملاء</span>
                     </a>
 
-                    <a href="{% url 'whatsapp_session' %}" class="nav__link {% if request.path == '/link-channel/' %}active{% endif %}">
+                    <a href="{% url 'whatsapp_session' %}" class="nav__link {% if request.path == '/channel/' %}active{% endif %}">
                         <i class='bx bxl-whatsapp-square nav__icon'></i>
                         <span class="nav__name">ربط الواتساب</span>
                     </a>

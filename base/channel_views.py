@@ -3,7 +3,7 @@ from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
 from automations.whatsapp_api import whatsapp_create_session, whatsapp_details, get_session_status, logout_user, stop_session, start_session, delete_session, get_qr_code
 from base.decorators import check_token_validity
-from base.models import UserStoreLink
+from base.models import UserStoreLink, Notification
 from django.shortcuts import redirect
 import logging
 
@@ -23,6 +23,8 @@ def whatsapp_session(request, context=None):
         # Try to fetch the store linked to the user
         store = UserStoreLink.objects.get(user=request.user).store
         context['store'] = store  # Add store to context
+        context['notification_count'] = Notification.objects.filter(store=store).count()
+        context['notifications'] = Notification.objects.filter(store=store).order_by('-created_at')
     except UserStoreLink.DoesNotExist:
         logger.error(f"No store linked to user {request.user.id}")
         return redirect('dashboard')  # Redirect to dashboard if no store linked
