@@ -82,7 +82,10 @@ def get_dashboard_data(request):
             end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date() if end_date_str else None
 
             # Get store
-            store = UserStoreLink.objects.select_related('store').get(user=request.user).store
+            try:
+                store = UserStoreLink.objects.select_related('store').get(user=request.user).store
+            except UserStoreLink.DoesNotExist:
+                return JsonResponse({'success': False, 'type': 'error', 'message': 'لا يوجد متجر مرتبط بالمستخدم'}, status=400)
 
             # Base queryset for activity logs
             activity_log_queryset = ActivityLog.objects.filter(store=store)
