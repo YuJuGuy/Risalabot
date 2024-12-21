@@ -14,7 +14,7 @@ from django.contrib.auth.decorators import login_required
 import threading
 from django.core.exceptions import ObjectDoesNotExist
 
-from . authenticate_user import sync_data
+from .Utils.data_utils import sync_data
 
 
 import logging

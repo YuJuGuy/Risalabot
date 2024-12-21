@@ -10,9 +10,6 @@
       
       <div class= "left-container">
       
-      <a href={% url 'home' %} class="support">
-        الدعم الفني
-      </a>
         <ul class="notification-drop">
           <li class="item">
             <i class='bx bxs-bell' style='color:#ffffff'></i>
@@ -25,6 +22,10 @@
                   <span class="notification-time">{{notification.created_at|timesince}} ago</span>
               </li>
               {% endfor %}
+              <li class="read-all">
+                {% csrf_token %}
+                <button id="clear-notifications" class="btn-clear">قراءة الكل</button>
+              </li>
             </ul>
             {% endif %}
           </li>

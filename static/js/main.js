@@ -28,13 +28,44 @@ document.addEventListener('DOMContentLoaded', function() {
     // Function to update subcategory visibility based on event type selection
 });
 
+
+document.addEventListener('DOMContentLoaded', () => {
+    const clearButton = document.getElementById('clear-notifications');
+    if (clearButton) {
+      clearButton.addEventListener('click', (event) => {
+        event.preventDefault();
+
+        fetch('/clear_notifications/', {
+          method: 'POST',
+          headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            'Content-Type': 'application/json',
+          },
+        })
+          .then(response => response.json())
+          .then(data => {
+            if (data.success) {
+              showMessage(data.message, data.type);
+              setTimeout(() => {
+                location.reload(); // Reload page to update notifications
+              }, 2000);
+            } else {
+              showMessage(data.message, data.type);
+            }
+          })
+          .catch(error => console.error('Error:', error));
+      });
+    }
+  });
+
 document.addEventListener("DOMContentLoaded", function() {
     const items = document.querySelectorAll(".notification-drop .item");
     
     items.forEach(item => {
         item.addEventListener('click', function() {
             const ul = this.querySelector('ul');
-            if (ul) {
+            const clearButton = document.getElementById('clear-notifications');
+            if (ul && ul !== clearButton) {
                 ul.style.display = (ul.style.display === 'none' || ul.style.display === '') ? 'block' : 'none';
             }
         });

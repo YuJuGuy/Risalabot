@@ -1,3 +1,4 @@
+from base.Utils.data_utils import sync_data
 from django.shortcuts import redirect
 from django.contrib import messages
 from django.http import JsonResponse,HttpRequest
@@ -159,8 +160,8 @@ def update_store_tokens(store, access_token, refresh_token):
     store.refresh_token = refresh_token
     store.token_valid = True
     store.token_refresh_date = timezone.now()
-
     store.save()
+    
 
     
     
