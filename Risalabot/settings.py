@@ -15,12 +15,6 @@ from datetime import timedelta
 from dotenv import load_dotenv
 import os
 from celery.schedules import crontab
-import environ
-
-# Initialize environment variables
-env = environ.Env()
-environ.Env.read_env()
-
 load_dotenv()
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -35,16 +29,19 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['127.0.0.1','localhost']
+
+ALLOWED_HOSTS = ['stud-accepted-ghoul.ngrok-free.app','127.0.0.1','localhost','192.168.0.119']
 
 CSRF_TRUSTED_ORIGINS = [
-    'http://localhost:8000',
+    'https://stud-accepted-ghoul.ngrok-free.app',
 ]
 
 # Application definition
 
 INSTALLED_APPS = [
     
+    'base.apps.BaseConfig',
+    'automations.apps.AutomationsConfig',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -52,8 +49,6 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     
-    'base.apps.BaseConfig',
-    'automations.apps.AutomationsConfig',
 
 ]
 
@@ -91,6 +86,8 @@ TEMPLATES = [
     },
 ]
 
+
+
 WSGI_APPLICATION = 'Risalabot.wsgi.application'
 
 
@@ -99,12 +96,8 @@ WSGI_APPLICATION = 'Risalabot.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': env('PGDATABASE'),
-        'USER': env('PGUSER'),
-        'PASSWORD': env('PGPASSWORD'),
-        'HOST': env('PGHOST'),
-        'PORT': env('PGPORT'),
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
 
@@ -175,12 +168,15 @@ CORS_ALLOW_ALL_ORIGINS = True
 
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_HOST = 'smtp.sendgrid.net'
+
+
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_USE_SSL = False
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL')
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
-EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')  # Make sure this matches your actual SendGrid API key
 
 
 CELERY_BROKER_URL = 'redis://localhost:6379/0'

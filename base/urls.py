@@ -18,7 +18,12 @@ urlpatterns = [
     path('sync_data/', data_utils.sync_data, name='sync_data'),
     path('clear_notifications/',data_utils.clear_notifications, name='clear_notifications'),
 
-    path('reset_password/', auth_views.PasswordResetView.as_view(template_name="base/reset_password.html"), name="reset_password"),
+    path('reset_password/', auth_views.PasswordResetView.as_view(
+             subject_template_name='registration/password_reset_subject.txt',
+             email_template_name='registration/password_reset_email.txt',
+             template_name="base/reset_password.html"
+         ), name="reset_password"),
+
     path('reset_password_sent/', auth_views.PasswordResetDoneView.as_view(template_name="base/reset_password_sent.html"), name="password_reset_done"),
     path('reset/<uidb64>/<token>/', auth_views.PasswordResetConfirmView.as_view(template_name="base/password_reset_confirm.html"), name="password_reset_confirm"),
     path('reset_password_complete/', auth_views.PasswordResetCompleteView.as_view(template_name="base/password_reset_complete.html"), name="password_reset_complete"),
