@@ -166,10 +166,11 @@ def update_store_tokens(store, access_token, refresh_token):
     
     
 @login_required(login_url='login')
-def unlinkstore(request, store_id):
+def unlinkstore(request):
     try:
         # Ensure the user is linked to the store
-        link = UserStoreLink.objects.get(user=request.user, store__store_id=store_id)
+        link = UserStoreLink.objects.get(user=request.user)
+        store_id = link.store.store_id
         # Delete the user-store link
         link.delete()
 
@@ -180,11 +181,17 @@ def unlinkstore(request, store_id):
         store.token_valid = False
         store.save()
 
-        # Removed code that deletes the UserEvent entry
-        messages.success(request, 'تم الغاء الاتصال بالمتجر بنجاح.')
+        # json respnse with redirect link
+        return JsonResponse({'success': True, 'type': 'success', 'message': 'تم الغاء الاتصال بالمتجر بنجاح.', 'redirect_url': '/dashboard/'}, status=200)
     except UserStoreLink.DoesNotExist:
-        messages.error(request, 'انت غير مرتبط بالمتجر المطلوب.')
+        return JsonResponse({'success': False, 'type': 'error', 'message': 'لم يتم العثور على متجر للمستخدم.'}, status=400)
     except Store.DoesNotExist:
-        messages.error(request, 'المتجر غير موجود.')
+        return JsonResponse({'success': False, 'type': 'error', 'message': 'لم يتم العثور على متجر.'}, status=400)
 
-    return redirect('dashboard')
+    except Exception as e:
+        return JsonResponse({'success': False, 'type': 'error', 'message': str(e)}, status=500)
+        
+    return None
+
+
+    

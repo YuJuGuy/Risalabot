@@ -1,0 +1,106 @@
+{% extends 'main.html' %}
+{% load static %}
+
+{% block content %}
+{% csrf_token %}
+
+
+
+<div class="password-change">
+    <h2>تغيير كلمة المرور</h2>
+    <form id="password-change-form" method="post">
+        {% csrf_token %}
+        <input type="password" name="password1" placeholder="كلمة المرور الجديدة">
+        <input type="password" name="password2" placeholder="تأكيد كلمة المرور">
+        <button type="submit" class="save-button">حفظ</button>
+    </form>
+</div>
+
+
+<div class="unlink-store">
+    <h2>الغاء الاتصال بالمتجر</h2>
+    <button class="unlink-button" id="unlink-button" onclick="unlinkStore(event)">
+        الغاء الاتصال
+    <i class="bx bx-unlink"></i>
+    </button>
+
+</div>
+
+<div id="unlinkstore-popup" class="popup-overlay">
+    <div class="delete-popup-content">
+        <h2>الغاء الاتصال</h2>
+        <p>هل تريد الغاء الاتصال؟</p>
+        <button id="confirm-delete-button">نعم</button>
+        <button id="cancel-delete-button">العودة</button>
+    </div>
+</div>
+
+<script>
+
+    function unlinkStore(event) {
+        const popup = document.getElementById("unlinkstore-popup");
+        popup.style.display = "flex";
+        
+        const confirmUnlinkButton = document.getElementById("confirm-delete-button");
+        confirmUnlinkButton.addEventListener("click", function () {
+            fetch("/unlinkstore/", {
+                method: "POST",
+                headers: {
+                    "X-CSRFToken": document.querySelector('[name=csrfmiddlewaretoken]').value,
+                },
+            })
+                .then((response) => response.json())
+                .then((data) => {
+                    if (data.success) {
+                        popup.style.display = "none";
+                        showMessage(data.message, data.type);
+                        // wait for 1 second before reloading the page
+                        setTimeout(() => {
+                            window.location.href = data.redirect_url;
+                        }, 1000);
+                        
+                    } else {
+                        showMessage(data.message, data.type);
+                    }
+                })
+                .catch((error) => {
+                    console.error("Error:", error);
+                });
+        });
+
+        const cancel = document.getElementById("cancel-delete-button");
+        cancel.addEventListener("click", function () {
+            const popup = document.getElementById("unlinkstore-popup");
+            popup.style.display = "none";
+        });
+
+    }
+
+    document.getElementById("password-change-form").addEventListener("submit", function(event) {
+        event.preventDefault(); // Prevent the form from submitting
+        const form = new FormData(event.target);
+    
+        fetch("/password-change/", {
+            method: "POST",
+            headers: {
+                "X-CSRFToken": document.querySelector('[name=csrfmiddlewaretoken]').value,
+            },
+            body: form,
+        })
+            .then((response) => response.json())
+            .then((data) => {
+                showMessage(data.message, data.type);
+            })
+            .catch((error) => {
+                console.error("Error:", error);
+            });
+    
+        // Clear the form fields
+        event.target.reset();
+    });
+    
+
+
+</script>
+
+{% endblock content %}

@@ -6,6 +6,7 @@ from . import campaigns
 from . import customers
 from . import home
 from . import dashboard
+from . import account
 from . import channel_views
 from .Utils import data_utils
 from . import staticbot
@@ -17,6 +18,8 @@ urlpatterns = [
     path('register/', authenticate_user.registerPage, name="register"),
     path('sync_data/', data_utils.sync_data, name='sync_data'),
     path('clear_notifications/',data_utils.clear_notifications, name='clear_notifications'),
+
+    path('account', account.account_view, name="account"),
 
     path('reset_password/', auth_views.PasswordResetView.as_view(
              subject_template_name='registration/password_reset_subject.txt',
@@ -56,7 +59,8 @@ urlpatterns = [
     
     path('authstore/', authenticate_store.authstore, name="authstore"),
     path('callback/', authenticate_store.callback, name="callback"),
-    path('unlinkstore/<str:store_id>/', authenticate_store.unlinkstore, name="unlinkstore"),
+    path('unlinkstore/', authenticate_store.unlinkstore, name="unlinkstore"),
+    path('password-change/', account.change_password, name="password_change"),
     
     path('channel/', channel_views.whatsapp_session, name="whatsapp_session"),
     path('create-whatsapp-session/', channel_views.create_whatsapp_session, name="create_whatsapp_session"),

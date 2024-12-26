@@ -58,7 +58,7 @@ def dashboard_view(request, context=None):
 
     except Exception as e:
         logger.error(f"Unexpected error in dashboard view for user {request.user.id}: {str(e)}")
-        return render(request, 'base/error_page.html', {'error_message': str(e)})
+        return render(request, 'base/dashboard.html', {'error_message': str(e)})
 
 
 

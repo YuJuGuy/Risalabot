@@ -9,6 +9,12 @@
 
       
       <div class= "left-container">
+
+        <a href="{% url 'account' %}" class="profile-link">
+        <div class="profile-container">
+            <i class='bx bxs-user' style='color:#ffffff'></i>
+          </div>
+        </a>
       
         <ul class="notification-drop">
           <li class="item">
@@ -30,7 +36,7 @@
             {% endif %}
           </li>
         </ul>
-      </div>
+
 
       <div class="hamburger-menu" onclick="toggleSidenav()">
         <i class="bx bx-menu" style="color: white; font-size: 30px;"></i>
