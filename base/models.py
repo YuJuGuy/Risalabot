@@ -226,6 +226,7 @@ class Campaign(models.Model):
     )
     store = models.ForeignKey(Store, on_delete=models.CASCADE)
     name = models.CharField(max_length=255)
+    delay_in_seconds = models.IntegerField(default=0)
     task_id = models.CharField(max_length=255, blank=True, null=True)
     scheduled_time = models.DateTimeField()
     status = models.CharField(max_length=20, default='draft')  # 'draft', 'scheduled', 'sent', 'cancelled', etc.

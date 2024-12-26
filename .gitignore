@@ -5,3 +5,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 debug.log"celerybeat-schedule.*" 
+D:\Risalabot\automations\migrations
+D:\Risalabot\automations\__pycache__
+D:\Risalabot\base\migrations
+D:\Risalabot\base\__pycache__

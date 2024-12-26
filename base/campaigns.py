@@ -23,33 +23,71 @@ logger = logging.getLogger(__name__)
 
 
 
-def validate_campaign_data(campaign_data):
-   try:
-       # Validate the campaign data check for empety fields and return the error messages
-        if campaign_data['msg']:
-            #sanitzie and clean the message
-            if not campaign_data['msg'].strip():
-                return JsonResponse({'success': False, 'type': 'error', 'message': 'يرجى كتابة الرسالة.'}, status=400)
 
-        if campaign_data['customers_group']:
-            if not campaign_data['customers_group'].strip() or campaign_data['customers_group'] == 'اختر مجموعة العملاء' or campaign_data['customers_group'] not in [group.group_id for group in Group.objects.filter(store=UserStoreLink.objects.get(user=request.user).store)]:
-                return JsonResponse({'success': False, 'type': 'error', 'message': 'يرجى تحديد مجموعة صالحة.'}, status=400)
+def validate_campaign_data(campaign_data, request):
+    try:
+        # Validate the message
+        if 'msg' not in campaign_data or not campaign_data['msg'].strip():
+            return JsonResponse({'success': False, 'type': 'error', 'message': 'يرجى كتابة الرسالة.'}, status=400)
 
-        if campaign_data['scheduled_time']:
-            if not campaign_data['scheduled_time'].strip():
+        # Validate customers group
+        if 'customers_group' not in campaign_data or not campaign_data['customers_group'].strip() or campaign_data['customers_group'] == 'اختر مجموعة العملاء':
+            return JsonResponse({'success': False, 'type': 'error', 'message': 'يرجى تحديد مجموعة صالحة.'}, status=400)
+
+        # Ensure the group exists in the user's store
+        valid_groups = [group.group_id for group in Group.objects.filter(store=UserStoreLink.objects.get(user=request.user).store)]
+        # Ensure the group ID is compared as the same type
+        try:
+            group_id = int(campaign_data['customers_group'])  # Convert to integer if possible
+        except ValueError:
+            return JsonResponse({'success': False, 'type': 'error', 'message': 'مجموعة العملاء غير موجودة.'}, status=400)
+
+        if group_id not in valid_groups:
+            return JsonResponse({'success': False, 'type': 'error', 'message': 'مجموعة العملاء غير موجودة.'}, status=400)
+
+        # Validate scheduled time
+        # Check if 'scheduled_time' is provided
+        if 'scheduled_time' not in campaign_data or not campaign_data['scheduled_time']:
+            return JsonResponse({'success': False, 'type': 'error', 'message': 'يرجى تحديد وقت المخطط.'}, status=400)
+
+        # Parse and validate the scheduled time
+        if isinstance(campaign_data['scheduled_time'], str):
+            if not campaign_data['scheduled_time'].strip():  # Strip only if it's a string
                 return JsonResponse({'success': False, 'type': 'error', 'message': 'يرجى تحديد وقت المخطط.'}, status=400)
-            if campaign_data['scheduled_time'].tzinfo is None or campaign_data['scheduled_time'].tzinfo.utcoffset(campaign_data['scheduled_time']) is None:
-                campaign_data['scheduled_time'] = make_aware(campaign_data['scheduled_time'])
-            if campaign_data['scheduled_time'] < make_aware(datetime.now()):
-                return JsonResponse({'success': False, 'type': 'error', 'message': 'لا يمكن أن يكون الوقت المخطط في الماضي.'}, status=400)
-                
+            try:
+                scheduled_time = datetime.fromisoformat(campaign_data['scheduled_time'].strip())
+            except ValueError:
+                return JsonResponse({'success': False, 'type': 'error', 'message': 'تنسيق الوقت المخطط غير صحيح.'}, status=400)
+        else:
+            scheduled_time = campaign_data['scheduled_time']
+
+        # Ensure the scheduled time is timezone-aware
+        if scheduled_time.tzinfo is None or scheduled_time.tzinfo.utcoffset(scheduled_time) is None:
+            scheduled_time = make_aware(scheduled_time)
+
+        # Check if the scheduled time is in the past
+        if scheduled_time < make_aware(datetime.now()):
+            return JsonResponse({'success': False, 'type': 'error', 'message': 'لا يمكن أن يكون الوقت المخطط في الماضي.'}, status=400)
+
+
+        # Validate status
         if campaign_data['status'] not in ['scheduled', 'draft']:
             return JsonResponse({'success': False, 'type': 'error', 'message': 'يرجى تحديد حالة صالحة.'}, status=400)
 
-   except KeyError as e:
-       return JsonResponse({'success': False, 'type': 'error', 'message': f'خطاء في البيانات: {str(e)}'}, status=400)
-   except Exception as e:
-       return JsonResponse({'success': False, 'type': 'error', 'message': f'خطاء في البيانات: {str(e)}'}, status=400)
+        # Validate delay in seconds
+        if 'delay_in_seconds' not in campaign_data or not str(campaign_data['delay_in_seconds']).strip():
+            return JsonResponse({'success': False, 'type': 'error', 'message': 'يرجى تحديد التاخير بين الرسائل بالثواني.'}, status=400)
+        if not str(campaign_data['delay_in_seconds']).isdigit():
+            return JsonResponse({'success': False, 'type': 'error', 'message': 'يرجى إدخال رقم صحيح للتأخير.'}, status=400)
+        if int(campaign_data['delay_in_seconds']) < 0:
+            return JsonResponse({'success': False, 'type': 'error', 'message': 'التاخير بين الرسائل يجب ان يكون قيمة موجبة.'}, status=400)
+
+        # Return None if no errors
+        return None
+
+    except Exception as e:
+        return JsonResponse({'success': False, 'type': 'error', 'message': f'خطأ في التحقق من البيانات: {str(e)}'}, status=400)
+
 
 
 
@@ -81,9 +119,14 @@ def campaign(request, context=None):
         form = CampaignForm(request.POST, store_groups=store_groups)
         if form.is_valid():
 
+            validation_response = validate_campaign_data(form.cleaned_data, request)
+            if validation_response is not None:
+                return validation_response
+
             msg = form.cleaned_data['msg']
             status = form.cleaned_data['status']
             group_id = form.cleaned_data['customers_group']
+            delay_in_seconds = form.cleaned_data['delay_in_seconds']
             scheduled_time = form.cleaned_data['scheduled_time']
 
             # Only perform the additional validations if the status is 'active'
@@ -129,6 +172,7 @@ def campaign(request, context=None):
             data = {
                 'customers_data': customers_data_serialized,  # Use the serialized data
                 'msg': msg,
+                'delay_in_seconds': delay_in_seconds,
                 'store_id': store.store_id,
                 'campaign_id': campaign.id
             }
@@ -178,11 +222,16 @@ def edit_campaign(request, campaign_id):
             form = CampaignForm(request.POST, instance=campaign, store_groups=store_groups)
             if form.is_valid():
                 # Update campaign with form data but don't save yet
+                validation_response = validate_campaign_data(form.cleaned_data, request)
+                if validation_response is not None:
+                    return validation_response
+
                 campaign = form.save(commit=False)
                 new_status = form.cleaned_data['status']
                 scheduled_time = form.cleaned_data['scheduled_time']
                 group_id = form.cleaned_data['customers_group']
                 msg = form.cleaned_data['msg']
+                delay_in_seconds = form.cleaned_data['delay_in_seconds']
 
                 # If the new status is 'draft' and the original status was 'scheduled', revoke the task
                 if new_status == 'draft' and original_status == 'scheduled' and campaign.task_id:
@@ -230,6 +279,7 @@ def edit_campaign(request, campaign_id):
                     data = {
                         'customers_data': customers_data_serialized,
                         'msg': msg,
+                        'delay_in_seconds': delay_in_seconds,
                         'store_id': store.store_id,
                         'campaign_id': campaign.id
                     }
@@ -241,8 +291,6 @@ def edit_campaign(request, campaign_id):
                     campaign.task_id = task.id
                     campaign.status = 'scheduled'
                     campaign.scheduled_time = scheduled_time
-                    campaign.purchases += 1
-                    campaign.messages_sent += 1
                     campaign.save()  # Save the changes
                     return JsonResponse({'success': True, 'type': 'success', 'message': 'تم تحديث الحملة وإعادة حفظها بنجاح.'})
                 
@@ -288,6 +336,7 @@ def get_campaign_data(request, campaign_id=None):
                 'status': campaign.status,
                 'status_display': dict(Campaign.status_choices).get(campaign.status, campaign.status),
                 'msg': campaign.msg,
+                'delay_in_seconds': campaign.delay_in_seconds,
                 'edit_url': reverse('edit_campaign', args=[campaign.id]),  # Edit campaign URL
                 'delete_url': reverse('campaign_delete', args=[campaign.id])  # Delete campaign URL
             }

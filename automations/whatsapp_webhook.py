@@ -158,7 +158,7 @@ def message_process(body_unicode):
         if not recent_log_exists and staticbotstart and staticbotstart.enabled:
 
 
-            success = send_whatsapp_message(from_number, staticbotstart.return_message, user.session_id)
+            success, message = send_whatsapp_message(from_number, staticbotstart.return_message, user.session_id)
             
             if success:
                 StaticBotLog.objects.create(
@@ -180,12 +180,12 @@ def message_process(body_unicode):
                 if payload_message is not None:
                     if staticbot.condition == 1:  # Exact text
                         if payload_message == staticbot.message:
-                            success = send_whatsapp_message(from_number, staticbot.return_message, user.session_id)
+                            success, message = send_whatsapp_message(from_number, staticbot.return_message, user.session_id)
                     elif staticbot.condition == 2:  # Contains text
                         if payload_message in staticbot.message:
-                            success = send_whatsapp_message(from_number, staticbot.return_message, user.session_id)
+                            success, message = send_whatsapp_message(from_number, staticbot.return_message, user.session_id)
                     elif staticbot.condition == 3:  # Any text
-                        success = send_whatsapp_message(from_number, staticbot.return_message, user.session_id)
+                        success, message = send_whatsapp_message(from_number, staticbot.return_message, user.session_id)
 
                     if success:
                         staticbotmessage, created = StaticBotMessage.objects.get_or_create(store=store, bot=staticbot, defaults={'count': 0})

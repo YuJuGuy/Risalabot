@@ -20,13 +20,14 @@ class CreateUserForm(UserCreationForm):
 class CampaignForm(forms.ModelForm):
     class Meta:
         model = Campaign
-        fields = ['name', 'scheduled_time', 'msg', 'customers_group', 'status']
+        fields = ['name', 'scheduled_time', 'msg', 'customers_group', 'status', 'delay_in_seconds']
         labels = {
             'name': 'اسم الحملة',
             'scheduled_time': 'وقت المخطط',
             'msg': 'نص الرسالة',
             'customers_group': 'مجموعة العملاء',
             'status': 'حالة الحملة',
+            'delay_in_seconds': 'التاخير بين الرسائل بالثواني',
         }
         widgets = {
             'name': forms.TextInput(attrs={'placeholder': 'أدخل اسم الحملة'}),

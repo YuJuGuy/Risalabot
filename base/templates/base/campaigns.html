@@ -100,6 +100,12 @@
           {{ form.customers_group.errors }}
           {{ form.customers_group }}
         </div>
+
+        <div class="form-group">
+          {{ form.delay_in_seconds.label}}
+          {{ form.delay_in_seconds.errors }}
+          {{ form.delay_in_seconds }}
+        </div>
     
         <div class="form-group">
           {{ form.msg.errors }}
@@ -199,10 +205,10 @@
                                     <i class="fa-solid fa-ellipsis-vertical"></i>
                                     <div class="dropdown-content">
                                         ${
-                                            row.status === "scheduled" ? `
+                                            row.status === "scheduled" || row.status === "draft" ? `
                                                 <a href="javascript:void(0);" onclick="showPopup('${row.id}');">تعديل</a>
                                                 <a href="javascript:void(0);" onclick="cancelCampaign('${row.id}');">الغاء</a>
-                                            ` : row.status === "draft" || row.status === "cancelled" ? `
+                                            ` : row.status === "failed" || row.status === "cancelled" ? `
                                                 <a href="javascript:void(0);" onclick="showPopup('${row.id}');">اظهار</a>
                                                 <a href="javascript:void(0);" onclick="deleteCampaign('${row.id}');">حذف</a>
                                             ` : ''
@@ -243,8 +249,7 @@
       var scheduledTime = document.getElementById('id_scheduled_time');
       var customersGroup = document.getElementById('id_customers_group');
       var msg = document.getElementById('id_msg');
-
-
+      var delayInSeconds = document.getElementById('id_delay_in_seconds');
 
       // add event listener to form
       document.getElementById('campaign-form').addEventListener('submit', function(event) {
@@ -254,10 +259,13 @@
           scheduledTime.setCustomValidity('');
           customersGroup.setCustomValidity('');
           msg.setCustomValidity('');
+          delayInSeconds.setCustomValidity('');
+          
           name.style.border = '';
           scheduledTime.style.border = '';
           customersGroup.style.border = '';
           msg.style.border = '';
+          delayInSeconds.style.border = '';
 
           if (!name.value) {
               event.preventDefault();  // Prevent form submission
@@ -282,6 +290,12 @@
               msg.setCustomValidity('يرجى ادخال الرسالة');  // Set validity message on the message input
               msg.style.border = '2px solid red';
           }
+
+          else if (!delayInSeconds.value) {
+              event.preventDefault();  // Prevent form submission
+              delayInSeconds.setCustomValidity('يرجى اختيار التاخير');  // Set validity message on the delay in seconds input
+              delayInSeconds.style.border = '2px solid red';
+          }
           
           else {
               name.setCustomValidity('');  // Clear custom validity
@@ -292,6 +306,8 @@
               customersGroup.style.border = '';  // Remove error styling
               msg.setCustomValidity('');  // Clear custom validity
               msg.style.border = '';  // Remove error styling
+              delayInSeconds.setCustomValidity('');  // Clear custom validity
+              delayInSeconds.style.border = '';  // Remove error styling
 
           }
 
@@ -372,7 +388,7 @@
         fetch('/sync_data/', {
             method: 'POST',
             headers: {
-                'X-CSRFToken': document.querySelector('[name=csrf-token]').content,
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
                 'Content-Type': 'application/json'
             }
         })
@@ -451,7 +467,7 @@
       fetch('/delete-campaign/' + campaignId + '/', {
         method: 'POST',
         headers: {
-          'X-CSRFToken': document.querySelector('[name=csrf-token]').content,
+          'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
           'Content-Type': 'application/json'
         }
       })
@@ -475,7 +491,7 @@
       fetch('/cancel-campaign/' + campaignId + '/', {
         method: 'POST',
         headers: {
-          'X-CSRFToken': document.querySelector('[name=csrf-token]').content,
+          'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
           'Content-Type': 'application/json'
         }
       })
@@ -517,6 +533,7 @@
                           document.getElementById('id_customers_group').readOnly = false;
                           document.getElementById('id_customers_group').disabled = false;
                           document.getElementById('id_msg').readOnly = false;
+                          document.getElementById('id_delay_in_seconds').readOnly = false;
 
                       } else {
                           // Hide the submit button
@@ -527,6 +544,7 @@
                           document.getElementById('id_customers_group').readOnly = true;
                           document.getElementById('id_customers_group').disabled = true;
                           document.getElementById('id_msg').readOnly = true;
+                          document.getElementById('id_delay_in_seconds').readOnly = true;
                       }
   
                       // Populate form fields
@@ -534,6 +552,7 @@
                       document.getElementById('id_scheduled_time').value = campaignData.scheduled_time;
                       document.getElementById('id_customers_group').value = campaignData.customers_group;
                       document.getElementById('id_msg').value = campaignData.msg;
+                      document.getElementById('id_delay_in_seconds').value = campaignData.delay_in_seconds;
                       // populate message visualization
 
                       visualMessage.innerText = campaignData.msg;
@@ -558,6 +577,7 @@
           document.getElementById('id_customers_group').readOnly = false;
           document.getElementById('id_customers_group').disabled = false;
           document.getElementById('id_msg').readOnly = false;
+          document.getElementById('id_delay_in_seconds').readOnly = false;
           form.reset();
           document.getElementById("myPopup").style.display = "flex";
           closeAllDropdowns();

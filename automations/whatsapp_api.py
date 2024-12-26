@@ -183,9 +183,10 @@ def send_whatsapp_message(number, msg, session):
     try:
         response = requests.post(url, headers=headers, json=data)
         if response.status_code in [200, 201]:
-            return {'success': True}
+            return True, "Message sent successfully"
+
         else:
-            return {'success': False}
+            return False, "Message failed."
     except requests.exceptions.RequestException as e:
         return False, f"Error occurred when sending message: {e}"
 

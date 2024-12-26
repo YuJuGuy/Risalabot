@@ -1908,7 +1908,10 @@ td i {
   flex-direction: column;
   justify-content: center;
   margin: 1rem 2rem;
+  gap: .25rem;
+  font-size: 14px;
 }
+
 
 .button-row{
   display: flex;

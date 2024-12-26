@@ -1,5 +1,6 @@
-from celery import shared_task, chain
+from celery import shared_task, chain, signature, group
 import requests
+from celery.exceptions import MaxRetriesExceededError
 from django.db import transaction
 from base.apis import create_coupon
 from datetime import datetime, timedelta, timezone
@@ -36,84 +37,96 @@ replacements = {
 @shared_task(bind=True, max_retries=3)
 def send_whatsapp_message_task(self, data):
     try:
-        # Access the first dictionary in the data list
         if isinstance(data, list):
             data = data[0]
 
         store = Store.objects.get(store_id=data['store_id'])
-
         userstorelink = UserStoreLink.objects.get(store=store)
         user = userstorelink.user
-        
 
         if not user.connected:
-            logging.info("User is not connected.")
+            logging.info("المستخدم غير متصل.")
             Notification.objects.create(store=store, message="الواتساب غير متصل. يرجى تحديث البيانات.")
             return None
-            return
-        
-        # Check if the campaign exists and has the correct status
+
         campaign = Campaign.objects.get(id=data['campaign_id'], store=store)
         if campaign.status != 'scheduled':
-            logging.info(f"Campaign with id {data['campaign_id']} is not scheduled")
+            logging.info(f"الحملة بالمعرف {data['campaign_id']} ليست مجدولة")
             return None
 
-        session = UserStoreLink.objects.filter(store=store).first().user.session_id
+        session = userstorelink.user.session_id
     except Store.DoesNotExist:
-        logging.info(f"Store with id {data['store_id']} does not exist.")
+        logging.info(f"المتجر بالمعرف {data['store_id']} غير موجود.")
         return None
     except Campaign.DoesNotExist:
-        logging.info(f"Campaign with id {data['campaign_id']} does not exist")
+        logging.info(f"الحملة بالمعرف {data['campaign_id']} غير موجودة")
         return None
     except Exception as e:
-        logging.error(f"Unexpected error: {e}")
+        logging.error(f"خطأ غير متوقع: {e}")
         return None
 
-    sent_count = 0
-    failed_count = 0  # Track failed messages
+    delay = data.get('delay_in_seconds', 0)
+    for i, customer in enumerate(data['customers_data']):
+        # Check subscription message limit
+        if store.subscription_message_count >= store.subscription.messages_limit:
+            logging.info(f"تم الوصول إلى الحد الأقصى للرسائل: {store.subscription_message_count} رسائل مرسلة.")
+            break  # Stop scheduling further messages
 
-    # Sending messages in batch or all at once
-    for customer in data['customers_data']:
-        # Only process replacements if the message contains placeholders
-        if '{' in data['msg']:
+        task_data = {
+            "customer": customer,
+            "msg": data['msg'],
+            "campaign_id": data['campaign_id'],
+            "store_id": data['store_id'],
+            "session": session
+        }
+        send_single_message_task.apply_async(
+            args=[task_data],
+            countdown=i * delay  # Sequential delay for each message
+        )
+
+    return "Messages scheduled successfully."
+
+
+@shared_task
+def send_single_message_task(task_data):
+    """Task to send a single message."""
+    try:
+        customer = task_data['customer']
+        campaign = Campaign.objects.get(id=task_data['campaign_id'])
+        store = Store.objects.get(store_id=task_data['store_id'])
+
+        # Check subscription message limit
+        if store.subscription_message_count >= store.subscription.messages_limit:
+            logging.info(f"تم الوصول إلى الحد الأقصى للرسائل: {store.subscription_message_count} رسائل مرسلة.")
+            return False, "Reached maximum message limit."
+
+        # Replace placeholders in the message
+        msg = task_data['msg']
+        if '{' in msg:
             replacements = {
                 '{اسم العميل}': customer.get('name', ''),
                 '{رقم العميل}': customer.get('phone', ''),
                 '{الايميل}': customer.get('email', ''),
                 '{الاسم الاول}': customer.get('first_name', ''),
                 '{الدولة}': customer.get('location', ''),
-                # Add other placeholders here as needed
             }
-            # Apply all replacements in one loop
             for placeholder, value in replacements.items():
-                data['msg'] = data['msg'].replace(placeholder, value)
+                msg = msg.replace(placeholder, value)
 
         # Send the WhatsApp message
-        messages_limit = store.subscription.messages_limit
-        if store.subscription_message_count >= messages_limit:
-            return False, f"Message limit reached: {store.subscription_message_count} messages sent."
-        success, message = send_whatsapp_message(customer['phone'], data['msg'], session)
+        success, message = send_whatsapp_message(customer['phone'], msg, task_data['session'])
         if success:
-            sent_count += 1
             with transaction.atomic():
                 campaign.messages_sent += 1
                 campaign.save(update_fields=['messages_sent'])
+            return True, "Message sent successfully."
         else:
-            failed_count += 1
+            logging.info(f"Failed to send message to {customer['phone']}")
+            return False, "Message failed."
 
-    # Update campaign status
-    campaign.status = 'sent' if failed_count == 0 else 'failed'
-    campaign.save(update_fields=['status'])
-
-    # Schedule next batch if there's more messages and a schedule_next_in is provided
-    if data.get('schedule_next_in'):
-        self.apply_async(
-            args=[data],
-            countdown=data['schedule_next_in']
-        )
-
-    return None
-
+    except Exception as e:
+        logging.error(f"Error in send_single_message_task: {e}")
+        return False, f"Error occurred: {e}"
 
 
 
