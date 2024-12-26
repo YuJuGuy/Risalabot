@@ -32,12 +32,14 @@ def account_view(request, context=None):
         store = store_link.store
         
         # Add the store to the context for use in the template
-
-
         context['store'] = store
         context['notification_count'] = Notification.objects.filter(store=store).count()
         context['notifications'] = Notification.objects.filter(store=store).order_by('-created_at')
-
+        context['email'] = request.user.email
+        context['store_name'] = store.store_name
+        context['store_domain'] = store.store_domain
+        context['subscription_name'] = store.subscription.name
+        context['subscription_start'] = store.subscription_date
 
     except UserStoreLink.DoesNotExist:
         logger.error(f"No store linked to user {request.user.id}")
@@ -67,3 +69,5 @@ def change_password(request):
             return JsonResponse({'success': False, 'type': 'error', 'message': 'كلمات المرور غير متطابقة.'}, status=400)
     else:
         return JsonResponse({'success': False, 'type': 'error', 'message': 'المتجر غير مشترك بالخدمة.'}, status=400)
+
+

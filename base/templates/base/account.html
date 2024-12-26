@@ -5,6 +5,22 @@
 {% csrf_token %}
 
 
+<div class="account-container">
+    <h1>حسابي</h1>
+    <div class="account-info">
+        <h3>الايميل</h3>
+        <input type="email" value="{{ user.email }}" disabled>
+        <h3>اسم المتجر</h3>
+        <input type="text" value="{{ store_name }}" disabled>
+        <h3>رابط المتجر</h3>
+        <input type="text" value="{{ store_domain }}" disabled>
+        <h3>اسم الاشتراك</h3>
+        <input type="text" value="{{ subscription_name }}" disabled>
+        <h3>تاريخ بدء الاشتراك</h3>
+        <input type="text" value="{{ subscription_start }}" disabled>
+    </div>
+</div>
+
 
 <div class="password-change">
     <h2>تغيير كلمة المرور</h2>

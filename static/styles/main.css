@@ -63,7 +63,56 @@
   padding: 10px;
 }
 
+.account-container{
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 10px;
+  gap: 1rem;
+
+}
+
+.account-container h1{
+  font-weight: bold;
+  margin:0;
+}
+
+.account-info{
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 10px;
+  gap: .5rem;
+  width: 100%;
+}
+
+.account-info h3{
+  font-family: var(--body-font);
+  font-weight: bold;
+  margin:0;
+}
+
+.account-info input {
+  padding: 0.5rem;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  font-size: 0.875rem !important;
+  font: inherit;
+  background-color: white;
+  color: black;
+  width: 30%;
+}
+
+@media screen and (max-width: 768px) {
+  .account-info input {
+    width: 70%;
+  }
+  
+}
 .unlink-button{
+  margin-top: 1rem;
   padding: 0.5rem 1rem;
   border-radius: 4px;
   border: none;
@@ -75,6 +124,7 @@
 }
 
 .password-change{  
+  margin-top: 1rem;
   display: flex;
   flex-direction: column;
   justify-content: center;
