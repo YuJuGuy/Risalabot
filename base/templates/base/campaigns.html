@@ -204,13 +204,18 @@
                                 <div class="dropdown-icon">
                                     <i class="fa-solid fa-ellipsis-vertical"></i>
                                     <div class="dropdown-content">
-                                        ${
-                                            row.status === "scheduled" || row.status === "draft" ? `
+                                        ${ 
+                                            row.status === "scheduled" ? `
                                                 <a href="javascript:void(0);" onclick="showPopup('${row.id}');">تعديل</a>
                                                 <a href="javascript:void(0);" onclick="cancelCampaign('${row.id}');">الغاء</a>
+                                            ` : row.status === "draft" ? `
+                                                <a href="javascript:void(0);" onclick="showPopup('${row.id}');">تعديل</a>
+                                                <a href="javascript:void(0);" onclick="deleteCampaign('${row.id}');">حذف</a>
                                             ` : row.status === "failed" || row.status === "cancelled" ? `
                                                 <a href="javascript:void(0);" onclick="showPopup('${row.id}');">اظهار</a>
                                                 <a href="javascript:void(0);" onclick="deleteCampaign('${row.id}');">حذف</a>
+                                            ` : row.status === "sent" ? `
+                                                <a href="javascript:void(0);" onclick="showPopup('${row.id}');">اظهار</a>
                                             ` : ''
                                         }
                                     </div>

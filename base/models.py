@@ -105,7 +105,8 @@ class StaticBotStart(models.Model):
     enabled = models.BooleanField(default=False)
     store = models.OneToOneField(Store, on_delete=models.CASCADE)
     return_message = models.TextField()
-    hours = models.IntegerField(validators=[MinValueValidator(1)])
+    hours = models.IntegerField(validators=[MinValueValidator(1)], default=1)
+
 
 
 
@@ -176,7 +177,7 @@ class StaticBotStartMessage(models.Model):
     
 class Group(models.Model):
     store = models.ForeignKey(Store, on_delete=models.CASCADE)
-    group_id = models.IntegerField()  # Removed unique=True
+    group_id = models.BigIntegerField()  # Removed unique=True
     name = models.CharField(max_length=255)
 
     class Meta:
@@ -243,7 +244,12 @@ class Campaign(models.Model):
     def save(self, *args, **kwargs):
         if self.pk is not None:
             try:
-                old_instance = Campaign.objects.get(pk=self.pk)
+                if isinstance(self.pk, str):
+                    pk_uuid = uuid.UUID(self.pk)
+                else:
+                    pk_uuid = self.pk
+                    
+                old_instance = Campaign.objects.get(pk=pk_uuid)
                 if old_instance.status != self.status:
                     self.status_changed_at = timezone.now()
                 

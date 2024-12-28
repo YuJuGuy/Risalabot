@@ -12,7 +12,7 @@ from django.views.decorators.http import require_http_methods
 from . forms import StaticBotForm
 from django.shortcuts import redirect
 import json
-
+from django.utils.html import escape
 import logging
 
 logger = logging.getLogger(__name__)
@@ -119,7 +119,14 @@ def start_static_bot_post(request):
 
             return JsonResponse({'success': True, 'type': 'success', 'message': 'تم تحديث البوت بنجاح'}, status=200)
         else:
-            return JsonResponse({'success': False, 'type': 'error', 'errors': form.errors}, status=400)
+    # Collect errors in a more readable way
+            error_messages = [
+                f"{field}: {', '.join(escape(msg) for msg in messages)}"
+                for field, messages in form.errors.items()
+            ]
+            combined_errors = " | ".join(error_messages)
+
+            return JsonResponse({'success': False, 'type': 'error', 'message': combined_errors}, status=400)
     except UserStoreLink.DoesNotExist:
         return JsonResponse({'success': False, 'type': 'error', 'message': 'لا يوجد متجر مرتبط بالمستخدم'}, status=404)
     except Exception as e:
@@ -190,15 +197,30 @@ def static_bot_post(request):
 def toggle_bot_enabled(request):
     if request.method == 'POST':
         try:
+            store_link = UserStoreLink.objects.select_related('store').get(user=request.user)
+            store = store_link.store
+
+            try:
+                subscription = Subscription.objects.get(store=store)
+                botallowed = subscription.staticbot
+                if not botallowed:
+                    return JsonResponse({
+                        'success': False,
+                        'type': 'error',
+                        'message': 'المتجر غير مشترك بالخدمة.'
+                    }, status=400)
+
+            except Subscription.DoesNotExist:
+                # Handle case where subscription does not exist
+                return JsonResponse({
+                    'success': False,
+                    'type': 'error',
+                    'message': 'المتجر غير مشترك بالخدمة.'
+                }, status=400)
+
             # Parse the JSON body
             body = json.loads(request.body)
             botenabled = body.get('botenabled', None)  # Extract the `botenabled` field
-
-            # Retrieve the user's store
-            store = UserStoreLink.objects.select_related('store').get(user=request.user).store
-            
-            # Retrieve the bot instance
-            bot_start = StaticBotStart.objects.get(store=store)
 
             # Update and save the bot status
             store.botenabled = botenabled
@@ -210,13 +232,6 @@ def toggle_bot_enabled(request):
                 'message': 'تم تغيير حالة الرد التلقائي',
                 'enabled': store.botenabled
             }, status=200)
-
-        except StaticBotStart.DoesNotExist:
-            return JsonResponse({
-                'success': False,
-                'type': 'error',
-                'message': 'لم يتم العثور على بوت'
-            }, status=404)
         
         except Exception as e:
             return JsonResponse({

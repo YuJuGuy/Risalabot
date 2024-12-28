@@ -70,10 +70,12 @@
 </div>
 
 <script>
-    document.addEventListener("DOMContentLoaded", function () {
+
+
+
+document.addEventListener("DOMContentLoaded", function () {
 
         fetchBots();
-        initializeAccordion();
 
     });
     
@@ -242,6 +244,41 @@ function initializeAccordion() {
             });
     });
 
+    document.addEventListener('DOMContentLoaded', function () {
+        const startBotMessage = document.getElementById('startbot-message');
+        const startBotHours = document.getElementById('startbot-hours');
+
+        document.getElementById('startbot-form').addEventListener('submit', function(event) {
+            startBotMessage.setCustomValidity('');
+            startBotHours.setCustomValidity('');
+
+            startBotMessage.style.border = '';
+            startBotHours.style.border = '';
+
+            if (!startBotMessage.value) {
+              event.preventDefault();  // Prevent form submission
+              startBotMessage.setCustomValidity('يرجى ادخال الرسالة');  // Set validity message on the name input
+              startBotMessage.style.border = '2px solid red';
+            } 
+          
+            else if (!startBotHours.value) {
+              event.preventDefault();  // Prevent form submission
+              startBotHours.setCustomValidity('يرجى اختيار الساعات');  // Set validity message on the scheduled time input
+              startBotHours.style.border = '2px solid red';
+          }
+          else if (startBotHours.value <= 0)    {
+              event.preventDefault();  // Prevent form submission
+              startBotHours.setCustomValidity('يرجى اختيار الساعات اكبر من صفر');  // Set validity message on the scheduled time input
+              startBotHours.style.border = '2px solid red';
+            }
+          else{
+            startBotMessage.setCustomValidity('');
+            startBotMessage.style.border = '';
+            startBotHours.setCustomValidity('');
+            startBotHours.style.border = '';
+          }
+        });
+    });
     // Add New StaticBot
     document.getElementById('add-bot-button').addEventListener('click', function () {
         const botList = document.getElementById('bot-list');
@@ -307,7 +344,9 @@ function initializeAccordion() {
                 })
                 .catch(error => console.error('Fetch error:', error));
         });
+
     });
+
 
 
     removeBot = (button) => {
@@ -373,6 +412,8 @@ function initializeAccordion() {
                 console.error('Error:', error);
                 showMessage(`An error occurred: ${error.message}`, 'error');
             });
+
+            initializeAccordion();
     }
     
     

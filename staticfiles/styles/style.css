@@ -1,0 +1,245 @@
+@font-face {
+    font-family: 'CoconNextArabic-Light';
+    src: url("fonts/cocon-next-arabic.ttf") format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
+body {
+    font-family: 'CoconNextArabic-Light';
+    background-color: #a7d7c5;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+}
+
+.message-display {
+  display: none; /* Start hidden */
+  position: fixed;
+  top: 30%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 25%;
+  height: auto;
+  padding: 1em;
+  background-color: #ffffff;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  border-radius: 0.5rem;
+  text-align: center;
+  opacity: 0; /* Hidden by default */
+  --tw-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --tw-shadow-colored: 0 20px 25px -5px var(--tw-shadow-color), 0 8px 10px -6px var(--tw-shadow-color);
+  box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
+  
+}
+
+.message-display-content{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.message-icon{
+  width: 100%;
+  height: auto;
+}
+
+.message-icon i{
+  font-size: 2rem;
+}
+
+.message-content{
+  font-size: 1rem;
+}
+
+.message-title{
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+.message-display.show {
+  display: flex; /* Show when 'show' class is added */
+  opacity: 1; /* Visible */
+  transform: translateX(-50%) translateY(0); /* Subtle pop-in */
+}
+
+
+.buttons{
+  display: flex;
+  flex-direction: row;
+  gap: 1rem;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: .5rem;
+}
+
+
+  
+.login-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background-color: #f6fbf9;
+    border-radius: 20px; /* Slightly smaller border-radius for a modern look */
+    padding: 2rem 3rem; /* Increased padding for better spacing */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
+    max-width: 100%;
+}
+
+@media screen and (max-width: 768px) {
+  .login-container{
+    margin: 1rem;
+  }
+  
+}
+  
+  .titles {
+    display: flex;
+    flex-direction: column;
+    text-align: center;
+    margin-bottom: 1.5rem; /* Adjusted margin for better spacing */
+  }
+
+  .logo-container{
+    width: 50%;
+    align-self: center;
+  }
+  
+  .login-text {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #32403b; /* Slightly darker color for better readability */
+    margin-bottom: 0.5rem;
+  }
+  
+  .login-text-small {
+    font-size: 1.25rem;
+    color: #546e64; /* Softer color for supporting text */
+  }
+  
+  form {
+    text-align: right;
+    width: 100%; /* Full width of the container */
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem; /* Added gap between input fields */
+  }
+  
+  input {
+    border-radius: 10px; /* Reduced radius for a modern look */
+    background-color: #ffffff;
+    border: 1px solid rgba(0, 0, 0, 0.1); /* Lighter border for a cleaner look */
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    width: 100%;
+    box-sizing: border-box;
+    transition: border-color 0.3s ease; /* Smooth transition for hover effect */
+  }
+  
+  input:focus {
+    border-color: #84c7ae; /* Highlight border on focus */
+    outline: none;
+  }
+  
+  .submit-button {
+    border-radius: 10px;
+    background-color: #84c7ae;
+    color: #ffffff;
+    font-size: 1.25rem;
+    font-weight: 700;
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    width: 100%;
+    box-sizing: border-box;
+    transition: background-color 0.3s ease; /* Smooth transition for hover effect */
+    border: none; /* Ensure no border around the button */
+  }
+  
+  .submit-button:hover {
+    background-color: #52947a; /* Darker shade on hover */
+  }
+  
+  .register-link {
+    color: #84c7ae;
+    text-decoration: none;
+    font-weight: 700;
+  }
+  
+  .register-link:hover {
+    text-decoration: underline;
+  }
+  
+  .titles p {
+    margin: 0; /* Remove default margin for p inside titles */
+  }
+  
+  .trcontainer{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+  }
+
+  .trcontainer ul{
+    list-style-type: none;
+    padding: 0;
+    text-align: center;
+  }
+
+  .forgot-password{
+    margin-bottom: 1rem;
+    text-align: right;
+  }
+
+  .forgot-password-link{
+    color: #84c7ae;
+    text-decoration: none;
+    font-weight: 700;
+  }
+
+  .forgot-password-link:hover{
+    text-decoration: underline;
+  }
+
+  .reset-password-container{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+  }
+
+  .reset-password-container input{
+    margin-bottom: 1rem;
+  }
+
+
+
+  .submit-button {
+    text-align: center;
+    text-decoration: none;
+    color: #ffffff;
+  }
+
+
+  .info-box{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+  }
+
+  .info-icon{
+    font-size: 2rem;
+    font-weight: 700;
+  }
+
+  .info-text{
+    list-style-type: none;
+    padding: 0;
+  }

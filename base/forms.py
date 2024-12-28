@@ -166,7 +166,7 @@ class StaticBotStartForm(forms.ModelForm):
     class Meta:
         model = StaticBotStart
         fields = ['enabled', 'hours',  'return_message']
-
+    
         labels = {
             'enabled': 'مفعل',
             'hours': 'الساعات',
@@ -180,6 +180,14 @@ class StaticBotStartForm(forms.ModelForm):
 
         }
 
+    def clean_hours(self):
+        hours = self.cleaned_data.get('hours')
+        if hours is None:
+            raise forms.ValidationError('يجب إدخال الساعات')
+        if hours < 1:
+            raise forms.ValidationError('الساعات يجب أن تكون أكبر من 0')
+        return hours
+
 
     def __init__(self, *args, **kwargs):
         super(StaticBotStartForm, self).__init__(*args, **kwargs)
@@ -188,7 +196,9 @@ class StaticBotStartForm(forms.ModelForm):
                 # Set custom error messages
             field.error_messages = {
                 'required': f'يجب إدخال {self.Meta.labels[field_name]}'
+                
             }
+            
             
         
     def get_custom_errors(self):

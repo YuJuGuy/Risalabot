@@ -43,6 +43,8 @@ def create_whatsapp_session(request):
             user.save()
         elif status == "FAILED":
             delete_session(user) 
+        elif status == "NOT_FOUND":
+            whatsapp_create_session(request.user, create=True)
         else:
             user.connected = False
             user.save()
@@ -50,6 +52,7 @@ def create_whatsapp_session(request):
         return JsonResponse({'success': True, 'data': {'is_connected': user.connected}})
     except Exception as e:
         return JsonResponse({'success': False, 'type': 'error', 'message': str(e)}, status=500)
+
 
 @login_required(login_url='login')
 def get_whatsapp_qr_code(request):

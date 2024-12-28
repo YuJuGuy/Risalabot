@@ -11,6 +11,9 @@ from datetime import timedelta
 from django.core.cache import cache
 from datetime import datetime
 from django.utils.timezone import now
+from django.http import HttpResponseForbidden
+from django.conf import settings
+
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +48,20 @@ def stop_or_store_session(session_id, user=None):
 @csrf_exempt
 @require_POST
 def whatsapp_hook(request):
+    # Check private IP using X-Forwarded-For or other headers
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        client_ip = x_forwarded_for.split(',')[0].strip()
+    else:
+        client_ip = request.META.get('REMOTE_ADDR')
+    
+    # Log the IP for debugging
+    logger.debug(f"Client IP: {client_ip}")
+    logger.debug(f"All META headers: {request.META}")
+    
+    if client_ip != '20.50.192.219':
+        return HttpResponseForbidden(f"Forbidden: Invalid source IP {client_ip}")
+        
     body_unicode = request.body.decode('utf-8')
     try:
         body_data = json.loads(body_unicode)

@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 
 def send_working_message(number, case):
-    url = 'http://localhost:3000/api/sendText'
+    url = 'http://10.1.0.5:3000/api/sendText'
     headers = {'accept': 'application/json', 'Content-Type': 'application/json'}
     working_message = "تم ربط الحساب بنجاح"
     disconnect_message = "تم قطع الاتصال بالحساب"

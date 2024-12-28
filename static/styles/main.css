@@ -453,8 +453,7 @@ html, body {
   }
 
   .left-container {
-    display: none; /* Hide left-container items in mobile view */
-    flex-direction: column;
+    flex-direction: row;
   }
 
   .hamburger-menu {
@@ -1606,6 +1605,21 @@ select{
   gap: 2rem
 
 
+
+}
+
+@media screen and (max-width: 768px) {
+  .content-container {
+    flex-direction: column !important;
+    margin: 1rem;
+  }
+  .session-container{
+    width: 100%!important; 
+  }
+  .how-to-scan{
+    width: 100%!important;
+  }
+  
 }
 
 

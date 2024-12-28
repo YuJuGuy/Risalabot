@@ -36,10 +36,10 @@ def account_view(request, context=None):
         context['notification_count'] = Notification.objects.filter(store=store).count()
         context['notifications'] = Notification.objects.filter(store=store).order_by('-created_at')
         context['email'] = request.user.email
-        context['store_name'] = store.store_name
-        context['store_domain'] = store.store_domain
-        context['subscription_name'] = store.subscription.name
-        context['subscription_start'] = store.subscription_date
+        context['store_name'] = store.store_name if store else None
+        context['store_domain'] = store.store_domain if store else None
+        context['subscription_name'] = store.subscription.name if store.subscription else None
+        context['subscription_start'] = store.subscription_date if store.subscription else None
 
     except UserStoreLink.DoesNotExist:
         logger.error(f"No store linked to user {request.user.id}")

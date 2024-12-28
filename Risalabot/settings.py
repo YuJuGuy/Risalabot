@@ -25,15 +25,16 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv('SECRET_KEY')
-
+SECURE_SSL_REDIRECT = True
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 
-ALLOWED_HOSTS = ['stud-accepted-ghoul.ngrok-free.app','127.0.0.1','localhost','192.168.0.119']
+ALLOWED_HOSTS = ['10.1.0.4', 'risalabot.com', 'www.risalabot.com', '10.1.0.5']
 
 CSRF_TRUSTED_ORIGINS = [
-    'https://stud-accepted-ghoul.ngrok-free.app',
+    'https://risalabot.com',
+    'https://www.risalabot.com',
 ]
 
 # Application definition
@@ -55,6 +56,8 @@ INSTALLED_APPS = [
 AUTH_USER_MODEL = 'base.User'
 
 
+STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.ManifestStaticFilesStorage'
+
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -64,6 +67,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'django.middleware.common.BrokenLinkEmailsMiddleware'
 ]
 
 ROOT_URLCONF = 'Risalabot.urls'
@@ -96,10 +100,15 @@ WSGI_APPLICATION = 'Risalabot.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.getenv('PGDATABASE'),
+        'USER': os.getenv('PGUSER'),
+        'PASSWORD': os.getenv('PGPASSWORD'),
+        'HOST': os.getenv('PGHOST'),
+        'PORT': os.getenv('PGPORT'),
     }
 }
+
 
 
 CACHES = {
@@ -153,11 +162,10 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'  # This is the URL prefix for serving static files.
+STATICFILES_DIRS = [BASE_DIR / 'static']  # Where your static files are located during development.
+STATIC_ROOT = BASE_DIR / 'staticfiles'  # The directory where collected static files are stored.
 
-STATICFILES_DIRS = [
-    BASE_DIR / 'static'
-]
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
@@ -183,8 +191,11 @@ CELERY_BROKER_URL = 'redis://localhost:6379/0'
 CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
+CELERY_TASK_STORE_ERRORS_EVEN_IF_IGNORED = True
 CELERY_TASK_ACKS_LATE = True
-
+BROKER_TRANSPORT_OPTIONS = {
+    'visibility_timeout': 43200  # 12 hours
+}
 
 
 CELERY_IMPORTS = [

@@ -5,35 +5,51 @@ from base.models import User, UserStoreLink
 
 
 def get_session_status(session):
-    
     headers = {'accept': 'application/json', 'Content-Type': 'application/json'}
-    status_url = f"http://localhost:3000/api/sessions/{session}"
-    response = requests.get(status_url, headers=headers)
-    
-    # Check if the response is valid and contains JSON data
+    status_url = f"http://10.1.0.5:3000/api/sessions/{session}"
+
     try:
+        response = requests.get(status_url, headers=headers)
         response_data = response.json()
+
+        # Check for the presence of the session status
+        if response.status_code == 200 and response_data and "status" in response_data:
+            return response_data["status"]
+
+        # Handle session not found error (404)
+        if response.status_code == 404:
+            error_data = response_data if isinstance(response_data, dict) else {}
+            if error_data.get("message") == "Session not found":
+                print(f"ERROR: Session '{session}' not found. Details: {error_data}")
+            return "NOT_FOUND"
+
+        # Handle other non-200 responses
+        if response.status_code != 200:
+            print(f"Unexpected error. Status: {response.status_code}, Response: {response_data}")
+            return None
+
+    except requests.RequestException as e:
+        print(f"Network or Request error: {e}")
+        return None
     except ValueError:
+        print("Invalid JSON response")
         return None
 
-    # Check for the presence of the session status
-    if response.status_code == 200 and response_data and "status" in response_data:
-        return response_data["status"]
-    return None
 
 def get_qr_code(session):
-    qr_url = f"http://localhost:3000/api/{session}/auth/qr"
+    qr_url = f"http://10.1.0.5:3000/api/{session}/auth/qr"
     qr_response = requests.get(qr_url, headers={'accept': 'image/png'})
     if qr_response.status_code in [200, 201]:
         qr_base64 = base64.b64encode(qr_response.content).decode('utf-8')
         return {'success': True, 'qr': qr_base64}
     return {'success': False}
 
-def whatsapp_create_session(user):
+def whatsapp_create_session(user, create=None):
     session = user.session_id
     headers = {'accept': 'application/json', 'Content-Type': 'application/json'}
 
-    url = "http://localhost:3000/api/sessions/start"
+    start_url = "http://10.1.0.5:3000/api/sessions/start"
+    create_url = "http://10.1.0.5:3000/api/sessions"
     data = {
         "name": session,
         "start": True,
@@ -51,7 +67,7 @@ def whatsapp_create_session(user):
                 },
             "webhooks": [
             {
-                "url": "http://192.168.0.119:8000/whatsapp",
+                "url": "https://risalabot.com/whatsapp",
                 "events": [
                 "message",
                 "session.status"
@@ -60,6 +76,11 @@ def whatsapp_create_session(user):
             ]
         }
         }
+
+    if create:
+        url = create_url
+    else:
+        url = start_url
     response = requests.post(url, headers=headers, json=data)
     
     if response.status_code in [200, 201]:
@@ -73,7 +94,7 @@ def whatsapp_details(user):
     headers = {'accept': 'application/json', 'Content-Type': 'application/json'}
     
     # Fetch user details
-    url = f"http://localhost:3000/api/sessions/{session}/me"
+    url = f"http://10.1.0.5:3000/api/sessions/{session}/me"
     response = requests.get(url, headers=headers)
     
     if response.status_code in [200, 201]:
@@ -84,7 +105,7 @@ def whatsapp_details(user):
     
 
         # Fetch profile picture
-        profile_pic_url = "http://localhost:3000/api/contacts/profile-picture"
+        profile_pic_url = "http://10.1.0.5:3000/api/contacts/profile-picture"
         profile_pic_params = {"contactId": id, "session": session}
         profile_picture_response = requests.get(profile_pic_url, headers=headers, params=profile_pic_params)
         
@@ -111,7 +132,7 @@ def logout_user(user):
     headers = {'accept': 'application/json', 'Content-Type': 'application/json'}
     data = {"name": session}
     # Logout user
-    url = f"http://localhost:3000/api/sessions/logout"
+    url = f"http://10.1.0.5:3000/api/sessions/logout"
     response = requests.post(url, headers=headers, json=data)
     
     if response.status_code in [200, 201]:
@@ -125,7 +146,7 @@ def start_session(user):
     headers = {'accept': 'application/json', 'Content-Type': 'application/json'}
     data = {"name": session}
     # Start the session
-    url = "http://localhost:3000/api/sessions/start"
+    url = "http://10.1.0.5:3000/api/sessions/start"
     response = requests.post(url, headers=headers, json=data)
     
     if response.status_code in [200, 201]:
@@ -142,7 +163,7 @@ def stop_session(user):
     }
     
     # Stop the session
-    url = "http://localhost:3000/api/sessions/stop"
+    url = "http://10.1.0.5:3000/api/sessions/stop"
     response = requests.post(url, headers=headers, json=data)
     
     if response.status_code in [200, 201]:
@@ -157,7 +178,7 @@ def delete_session(user):
     session = user.session_id
     headers = {'accept': 'application/json', 'Content-Type': 'application/json'}
     # Delete the session
-    url = f"http://localhost:3000/api/sessions/{session}"
+    url = f"http://10.1.0.5:3000/api/sessions/{session}"
     response = requests.delete(url, headers=headers)
     logger.info(f"Deleting session for user: {user.email}")
 
@@ -171,7 +192,7 @@ def delete_session(user):
 
 
 def send_whatsapp_message(number, msg, session):
-    url = 'http://localhost:3000/api/sendText'
+    url = 'http://10.1.0.5:3000/api/sendText'
     headers = {'accept': 'application/json', 'Content-Type': 'application/json'}
     number = clean_number(number)
     data = {
