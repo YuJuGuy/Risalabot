@@ -68,6 +68,10 @@
               <i class='bx bxs-user-detail nav__icon'></i>
               <span class="nav__name">العملاء</span>
             </a>
+            <a href="{% url 'messages' %}" class="nav__link {% if request.path == '/messages/' %}active{% endif %}">
+              <i class='bx bxs-message nav__icon'></i>
+              <span class="nav__name">الرسائل المرسلة</span>
+            </a>
             <a href="{% url 'whatsapp_session' %}" class="nav__link {% if request.path == '/channel/' %}active{% endif %}">
               <i class='bx bxl-whatsapp-square nav__icon'></i>
               <span class="nav__name">ربط الواتساب</span>

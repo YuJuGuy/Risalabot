@@ -27,189 +27,130 @@
     </div>
 </div>
 
-    <script>
-
-        fetch("{% url 'create_whatsapp_session' %}")
+<script>
+    // Check WhatsApp session and handle display
+    function checkWhatsAppSession() {
+        const detailsContainer = document.getElementById('whatsapp-details-container');
+        const qrCodeContainer = document.getElementById('qr-code-container');
+        const loadingSpinner = document.getElementById('loading-spinner');
+    
+        // Show loading spinner
+        qrCodeContainer.innerHTML = '';
+        detailsContainer.innerHTML = '';
+        loadingSpinner.style.display = 'block';
+        qrCodeContainer.style.display = 'flex';
+        qrCodeContainer.appendChild(loadingSpinner);
+    
+        fetch("{% url 'manage_whatsapp_session' %}")
             .then(response => response.json())
             .then(data => {
+                loadingSpinner.style.display = 'none';
+                
                 if (data.success) {
-                    if (data.data.is_connected) {
-                        document.getElementById('whatsapp-details-container').style.display = 'flex';
-                        document.getElementById('qr-code-container').style.display = 'none';
-                        fetchWhatsAppDetails();
+                    if (data.qr) {
+                        // Show QR code
+                        detailsContainer.style.display = 'none';
+                        qrCodeContainer.style.display = 'flex';
+                        
+                        const imgDiv = document.createElement('div');
+                        imgDiv.classList.add('image-container');
+                        const qrImage = document.createElement('img');
+                        qrImage.src = `data:image/png;base64,${data.data.qr}`;
+                        qrImage.alt = "QR Code";
+                        imgDiv.appendChild(qrImage);
+                        qrCodeContainer.appendChild(imgDiv);
+    
+                        const reloadButton = document.createElement('button');
+                        reloadButton.classList.add('reload-button');
+                        reloadButton.id = 'reload-button';
+                        reloadButton.innerText = 'تحديث';
+                        qrCodeContainer.appendChild(reloadButton);
                     } else {
-                        document.getElementById('whatsapp-details-container').style.display = 'none';
-                        document.getElementById('qr-code-container').style.display = 'flex';
-                        fetchQRCode();
+                        // Show WhatsApp details
+                        qrCodeContainer.style.display = 'none';
+                        detailsContainer.style.display = 'flex';
+                        
+                        const imgDiv = document.createElement('div');
+                        imgDiv.classList.add('image-container');
+                        const profileImage = document.createElement('img');
+                        profileImage.src = data.data.profile_picture;
+                        profileImage.alt = "Profile Picture";
+                        imgDiv.appendChild(profileImage);
+                        detailsContainer.appendChild(imgDiv);
+    
+                        const nameElement = document.createElement('p');
+                        nameElement.classList.add('nameElement');
+                        nameElement.innerText = data.data.name;
+                        detailsContainer.appendChild(nameElement);
+    
+                        const logoutButton = document.createElement('button');
+                        logoutButton.classList.add('logout-button');
+                        logoutButton.id = 'logout-button';
+                        logoutButton.innerText = 'تسجيل الخروج';
+                        detailsContainer.appendChild(logoutButton);
                     }
                 } else {
-                    console.error('Failed to create WhatsApp session:', data.error);
+                    showMessage(data.message, data.type);
                 }
             })
             .catch(error => {
-                console.error('An error occurred:', error);
+                loadingSpinner.style.display = 'none';
+                showMessage('حدث خطأ أثناء الاتصال بالخادم.');
             });
-
+    }
+    
+    // Event delegation for dynamically created buttons
+    function stopWhatsAppSession() {
+        // Show loading spinner immediately
+        const detailsContainer = document.getElementById('whatsapp-details-container');
+        const qrCodeContainer = document.getElementById('qr-code-container');
+        const loadingSpinner = document.getElementById('loading-spinner');
         
-
-
-            function fetchWhatsAppDetails() {
-                const detailsContainer = document.getElementById('whatsapp-details-container');
-                const loadingSpinner = document.getElementById('loading-spinner');
-                
-                detailsContainer.innerHTML = ''; // Clear existing details
-                detailsContainer.appendChild(loadingSpinner); // Show spinner
-                loadingSpinner.style.display = 'block';
-        
-                fetch("{% url 'whatsapp_details' %}")
-                    .then(response => response.json())
-                    .then(data => {
-                        loadingSpinner.style.display = 'none'; // Hide spinner
-        
-                        if (data.id && data.name && data.profile_picture) {
-                            const imgDiv = document.createElement('div');
-                            imgDiv.classList.add('image-container');
-                            const profileImage = document.createElement('img');
-                            profileImage.src = data.profile_picture;
-                            profileImage.alt = "Profile Picture";
-                            imgDiv.appendChild(profileImage);
-                            detailsContainer.appendChild(imgDiv);
-        
-                            const nameElement = document.createElement('p');
-                            nameElement.classList.add('nameElement');
-                            nameElement.innerText = `${data.name}`;
-                            detailsContainer.appendChild(nameElement);
-        
-                            const logoutButton = document.createElement('button');
-                            logoutButton.classList.add('logout-button');
-                            logoutButton.id = 'logout-button';
-                            logoutButton.innerText = 'تسجيل الخروج';
-                            detailsContainer.appendChild(logoutButton);
-                        } else {
-                            detailsContainer.innerText = 'Failed to retrieve WhatsApp details.';
-                        }
-                    })
-                    .catch(error => {
-                        loadingSpinner.style.display = 'none'; // Hide spinner
-                        detailsContainer.innerText = 'An error occurred while fetching the WhatsApp details.';
-                    });
+        qrCodeContainer.innerHTML = '';
+        detailsContainer.innerHTML = '';
+        loadingSpinner.style.display = 'block';
+        qrCodeContainer.style.display = 'flex';
+        qrCodeContainer.appendChild(loadingSpinner);
+    
+        // Disable all buttons while processing
+        const buttons = document.querySelectorAll('button');
+        buttons.forEach(button => button.disabled = true);
+    
+        fetch("{% url 'whatsapp_stop' %}", {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
             }
-
-            let isFetchingQRCode = false;
-            function fetchQRCode() {
-                if (isFetchingQRCode) return; // Prevent multiple requests
-                isFetchingQRCode = true; // Lock to prevent duplicate requests
-            
-                fetch("{% url 'create_whatsapp_session' %}")
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            if (data.data.is_connected) {
-                                // User is connected, fetch WhatsApp details
-                                document.getElementById('whatsapp-details-container').style.display = 'flex';
-                                document.getElementById('qr-code-container').style.display = 'none';
-                                fetchWhatsAppDetails();
-                            } else {
-                                // User is not connected, reload QR code
-                                document.getElementById('whatsapp-details-container').style.display = 'none';
-                                document.getElementById('qr-code-container').style.display = 'flex';
-                                loadQRCodeImage();
-                            }
-                        } else {
-                            showMessage('حدث خطأ أثناء إنشاء جلسة واتساب.');
-                        }
-                    })
-                    .catch(error => {
-                        showMessage('حدث خطأ أثناء إنشاء جلسة واتساب.');
-                    })
-                    .finally(() => {
-                        isFetchingQRCode = false; // Unlock after the request completes
-                    });
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                checkWhatsAppSession();
+            } else {
+                loadingSpinner.style.display = 'none';
+                showMessage(data.message, data.type);
             }
-            
-            function loadQRCodeImage() {
-                const qrCodeContainer = document.getElementById('qr-code-container');
-                const loadingSpinner = document.getElementById('loading-spinner');
-                
-                qrCodeContainer.innerHTML = ''; // Clear existing QR code
-                qrCodeContainer.appendChild(loadingSpinner); // Show spinner
-                loadingSpinner.style.display = 'block';
-            
-                fetch("{% url 'get_whatsapp_qr_code' %}")
-                    .then(response => response.json())
-                    .then(data => {
-                        loadingSpinner.style.display = 'none'; // Hide spinner
-                        if (data.success) {
-                            if (data.qr) {
-                                const imgDiv = document.createElement('div');
-                                imgDiv.classList.add('image-container');
-                                const qrImage = document.createElement('img');
-                                qrImage.src = `data:image/png;base64,${data.qr}`;
-                                qrImage.alt = "QR Code";
-                                imgDiv.appendChild(qrImage);
-                                qrCodeContainer.appendChild(imgDiv);
-            
-                                const reloadButton = document.createElement('button');
-                                reloadButton.classList.add('reload-button');
-                                reloadButton.id = 'reload-button';
-                                reloadButton.innerText = 'تحديث';
-                                qrCodeContainer.appendChild(reloadButton);
-                            } else {
-                                qrCodeContainer.innerText = data.message;
-                            }
-                        } else {
-                            qrCodeContainer.innerText = data.message;
-                        }
-                    })
-                    .catch(error => {
-                        qrCodeContainer.innerText = 'An error occurred while fetching the QR code.';
-                    });
-            }
-            
-            
-        
-            // Event delegation for dynamically created buttons
-            document.addEventListener('click', function (event) {
-                if (event.target.id === 'reload-button') {
-                    fetchQRCode();
-                } else if (event.target.id === 'logout-button') {
-                    document.getElementById('whatsapp-details-container').style.display = 'none';
-                    qrCodeContainer = document.getElementById('qr-code-container')
-                    qrCodeContainer.innerHTML = '';
-                    qrCodeContainer.style.display = 'flex';
-                    stopWhatsAppSession();
-                }
-            });
-            
-
-            function stopWhatsAppSession() {
-                const qrCodeContainer = document.getElementById('qr-code-container');
-                const loadingSpinner = document.getElementById('loading-spinner');
-                qrCodeContainer.innerHTML = ''; // Clear existing QR code
-                qrCodeContainer.appendChild(loadingSpinner); // Show spinner
-                loadingSpinner.style.display = 'block';
-
-                fetch("{% url 'whatsapp_stop' %}", {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRFToken': '{{ csrf_token }}'
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        fetchQRCode();
-                    } else {
-                        showMessage('فشل تسجيل الخروج من واتساب.');
-                    }
-                })
-                .catch(error => {
-                    showMessage('حدث خطأ أثناء تسجيل الخروج من واتساب.');
-                });
-            }
-
-            
-
-        
-</script>
+        })
+        .catch(error => {
+            loadingSpinner.style.display = 'none';
+            showMessage('حدث خطأ أثناء الاتصال بالخادم.');
+        })
+        .finally(() => {
+            // Re-enable buttons after operation completes
+            buttons.forEach(button => button.disabled = false);
+        });
+    }
+    
+    // Event delegation for dynamically created buttons
+    document.addEventListener('click', function(event) {
+        if (event.target.id === 'reload-button') {
+            checkWhatsAppSession();
+        } else if (event.target.id === 'logout-button') {
+            stopWhatsAppSession();
+        }
+    });
+    
+    // Initial check on page load
+    checkWhatsAppSession();
+    </script>
 {% endblock %}

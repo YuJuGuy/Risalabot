@@ -9,7 +9,7 @@ from base.models import Store, Campaign, UserStoreLink, Flow, FlowStep, TextConf
 import logging
 import pytz
 from automations.whatsapp_api import send_whatsapp_message
-
+from base.Utils.cache_utils import get_store_by_id, get_user_store_link, get_subscription, get_user_by_store_id, get_session, get_campaign_by_id
 logging.basicConfig(level=logging.INFO)
 ksa_timezone = pytz.timezone("Asia/Riyadh")
 
@@ -40,24 +40,29 @@ def send_whatsapp_message_task(self, data):
         if isinstance(data, list):
             data = data[0]
 
-        store = Store.objects.get(store_id=data['store_id'])
-        userstorelink = UserStoreLink.objects.get(store=store)
-        user = userstorelink.user
+        store = get_store_by_id(data['store_id'])
+        if not store:
+            logging.info(f"المتجر بالمعرف {data['store_id']} غير موجود.")
+            return None
 
+        userstorelink = get_user_store_link(data['store_id'])
+        if not userstorelink:
+            logging.info("UserStoreLink not found")
+            return None
+
+        user = userstorelink.user
         if not user.connected:
             logging.info("المستخدم غير متصل.")
             Notification.objects.create(store=store, message="الواتساب غير متصل. يرجى تحديث البيانات.")
             return None
 
-        campaign = Campaign.objects.get(id=data['campaign_id'], store=store)
+        campaign = get_campaign_by_id(data['campaign_id'])
         if campaign.status != 'scheduled':
             logging.info(f"الحملة بالمعرف {data['campaign_id']} ليست مجدولة")
             return None
 
-        session = userstorelink.user.session_id
-    except Store.DoesNotExist:
-        logging.info(f"المتجر بالمعرف {data['store_id']} غير موجود.")
-        return None
+        session = user.session_id
+
     except Campaign.DoesNotExist:
         logging.info(f"الحملة بالمعرف {data['campaign_id']} غير موجودة")
         return None
@@ -65,12 +70,16 @@ def send_whatsapp_message_task(self, data):
         logging.error(f"خطأ غير متوقع: {e}")
         return None
 
+    subscription = get_subscription(data['store_id'])
+    if not subscription:
+        logging.error("Subscription not found")
+        return None
+
     delay = data.get('delay_in_seconds', 0)
     for i, customer in enumerate(data['customers_data']):
-        # Check subscription message limit
-        if store.subscription_message_count >= store.subscription.messages_limit:
+        if store.subscription_message_count >= subscription.messages_limit:
             logging.info(f"تم الوصول إلى الحد الأقصى للرسائل: {store.subscription_message_count} رسائل مرسلة.")
-            break  # Stop scheduling further messages
+            break
 
         task_data = {
             "customer": customer,
@@ -81,26 +90,26 @@ def send_whatsapp_message_task(self, data):
         }
         send_single_message_task.apply_async(
             args=[task_data],
-            countdown=i * delay  # Sequential delay for each message
+            countdown=i * delay
         )
 
     return "Messages scheduled successfully."
 
-
 @shared_task
 def send_single_message_task(task_data):
-    """Task to send a single message."""
     try:
         customer = task_data['customer']
-        campaign = Campaign.objects.get(id=task_data['campaign_id'])
-        store = Store.objects.get(store_id=task_data['store_id'])
+        campaign = get_campaign_by_id(task_data['campaign_id'])
+        store = get_store_by_id(task_data['store_id'])
+        subscription = get_subscription(task_data['store_id'])
 
-        # Check subscription message limit
-        if store.subscription_message_count >= store.subscription.messages_limit:
+        if not store or not subscription:
+            return False, "Store or subscription not found"
+
+        if store.subscription_message_count >= subscription.messages_limit:
             logging.info(f"تم الوصول إلى الحد الأقصى للرسائل: {store.subscription_message_count} رسائل مرسلة.")
             return False, "Reached maximum message limit."
 
-        # Replace placeholders in the message
         msg = task_data['msg']
         if '{' in msg:
             replacements = {
@@ -113,8 +122,7 @@ def send_single_message_task(task_data):
             for placeholder, value in replacements.items():
                 msg = msg.replace(placeholder, value)
 
-        # Send the WhatsApp message
-        success, message = send_whatsapp_message(customer['phone'], msg, task_data['session'])
+        success, message = send_whatsapp_message(customer['phone'], msg, task_data['session'], store)
         if success:
             with transaction.atomic():
                 campaign.messages_sent += 1
@@ -142,19 +150,21 @@ def process_flows_task(self, flow_ids, flow_data, current_step_index=0):
     flows = Flow.objects.filter(id__in=flow_ids)
     
     try:
-        store = Store.objects.get(store_id=flow_data['store_id'])
-        user = UserStoreLink.objects.filter(store=store).first().user
+        store = get_store_by_id(flow_data['store_id'])
+        userlink = get_user_store_link(flow_data['store_id'])
+        user = userlink.user
     except Store.DoesNotExist:
         logging.info(f"Store with id {flow_data['store_id']} does not exist.")
         return None
 
     if not user.connected:
         logging.info("User is not connected.")
+        return None
 
     for flow in flows:
         # Order flow steps and process starting from the current step
         flow_steps = FlowStep.objects.filter(flow=flow).order_by('order').select_related('text_config', 'time_delay_config', 'coupon_config')
-        session = UserStoreLink.objects.filter(store=store).first().user.session_id
+        session = get_session(user)
 
         abandoned_cart_created = False  # Track if abandoned cart is created
 
@@ -174,7 +184,7 @@ def process_flows_task(self, flow_ids, flow_data, current_step_index=0):
                     
                 
                     # Send the message
-                    success, message = send_whatsapp_message(store, flow_data['customer_phone'], text_config.message, session)
+                    success, message = send_whatsapp_message(flow_data['customer_phone'], text_config.message, session, store)
                     # If the message is sent successfully, update the flow messages sent count
                     if success:
                         with transaction.atomic():
@@ -223,7 +233,7 @@ def process_flows_task(self, flow_ids, flow_data, current_step_index=0):
                         messages_limit = store.subscription.messages_limit
                         if store.subscription_message_count >= messages_limit:
                             return False, f"Message limit reached: {store.subscription_message_count} messages sent."
-                        success, message = send_whatsapp_message(flow_data['customer_phone'],coupon_config.message, session)
+                        success, message = send_whatsapp_message(flow_data['customer_phone'],coupon_config.message, session, store)
                         if success:
                             with transaction.atomic():
                                 flow.messages_sent += 1

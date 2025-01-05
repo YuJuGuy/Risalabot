@@ -13,6 +13,7 @@ from datetime import datetime
 from django.utils.timezone import now
 from django.http import HttpResponseForbidden
 from django.conf import settings
+from base.Utils.cache_utils import get_store_by_id, get_user_by_store_id, get_user_store_link, get_recent_log, get_staticbot_start, get_staticbots, get_session, get_subscription
 
 
 logger = logging.getLogger(__name__)
@@ -32,7 +33,7 @@ def stop_or_store_session(session_id, user=None):
     # Check if the session's data is older than 2 minutes
     session_time = data.get('time')
     if session_time:
-        if datetime.now() - session_time > timedelta(seconds=120):
+        if datetime.now() - session_time > timedelta(seconds=180):
             # Ensure that 'user' exists before calling stop_session
             user = data.get('user')
             if user:
@@ -83,9 +84,9 @@ def session_status_process(body_unicode):
     store_id = body_unicode.get('metadata', '').get('user.id')
     number = me_data.get('id') if me_data else None
     
-    store = Store.objects.filter(store_id=store_id).first()
-    user_store_link = UserStoreLink.objects.get(store__store_id=store_id)
-    user = user_store_link.user
+    store = get_store_by_id(store_id)
+    userlink = get_user_store_link(store_id)
+    user = userlink.user
     
     if session_status not in ['WORKING', 'FAILED', 'STOPPED', 'SCAN_QR_CODE']:
         logger.error(f"Unknown session status: {session_status}")
@@ -108,6 +109,7 @@ def session_status_process(body_unicode):
 
     try:
         if session_status == 'WORKING':
+            # clear user model cache
             if user.connected:
                 logger.error("User is already connected.")
                 return
@@ -131,10 +133,10 @@ def session_status_process(body_unicode):
 def message_process(body_unicode):
     # Ensure the message is not sent from yourself
     store_id = body_unicode.get('metadata', {}).get('user.id')  # Store ID
-    store = Store.objects.filter(store_id=store_id).first()
-    user_store_link = UserStoreLink.objects.get(store__store_id=store_id)
-    user = user_store_link.user
-    messages_limit = store.subscription.messages_limit
+    store = get_store_by_id(store_id)
+    userlink = get_user_store_link(store_id)
+    user = userlink.user
+    messages_limit = get_subscription(store_id).messages_limit
 
     if not user.connected:
         logger.info("User is not connected.")
@@ -152,7 +154,7 @@ def message_process(body_unicode):
 
     if body_unicode.get('payload', {}).get('fromMe') == False:
         from_number = body_unicode.get('payload', {}).get('from')  # Customer number
-        staticbotstart = StaticBotStart.objects.filter(store=store).first()
+        staticbotstart = get_staticbot_start(store)
         success = False
 
 
@@ -165,17 +167,13 @@ def message_process(body_unicode):
         cutoff_time = now() - timedelta(hours=staticbotstart.hours)
         
         # Check if a log exists for the same customer, store, and within the cutoff time
-        recent_log_exists = StaticBotLog.objects.filter(
-            customer=from_number,
-            store=store,
-            time__gte=cutoff_time  # Within the last `hours`
-        ).exists()
+        recent_log_exists = get_recent_log(from_number, store, cutoff_time)
 
         payload_message = body_unicode.get('payload', {}).get('body')
         if not recent_log_exists and staticbotstart and staticbotstart.enabled:
 
 
-            success, message = send_whatsapp_message(from_number, staticbotstart.return_message, user.session_id)
+            success, message = send_whatsapp_message(from_number, staticbotstart.return_message, user.session_id, store)
             
             if success:
                 StaticBotLog.objects.create(
@@ -192,17 +190,17 @@ def message_process(body_unicode):
         elif recent_log_exists:
             # Use the other static bots only when there is a recent log
             logger.info(f"Using StaticBots for message processing.")
-            staticbots = StaticBot.objects.filter(store=store)
+            staticbots = get_staticbots(store)
             for staticbot in staticbots:
                 if payload_message is not None:
                     if staticbot.condition == 1:  # Exact text
                         if payload_message == staticbot.message:
-                            success, message = send_whatsapp_message(from_number, staticbot.return_message, user.session_id)
+                            success, message = send_whatsapp_message(from_number, staticbot.return_message, user.session_id, store)
                     elif staticbot.condition == 2:  # Contains text
                         if payload_message in staticbot.message:
-                            success, message = send_whatsapp_message(from_number, staticbot.return_message, user.session_id)
+                            success, message = send_whatsapp_message(from_number, staticbot.return_message, user.session_id, store)
                     elif staticbot.condition == 3:  # Any text
-                        success, message = send_whatsapp_message(from_number, staticbot.return_message, user.session_id)
+                        success, message = send_whatsapp_message(from_number, staticbot.return_message, user.session_id, store)
 
                     if success:
                         staticbotmessage, created = StaticBotMessage.objects.get_or_create(store=store, bot=staticbot, defaults={'count': 0})

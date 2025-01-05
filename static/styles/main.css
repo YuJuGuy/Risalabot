@@ -42,6 +42,8 @@
 /*========== Home ==========*/
 .main-container{
   min-height: 100vh;
+  background-color: #212121;
+
 
 
 }
@@ -304,9 +306,16 @@ html, body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1.25rem 2rem;
+  padding: .5rem 2rem;
   background-color: #212121;
-  height: var(--header-height);
+  min-height: var(--header-height);
+}
+@media screen and (max-width: 768px) {
+  .header{
+    min-height: none;
+    height: var(--header-height);
+  }
+
 }
 .container-nav{
   width: 100%;
@@ -1631,7 +1640,7 @@ select{
   flex-direction: column;
   width: 60%;
   justify-content: center;
-  box-shadow: rgba(0, 0, 0, 0.1) 0px 10px 15px -3px, rgba(0, 0, 0, 0.05) 0px 4px 6px -2px;
+  box-shadow: rgba(55, 63, 71, 10%) 0px 0px 0px 1px, rgba(55, 63, 71, 16%) 0px 1px 4px;
   border-radius: 8px;
   padding: 1rem;
   
@@ -1642,7 +1651,7 @@ select{
   display: flex;
   flex-direction: column;
   width: 40%;
-  box-shadow: rgba(0, 0, 0, 0.1) 0px 10px 15px -3px, rgba(0, 0, 0, 0.05) 0px 4px 6px -2px;
+  box-shadow: rgba(55, 63, 71, 10%) 0px 0px 0px 1px, rgba(55, 63, 71, 16%) 0px 1px 4px;
   border-radius: 8px;
   padding: 1rem;
 }
@@ -2752,7 +2761,7 @@ td i {
 
 .accordion-content {
   padding: 0 10px;
-  max-height: 0;
+  max-height: auto;
   overflow: hidden;
   transition: max-height 0.2s ease-out;
 }
@@ -2768,3 +2777,9 @@ td i {
 
 
 
+.text-wrap{
+  white-space:normal;
+}
+.width-200{
+  width:200px;
+}

@@ -2,7 +2,7 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.utils import timezone
 import json
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save, post_delete 
 from django.dispatch import receiver
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
@@ -51,6 +51,12 @@ class Store(models.Model):
     subscription_date = models.DateTimeField(default=timezone.now)
     botenabled = models.BooleanField(default=False)
 
+
+    def update_total_customers(self):
+        # Recalculate the total customers for the store
+        self.total_customers = self.customer_set.count()
+        self.save(update_fields=['total_customers'])
+
     def __str__(self):
         return self.store_name + ' - ' + self.store_id
 
@@ -72,6 +78,15 @@ class Notification(models.Model):
 
     def __str__(self):
         return f'{self.store.store_name} - {self.created_at}'
+
+class MessagesSent(models.Model):
+    store = models.ForeignKey(Store, on_delete=models.CASCADE)
+    to_number = models.CharField(max_length=255)
+    message = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f'{self.store.store_name} - {self.to_number} - {self.created_at}'
 
 
 
@@ -211,6 +226,19 @@ def add_to_all_customers_group(sender, instance, created, **kwargs):
         
         # Use transaction.on_commit to ensure Many-to-Many relationship is added after the save
         transaction.on_commit(lambda: instance.customer_groups.add(all_customers_group))
+@receiver(post_save, sender=Customer)
+def update_total_customers_on_save(sender, instance, **kwargs):
+    """
+    Updates the total customers count on addition or modification of a customer.
+    """
+    transaction.on_commit(lambda: instance.store.update_total_customers())
+
+@receiver(post_delete, sender=Customer)
+def update_total_customers_on_delete(sender, instance, **kwargs):
+    """
+    Updates the total customers count on deletion of a customer.
+    """
+    transaction.on_commit(lambda: instance.store.update_total_customers())
         
         
 class Campaign(models.Model):

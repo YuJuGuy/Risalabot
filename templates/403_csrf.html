@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>403 Forbidden</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #212121;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+
+        .container {
+            text-align: center;
+            padding: 2rem;
+            border: 2px solid #00ffa2;
+            border-radius: 8px;
+        }
+
+        .error-code {
+            font-size: 6rem;
+            font-weight: 200;
+            color: #00ffa2;
+            margin-bottom: 1rem;
+            line-height: 1;
+        }
+
+        .error-title {
+            font-size: 1.5rem;
+            font-weight: 300;
+            margin-bottom: 1.5rem;
+            letter-spacing: 2px;
+        }
+
+        .error-message {
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 2rem;
+            line-height: 1.6;
+            font-weight: 300;
+            max-width: 400px;
+        }
+
+        .home-button {
+            display: inline-block;
+            padding: 0.8rem 1.5rem;
+            background-color: transparent;
+            color: #00ffa2;
+            text-decoration: none;
+            border: 1px solid #00ffa2;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+            font-weight: 300;
+            letter-spacing: 1px;
+        }
+
+        .home-button:hover {
+            background-color: #00ffa2;
+            color: #212121;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="error-code">403</div>
+        <h1 class="error-title">ACCESS DENIED</h1>
+        <p class="error-message">You don't have permission to access this page.</p>
+        <a href="{% url 'home' %}" class="home-button">RETURN HOME</a>
+    </div>
+</body>
+</html>

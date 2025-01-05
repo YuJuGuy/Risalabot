@@ -8,11 +8,13 @@ from . import home
 from . import dashboard
 from . import account
 from . import channel_views
+from . import messages_sent
 from .Utils import data_utils
 from . import staticbot
 from django.contrib.auth import views as auth_views
 
 urlpatterns = [
+    
     path('login/', authenticate_user.loginPage, name="login"),
     path('logout/', authenticate_user.logoutUser, name="logout"),
     path('register/', authenticate_user.registerPage, name="register"),
@@ -52,6 +54,8 @@ urlpatterns = [
     path('get_campaigns/<uuid:campaign_id>/', campaigns.get_campaign_data, name='get_campaigns'),
 
     
+    path('messages/', messages_sent.messages_view, name='messages'),
+    path('get-messages/', messages_sent.get_messages, name='get_messages'),
     
     path('customers/', customers.customers_view, name='customers'),
     path('get-customers/', customers.get_customers, name='get_customers'),
@@ -63,10 +67,9 @@ urlpatterns = [
     path('password-change/', account.change_password, name="password_change"),
     
     path('channel/', channel_views.whatsapp_session, name="whatsapp_session"),
-    path('create-whatsapp-session/', channel_views.create_whatsapp_session, name="create_whatsapp_session"),
-    path('get-whatsapp-qr-code/', channel_views.get_whatsapp_qr_code, name='get_whatsapp_qr_code'),
-    path('whatsapp-details/', channel_views.get_whatsapp_details, name='whatsapp_details'),
-    path('stop-whatsapp/', channel_views.stop_whatsapp, name='whatsapp_stop'),
+
+    path('get-session/', channel_views.manage_whatsapp_session, name="manage_whatsapp_session"),
+    path('stop-session/', channel_views.stop_whatsapp, name='whatsapp_stop'),
 
     path('bot/', staticbot.bot, name='static_bot'),
     path('get-bots/', staticbot.get_bot, name='get_bots'),

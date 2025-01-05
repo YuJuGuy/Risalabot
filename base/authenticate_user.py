@@ -129,6 +129,8 @@ def registerPage(request):
             return JsonResponse({'success': True, 'redirect_url': '/dashboard'})
         else:
             # Collect form errors
+            #log the for error
+            logger.error(f"Form errors: {form.errors}")
             error_message = "حدث خطأ ما. يرجى التحقق من البيانات المدخلة."
             return JsonResponse({
                 'success': False,

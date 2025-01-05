@@ -49,8 +49,6 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    
-
 ]
 
 AUTH_USER_MODEL = 'base.User'
@@ -193,6 +191,8 @@ CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_TASK_STORE_ERRORS_EVEN_IF_IGNORED = True
 CELERY_TASK_ACKS_LATE = True
+CELERY_TASK_REJECT_ON_WORKER_LOST = True
+CELERY_TASK_ACKS_ON_FAILURE_OR_TIMEOUT = True
 BROKER_TRANSPORT_OPTIONS = {
     'visibility_timeout': 43200  # 12 hours
 }
@@ -238,7 +238,7 @@ LOGGING = {
 CELERY_BEAT_SCHEDULE = {
     'update-total-customers-every-30-minutes': {
         'task': 'automations.recurring_tasks.update_total_customers',  # Adjust this to match your task path
-        'schedule': crontab(minute='*/2'),  # Runs every 30 minutes
+        'schedule': crontab(minute='*/30'),  # Runs every 30 minutes
     },
     
     'update-customer-subscription-daily': {

@@ -11,14 +11,14 @@ class MonthlyPayments(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     amount = models.CharField(max_length=255)
     subscribtion = models.CharField(max_length=255)
-    reference_number = models.CharField(max_length=100, unique=True)
+    reference_number = models.CharField(max_length=100)
 
 
 
 class MonthlyInstallations(models.Model):
     store = models.ForeignKey(Store, on_delete=models.CASCADE)
     date = models.DateTimeField(auto_now_add=True)
-    reference_number = models.CharField(max_length=100, unique=True)
+    reference_number = models.CharField(max_length=100)
 
     def save(self, *args, **kwargs):
     # Get the current month and year
@@ -43,4 +43,4 @@ class MonthlyInstallations(models.Model):
 class AppTrial(models.Model):
     store = models.ForeignKey(Store, on_delete=models.CASCADE)
     date = models.DateTimeField(auto_now_add=True)
-    reference_number = models.CharField(max_length=100, unique=True)
+    reference_number = models.CharField(max_length=100)

@@ -1,7 +1,10 @@
 import requests
 import base64
 import time
-from base.models import User, UserStoreLink
+from base.models import User, UserStoreLink, MessagesSent, Store
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def get_session_status(session):
@@ -191,7 +194,7 @@ def delete_session(user):
         return {'success': False}
 
 
-def send_whatsapp_message(number, msg, session):
+def send_whatsapp_message(number, msg, session, store):
     url = 'http://10.1.0.5:3000/api/sendText'
     headers = {'accept': 'application/json', 'Content-Type': 'application/json'}
     number = clean_number(number)
@@ -204,6 +207,14 @@ def send_whatsapp_message(number, msg, session):
     try:
         response = requests.post(url, headers=headers, json=data)
         if response.status_code in [200, 201]:
+            response_data = response.json()
+            logger.info(response_data)
+            number = number.split('@')[0]
+            MessagesSent.objects.create(
+                store=store,
+                to_number=number,
+                message=msg
+            )
             return True, "Message sent successfully"
 
         else:

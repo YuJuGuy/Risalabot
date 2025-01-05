@@ -1,0 +1,14 @@
+                                          Table "public.automations_apptrial"
+      Column      |           Type           | Collation | Nullable |                     Default                      
+------------------+--------------------------+-----------+----------+--------------------------------------------------
+ id               | bigint                   |           | not null | nextval('automations_apptrial_id_seq'::regclass)
+ date             | timestamp with time zone |           |          | 
+ reference_number | text                     |           |          | 
+ store_id         | bigint                   |           |          | 
+Indexes:
+    "idx_26670_automations_apptrial_pkey" PRIMARY KEY, btree (id)
+    "idx_26670_automations_apptrial_store_id_07a42a30" btree (store_id)
+    "idx_26670_sqlite_autoindex_automations_apptrial_1" UNIQUE, btree (reference_number)
+Foreign-key constraints:
+    "automations_apptrial_store_id_fkey" FOREIGN KEY (store_id) REFERENCES base_store(id)
+

@@ -1,0 +1,77 @@
+{% extends 'main.html' %}
+{% load static %}
+
+{% block content %}
+
+<div class="action-bar">
+    <h2 style="margin: 0;">الرسائل المرسلة</h2>
+  </div>
+
+<table id="myTable" class="table table-striped hover" style="width:100%">
+    <thead>
+        <tr>
+          <th>وقت الانشاء</th>
+          <th>الى الرقم</th>
+          <th>الرسالة</th>
+        </tr>
+    </thead>
+
+</table>
+
+<div id="get-messages-url" data-get-messages-url="{% url 'get_messages' %}"></div>
+
+<script src="https://cdn.datatables.net/v/dt/jq-3.7.0/dt-2.1.8/datatables.min.js"></script>
+<script src="https://cdn.datatables.net/responsive/3.0.3/js/dataTables.responsive.js"></script>
+<script src="https://cdn.datatables.net/responsive/3.0.3/js/responsive.dataTables.js"></script>
+
+
+<script>
+    const getMessagesUrl = document.getElementById('get-messages-url').dataset.getMessagesUrl;
+
+    document.addEventListener('DOMContentLoaded', function() {
+      const myTable = document.getElementById('myTable');
+      if (myTable) {
+          $(myTable).DataTable({
+              responsive: true,
+              ajax: {
+                url: getMessagesUrl,
+                dataSrc: function(json) {
+                  // Update the statistics elements 
+                  // Return the data for DataTable
+                  return json.messages;
+                }
+              },
+              columns: [
+                  { data: 'created_at' },
+                  { data: 'to' },
+                  { data: 'message' },
+              ],
+              paging: true,
+              pageLength: 25,
+              layout: {
+                  topStart: {
+                      features: {
+                          search: {
+                              placeholder: 'ابحث'
+                          }
+                      }
+                  },
+                  topEnd: null,       // Places the search box at the top right
+                  bottomStart: 'pageLength',    // Places "info" (e.g., "Showing 1 to 10 of 57 entries") at the bottom left
+                  bottomEnd: 'paging'     // Places pagination controls at the bottom right
+              },
+              language: { 
+                  search: '',
+                  lengthMenu: '_MENU_',
+                  zeroRecords: "لا توجد سجلات متاحة",
+                  emptyTable: "لا توجد سجلات متاحة",
+
+              }
+          });
+      }
+  });
+
+
+</script>
+
+{% endblock %}

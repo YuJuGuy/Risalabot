@@ -2,7 +2,7 @@ from django.shortcuts import render
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
 from automations.whatsapp_api import whatsapp_create_session, whatsapp_details, get_session_status, logout_user, stop_session, start_session, delete_session, get_qr_code
-from base.decorators import check_token_validity
+from base.decorators import check_token_validity, rate_limit
 from base.models import UserStoreLink, Notification
 from django.shortcuts import redirect
 import logging
@@ -34,66 +34,94 @@ def whatsapp_session(request, context=None):
 
 
 @login_required(login_url='login')
-def create_whatsapp_session(request):
+@rate_limit(key_prefix='whatsapp_session', limit=20, period=60)
+def manage_whatsapp_session(request):
+    """
+    Single endpoint to handle WhatsApp session:
+    - Checks status
+    - Returns either QR code or WhatsApp details
+    - Handles session creation when needed
+    """
     try:
         user = request.user
         status = get_session_status(user.session_id)
+        
         if status == "WORKING":
+            # Session active and connected - return details
             user.connected = True
             user.save()
-        elif status == "FAILED":
-            delete_session(user) 
-        elif status == "NOT_FOUND":
-            whatsapp_create_session(request.user, create=True)
-        else:
+            results = whatsapp_details(user)
+            
+            if results:
+                return JsonResponse({
+                    'success': True,
+                    'qr': False,  # Signal to show details container
+                    'data': {
+                        'id': results.get('id'),
+                        'name': results.get('name'),
+                        'profile_picture': results.get('profile_picture')
+                    }
+                })
+            else:
+                raise Exception("Failed to fetch WhatsApp details")
+
+        elif status == "SCAN_QR_CODE":
+            # Need to scan QR - return QR code
             user.connected = False
             user.save()
-    
-        return JsonResponse({'success': True, 'data': {'is_connected': user.connected}})
-    except Exception as e:
-        return JsonResponse({'success': False, 'type': 'error', 'message': str(e)}, status=500)
-
-
-@login_required(login_url='login')
-def get_whatsapp_qr_code(request):
-    try:
-        success = whatsapp_create_session(request.user)
-        if success:
-            qr_code = get_qr_code(request.user.session_id)
+            qr_code = get_qr_code(user.session_id)
+            
             if qr_code['success']:
-                response_data = {'success': True, 'qr': qr_code['qr']}
+                return JsonResponse({
+                    'success': True,
+                    'qr': True,  # Signal to show QR container
+                    'data': {'qr': qr_code['qr']}
+                })
             else:
-                response_data = {'success': False, 'message': 'Failed to get QR code'}
+                raise Exception("Failed to get QR code")
+
+        elif status == "FAILED":
+            # Clean up failed session and start new one
+            delete_session(user)
+            success = whatsapp_create_session(user)
+            if success:
+                qr_code = get_qr_code(user.session_id)
+                if qr_code['success']:
+                    return JsonResponse({
+                        'success': True,
+                        'qr': True,
+                        'data': {'qr': qr_code['qr']}
+                    })
+            raise Exception("Failed to create new session after failure")
+
+        elif status == "NOT_FOUND":
+            # Start new session and return QR
+            user.connected = False
+            user.save()
+            success = whatsapp_create_session(user)
+            
+            if success:
+                qr_code = get_qr_code(user.session_id)
+                if qr_code['success']:
+                    return JsonResponse({
+                        'success': True,
+                        'qr': True,
+                        'data': {'qr': qr_code['qr']}
+                    })
+            raise Exception("Failed to create new session")
+
         else:
-            response_data = {'success': False, 'message': 'Failed to create WhatsApp session'}
-        return JsonResponse(response_data)
+            raise Exception("Unknown session status")
+            logger.error(f"Unknown session status: {status}")
+
     except Exception as e:
-        print(e)
-        return JsonResponse({'success': False, 'message': 'An error occurred', 'error': str(e)})
-    
+        return JsonResponse({
+            'success': False,
+            'message': str(e)
+        }, status=500)
 
-@login_required(login_url='login')
-def get_whatsapp_details(request):
-    user = request.user
-    try:
-        results = whatsapp_details(user)
 
-        if results:
-
-            return JsonResponse({
-                'id': results.get('id'),
-                'name': results.get('name'),
-                'profile_picture': results.get('profile_picture')
-
-            })
-        else:
-            return JsonResponse({'success': False, 'type': 'error', 'message': 'خطأ في جلب بيانات الواتساب'}, status=500)
-    except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
-    
-    
-
-    
+       
     
 @login_required(login_url='login')
 def stop_whatsapp(request):

@@ -185,6 +185,8 @@ def campaign(request, context=None):
                 # Schedule the task to send messages at the scheduled time
                 task = send_whatsapp_message_task.apply_async(args=[data], eta=scheduled_time)
                 campaign.task_id = task.id
+                logger.info(task)
+                logger.info(f"Task scheduled with ID: {task.id}")
                 campaign.save()
                 return JsonResponse({'success': True, 'type': 'success', 'message': 'تم إنشاء الحملة وتم حفظها بنجاح.', 'redirect_url': reverse('campaigns')})
             else:
@@ -385,18 +387,18 @@ def campaign_cancel(request, campaign_id):
 
         # Check if the campaign has a task ID (Celery task)
         if campaign.task_id:
+            task_id = campaign.task_id
             # Update campaign status before attempting to revoke
             campaign.status = 'cancelled'
             campaign.task_id = None
             campaign.save(update_fields=['task_id', 'status'])
 
-            # Return response immediately for AJAX update
-            response = JsonResponse({'success': True, 'type': 'success', 'message': 'تم إلغاء الحملة بنجاح.'})
+            revoked = revoke_task(task_id)
 
-            # Start a new thread to revoke the task
-            threading.Thread(target=revoke_task, args=(campaign.task_id,)).start()
+            if not revoked:
+                return JsonResponse({'success': False, 'type': 'error', 'message': 'فشل إلغاء المهمة.'}, status=400)
 
-            return response
+            return JsonResponse({'success': True, 'type': 'success', 'message': 'تم إلغاء الحملة بنجاح.'})
 
         else:
             campaign.status = 'cancelled'
@@ -406,6 +408,21 @@ def campaign_cancel(request, campaign_id):
     except (Campaign.DoesNotExist, UserStoreLink.DoesNotExist):
         # If either the campaign or the user-store link does not exist
         return JsonResponse({'success': False, 'type': 'error', 'message': 'ليس لديك الصلاحية لإلغاء هذه الحملة.'}, status=400)
+
+def revoke_task(task_id):
+    try:
+        # Revoke the task and terminate it if it's already running
+        celery_app.control.revoke(task_id, terminate=True, signal='SIGTERM')
+        
+        # For extra safety, also revoke on all workers
+        celery_app.control.broadcast('revoke', arguments={'task_id': task_id, 'terminate': True, 'signal': 'SIGTERM'})
+        return True
+    except CeleryError as e:
+        logger.error(f"فشل إلغاء المهمة: {str(e)}")
+        return False
+    except Exception as e:
+        logger.error(f"فشل إلغاء المهمة: {str(e)}")
+        return False
 
 
 
@@ -421,12 +438,4 @@ def delete_campaign(request, campaign_id):
             return JsonResponse({'success': False, 'type': 'error', 'message': 'الحملة غير موجودة.'}, status=400)
     else:
         return JsonResponse({'success': False, 'type': 'error', 'message': 'طريقة الطلب غير صالحة.'}, status=405)
-
-def revoke_task(task_id):
-    try:
-        celery_app.control.revoke(task_id)
-    except CeleryError as e:
-        logger.error(f"فشل إلغاء المهمة: {str(e)}")
-    except Exception as e:
-        logger.error(f"فشل إلغاء المهمة: {str(e)}")
 

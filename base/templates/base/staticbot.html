@@ -25,7 +25,7 @@
             <p id="enabled"></p>
             <p class="bot-message" id="message"></p>
             <p id="hours"></p>
-            <button class="accordion-header"><i class='bx bxs-edit' style='color:#00ffa2'></i></button>
+            <button class="accordion-header" style="cursor:default"><i class='bx bxs-edit' style='color:transparent '></i></button>
         </div>
         <div class="accordion-content" id="startbot-accordion-content">
             <form id="startbot-form" novalidate method="post">
@@ -79,28 +79,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
     });
     
-function initializeAccordion() {
-    const botsContainer = document.querySelector('.bots-container'); // Common ancestor for all accordions
-
-    botsContainer.addEventListener('click', function (event) {
-        const header = event.target.closest('.accordion-header'); // Check if the clicked element is a header
-        if (header) {
-            const container = header.closest(".startbot-container, .bot-container");
-            if (container) {
-                const content = container.querySelector(".accordion-content");
-                if (content) {
-                    const isOpen = content.style.maxHeight !== "";
-                    document.querySelectorAll(".accordion-content").forEach((otherContent) => {
-                        if (otherContent !== content) {
-                            otherContent.style.maxHeight = null; // Close all other accordions
-                        }
-                    });
-                    content.style.maxHeight = isOpen ? null : content.scrollHeight + "px"; // Toggle current accordion
-                }
-            }
-        }
-    });
-}
 
     
     // Fetch data for both Start Bot and Static Bots
@@ -136,7 +114,6 @@ function initializeAccordion() {
                                 <p class="bot-return-message" id="bot-return-message-${bot.id}">${bot.return_message}</p>
                                 <p class="bot-condition" id="bot-condition-${bot.id}">${bot.condition === 1 ? 'النص بالضبط' : 'يحتوي على النص'}</p>
                                 <div>
-                                    <button class="accordion-header"><i class='bx bxs-edit' style='color:#00ffa2'></i></button>
                                     <button class="accordion-header" onclick="deleteBot('${bot.id}')"><i class='bx bxs-trash' style='color:red'></i></button>
                                 </div>
                             </div>
@@ -164,9 +141,9 @@ function initializeAccordion() {
                             </div>
                         `;
                         botList.appendChild(botDiv);
+                        
+
     
-                        // Initialize accordion for this bot
-                        initializeAccordion();
                         
                         const editForm = botDiv.querySelector('.staticbot-edit-form');
                         editForm.addEventListener('submit', function (e) {
@@ -289,7 +266,6 @@ function initializeAccordion() {
             <div class="startbot-header">
                 <p>بوت مخصص</p>
                 <div>
-                <button class="accordion-header"><i class='bx bxs-edit' style='color:#00ffa2'></i></button>
                 <button class="accordion-header" onclick="removeBot(this)"><i class='bx bxs-trash' style='color:red'></i></button>
                 </div>
             </div>
@@ -318,6 +294,7 @@ function initializeAccordion() {
             </div>
         `;
         botList.appendChild(newBotDiv);
+        
     
         // Initialize accordion for the new bot
     
@@ -413,7 +390,6 @@ function initializeAccordion() {
                 showMessage(`An error occurred: ${error.message}`, 'error');
             });
 
-            initializeAccordion();
     }
     
     
