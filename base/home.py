@@ -5,4 +5,12 @@ from django.http import HttpResponse
 
 
 def home_view(request):
-    return render(request, 'base/home.html')
+    return redirect('dashboard')
+
+
+def privacy_view(request):
+    return render(request, 'base/privacy.html')
+
+def faq_view(request):
+    return render(request, 'base/faq.html')
+

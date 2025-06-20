@@ -1,0 +1,280 @@
+{% load static %}
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <title>الأسئلة الشائعة</title>
+        <meta name="description" content="منصة رسالة بوت لأتمتة رسائل الواتساب للشركات والمتاجر الإلكترونية">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+        <style>
+            @import url("https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap");
+            @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100..900&display=swap');
+            @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@200;300;400;500;700;800;900&display=swap');
+
+            .container-nav {
+                background: white;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+
+            .container{
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                padding: 2rem;
+                text-align: center;
+            }
+            
+
+            .header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 1rem 5%;
+                max-width: 1200px;
+                margin: 0 auto;
+            }
+
+            .login-register-container {
+                display: flex;
+                gap: 1rem;
+            }
+
+            .login-btn, .register-btn {
+                padding: 0.5rem 1.5rem;
+                border-radius: 4px;
+                text-decoration: none;
+                font-weight: 600;
+            }
+
+            .login-btn {
+                color: var(--primary-color);
+                border: 2px solid var(--primary-color);
+            }
+
+            .register-btn {
+                background: var(--primary-color);
+                color: white;
+            }
+
+
+            .logo-container{
+                height: 50px;
+                width: auto;
+            }
+            @media (max-width: 768px) {
+                .logo-container{
+                    height: 25px;
+                    width: auto;
+                }
+            }
+
+            .logo-container img{
+                height: 100%;
+                width: auto;
+            }
+        :root {
+            --primary-color: #21aa78;
+            --secondary-color: #212121;
+            --body-font: "Tajawal", sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: var(--body-font);
+        }
+
+        body {
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .accordion {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .accordion-item {
+            border-bottom: 1px solid #eee;
+        }
+
+        .accordion-item:last-child {
+            border-bottom: none;
+        }
+
+        .accordion-header {
+            background-color: white;
+            padding: 20px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background-color 0.3s ease;
+        }
+
+        .accordion-header:hover {
+            background-color: #f8f8f8;
+        }
+
+        .accordion-header h3 {
+            color: var(--primary-color);
+            font-size: 16px;
+            margin: 0;
+        }
+
+        .accordion-content {
+            padding: 0;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease, padding 0.3s ease;
+        }
+
+        .accordion-content p {
+            color: var(--secondary-color);
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }
+
+        .accordion-item.active .accordion-content {
+            max-height: 500px;
+        }
+
+        .toggle-icon {
+            color: var(--primary-color);
+            font-weight: bold;
+            transition: transform 0.3s ease;
+        }
+
+        .accordion-item.active .toggle-icon {
+            transform: rotate(180deg);
+        }
+
+        h1 {
+            color: var(--primary-color);
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 28px;
+        }
+
+        .footer-text {
+            text-align: center;
+            color: var(--secondary-color);
+            margin-top: 20px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-nav">
+        <header class="header">
+            <div class="logo-container">
+                <img src="{% static 'svgs/RisalabotBlack.svg' %}" alt="RisalaBot Logo">
+            </div>
+            <div class="login-register-container">
+                <a href="/login" class="login-btn">تسجيل الدخول</a>
+                <a href="/register" class="register-btn">حساب جديد</a>
+            </div>
+        </header>
+    </div>
+
+    <div class="container">
+        <h1>الأسئلة الشائعة</h1>
+        <div class="accordion">
+            <div class="accordion-item">
+                <div class="accordion-header">
+                    <h3>ما هي وظيفة خدمة أتمتة رسائل الواتساب؟</h3>
+                    <span class="toggle-icon">▼</span>
+                </div>
+                <div class="accordion-content">
+                    <p>تتيح الخدمة إرسال إشعارات آلية إلى عملائك بناءً على الأحداث مثل إنشاء الطلب، شحنه، تغيير حالته، أو حتى عند ترك العميل سلة التسوق. كما يمكنك إرسال رسائل مخصصة وحملات ترويجية بسهولة.</p>
+                </div>
+            </div>
+            <div class="accordion-item">
+                <div class="accordion-header">
+                    <h3>هل يمكنني تخصيص الرسائل؟</h3>
+                    <span class="toggle-icon">▼</span>
+                </div>
+                <div class="accordion-content">
+                    <p>نعم، يمكنك تخصيص الرسائل بناءً على كل حالة، سواء كانت إشعارات الطلبات أو رسائل الحملات الترويجية، بما يناسب احتياجاتك.</p>
+                </div>
+            </div>
+            <div class="accordion-item">
+                <div class="accordion-header">
+                    <h3>هل الخدمة تدعم الردود الآلية؟</h3>
+                    <span class="toggle-icon">▼</span>
+                </div>
+                <div class="accordion-content">
+                    <p>بالتأكيد، يمكنك إنشاء ردود آلية بناءً على نصوص محددة أو إدخالات نصية، مما يوفر ردوداً سريعة ودقيقة على استفسارات العملاء.</p>
+                </div>
+            </div>
+            <div class="accordion-item">
+                <div class="accordion-header">
+                    <h3>هل هناك حدود لعدد الرسائل المرسلة؟</h3>
+                    <span class="toggle-icon">▼</span>
+                </div>
+                <div class="accordion-content">
+                    <p>لا، يمكنك إرسال عدد غير محدود من الرسائل سواء للإشعارات أو الحملات الترويجية.</p>
+                </div>
+            </div>
+            <div class="accordion-item">
+                <div class="accordion-header">
+                    <h3>هل تدعم الخدمة إرفاق ملفات في الرسائل؟</h3>
+                    <span class="toggle-icon">▼</span>
+                </div>
+                <div class="accordion-content">
+                    <p>نعم، يمكنك إرفاق الصور والملفات مع الرسائل لتعزيز فعالية حملاتك أو توضيح المعلومات.</p>
+                </div>
+            </div>
+            <div class="accordion-item">
+                <div class="accordion-header">
+                    <h3>كيف يمكنني بدء استخدام الخدمة؟</h3>
+                    <span class="toggle-icon">▼</span>
+                </div>
+                <div class="accordion-content">
+                    <p>يمكنك البدء بسهولة من خلال إعداد الخدمة عبر لوحة التحكم الخاصة بك وتحديد النصوص والأحداث المطلوبة للإرسال.</p>
+                </div>
+            </div>
+            <div class="accordion-item">
+                <div class="accordion-header">
+                    <h3>هل الخدمة متوافقة مع قوانين الخصوصية؟</h3>
+                    <span class="toggle-icon">▼</span>
+                </div>
+                <div class="accordion-content">
+                    <p>نعم، نلتزم بجميع القوانين واللوائح المتعلقة بحماية البيانات وخصوصية العملاء.</p>
+                </div>
+            </div>
+            <div class="accordion-item">
+                <div class="accordion-header">
+                    <h3>ماذا يحدث إذا واجهت مشكلة؟</h3>
+                    <span class="toggle-icon">▼</span>
+                </div>
+                <div class="accordion-content">
+                    <p>يمكنك التواصل مع فريق الدعم الخاص بنا في أي وقت لحل أي مشكلة تواجهها وضمان استمرارية عمل الخدمة بكفاءة.</p>
+                </div>
+            </div>
+        </div>
+        <p class="footer-text">✨ إذا كان لديك أي استفسار آخر، لا تتردد في التواصل معنا!</p>
+    </div>
+
+    <script>
+        document.querySelectorAll('.accordion-header').forEach(button => {
+            button.addEventListener('click', () => {
+                const accordionItem = button.parentElement;
+                accordionItem.classList.toggle('active');
+            });
+        });
+    </script>
+</body>
+</html>

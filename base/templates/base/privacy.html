@@ -1,0 +1,125 @@
+{% load static %}
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <title>سياسة الخصوصية</title>
+        <meta name="description" content="منصة رسالة بوت لأتمتة رسائل الواتساب للشركات والمتاجر الإلكترونية">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+        <style>
+            @import url("https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap");
+            @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100..900&display=swap');
+            @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@200;300;400;500;700;800;900&display=swap');
+            :root {
+                --primary-color: #21aa78;
+                --secondary-color: #212121;
+                --body-font: "Tajawal", sans-serif;
+
+            }
+            
+            body {
+                margin: 0;
+                font-family: var(--body-font);
+                line-height: 1.6;
+                direction: rtl;
+            }
+
+            .container-nav {
+                background: white;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+
+            .container{
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                padding: 2rem;
+                text-align: center;
+            }
+            
+
+            .header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 1rem 5%;
+                max-width: 1200px;
+                margin: 0 auto;
+            }
+
+            .login-register-container {
+                display: flex;
+                gap: 1rem;
+            }
+
+            .login-btn, .register-btn {
+                padding: 0.5rem 1.5rem;
+                border-radius: 4px;
+                text-decoration: none;
+                font-weight: 600;
+            }
+
+            .login-btn {
+                color: var(--primary-color);
+                border: 2px solid var(--primary-color);
+            }
+
+            .register-btn {
+                background: var(--primary-color);
+                color: white;
+            }
+
+
+            .logo-container{
+                height: 50px;
+                width: auto;
+            }
+            @media (max-width: 768px) {
+                .logo-container{
+                    height: 25px;
+                    width: auto;
+                }
+            }
+
+            .logo-container img{
+                height: 100%;
+                width: auto;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container-nav">
+            <header class="header">
+                <div class="logo-container">
+                    <img src="{% static 'svgs/RisalabotBlack.svg' %}" alt="RisalaBot Logo">
+                </div>
+                <div class="login-register-container">
+                    <a href="/login" class="login-btn">تسجيل الدخول</a>
+                    <a href="/register" class="register-btn">حساب جديد</a>
+                </div>
+            </header>
+        </div>
+            <div class="container">
+                <h1>سياسة الخصوصية</h1>
+                
+                <p>
+                    نحن نولي أهمية كبيرة لحماية خصوصيتك وضمان سرية وأمان بياناتك الشخصية. يتم جمع المعلومات فقط عند الحاجة ولأغراض محددة، مثل تحسين خدماتنا، تقديم الدعم الفني، أو التواصل معك بشأن طلباتك واستفساراتك.
+                </p>
+        
+                <p>
+                    نلتزم بعدم مشاركة بياناتك مع أي طرف خارجي إلا في الحالات الضرورية، مثل الامتثال للأنظمة والقوانين أو لتقديم خدمات بالنيابة عنا، وذلك تحت التزام صارم بالحفاظ على سرية بياناتك.
+                </p>
+        
+                <p>
+                    نضمن أن يتم تخزين بياناتك باستخدام تقنيات أمان متقدمة لحمايتها من الوصول غير المصرح به. كما يمكنك طلب تعديل أو حذف بياناتك الشخصية في أي وقت.
+                </p>
+        
+                <p>
+                    إذا كانت لديك أي استفسارات حول كيفية تعاملنا مع بياناتك، يرجى التواصل معنا. نحن هنا لضمان تجربتك بأعلى درجات الأمان والثقة.
+                </p>
+            </div>
+        </body>
+        </html>

@@ -33,7 +33,7 @@ def stop_or_store_session(session_id, user=None):
     # Check if the session's data is older than 2 minutes
     session_time = data.get('time')
     if session_time:
-        if datetime.now() - session_time > timedelta(seconds=180):
+        if datetime.now() - session_time > timedelta(seconds=120):
             # Ensure that 'user' exists before calling stop_session
             user = data.get('user')
             if user:

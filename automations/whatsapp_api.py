@@ -195,6 +195,9 @@ def delete_session(user):
 
 
 def send_whatsapp_message(number, msg, session, store):
+    logger.info(f"Sending message to {number} with session {session}")
+    logger.info(f"Message: {msg}")
+    logger.info(f"Store: {store}")
     url = 'http://10.1.0.5:3000/api/sendText'
     headers = {'accept': 'application/json', 'Content-Type': 'application/json'}
     number = clean_number(number)
@@ -206,6 +209,7 @@ def send_whatsapp_message(number, msg, session, store):
 
     try:
         response = requests.post(url, headers=headers, json=data)
+        logger.info(f"Response: {response}")
         if response.status_code in [200, 201]:
             response_data = response.json()
             logger.info(response_data)

@@ -62,7 +62,7 @@ urlpatterns = [
     path('delete-group/<int:group_id>/', customers.delete_customer_list, name='delete_group'),
     
     path('authstore/', authenticate_store.authstore, name="authstore"),
-    path('callback/', authenticate_store.callback, name="callback"),
+    # path('callback/', authenticate_store.callback, name="callback"),
     path('unlinkstore/', authenticate_store.unlinkstore, name="unlinkstore"),
     path('password-change/', account.change_password, name="password_change"),
     
@@ -77,6 +77,9 @@ urlpatterns = [
     path('staticbot/', staticbot.static_bot_post, name='staticbot'),
     path('toggle-botenabled/', staticbot.toggle_bot_enabled, name='toggle_bot_enabled'),
     path('delete-bot/<int:bot_id>/', staticbot.delete_static_bot, name='delete_bot'),
+    
+    path('privacy/', home.privacy_view, name='privacy'),
+    path('faq/', home.faq_view, name='faq'),
 
     path('', home.home_view, name="home"),
 ]

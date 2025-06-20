@@ -19,14 +19,13 @@ replacements = {
     '{اسم العميل}': 'customer_full_name',
     '{الاسم الاول}': 'customer_first_name',
     '{الايميل}': 'customer_email',
-    '{رقم العميل}': 'customer_number',
+    '{رقم العميل}': 'customer_phone',
     '{الدولة}': 'customer_country',
     '{رابط التتبع}': 'tracking_link',
     '{الحالة}': 'status_arabic',
     '{السعر}': 'total_amount',
     '{رابط التقييم}': 'rating_link',
     '{رابط السلة}': 'cart_link',
-    '{الكوبون}': 'code',
 }
 
 
@@ -148,6 +147,7 @@ def process_flows_task(self, flow_ids, flow_data, current_step_index=0):
     The current_step_index keeps track of the current step in the flow.
     """
     flows = Flow.objects.filter(id__in=flow_ids)
+    logging.info(f"Processing flows: {flow_data}")
     
     try:
         store = get_store_by_id(flow_data['store_id'])
@@ -221,15 +221,18 @@ def process_flows_task(self, flow_ids, flow_data, current_step_index=0):
                         
                     # Apply all replacements in one loop
                     if '{' in coupon_config.message:
+                        if '{الكوبون}' in coupon_config.message:
+                            coupon_config.message = coupon_config.message.replace('{الكوبون}', code)
                         for placeholder, key in replacements.items():
                             value = flow_data.get(key, '')
                             coupon_config.message = coupon_config.message.replace(placeholder, value)
                            
                     result = create_coupon(user, coupondata)
+                    logging.info(coupon_config.message)
 
                     if result['success']:
                         # Handle success, coupon creation was successful
-                        logging.info("Coupon created successfully:", result['data'])
+                        logging.info("Coupon created successfully")
                         messages_limit = store.subscription.messages_limit
                         if store.subscription_message_count >= messages_limit:
                             return False, f"Message limit reached: {store.subscription_message_count} messages sent."
